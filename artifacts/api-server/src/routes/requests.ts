@@ -797,7 +797,7 @@ router.post("/repayments", requireAuth, validateBody(createRepaymentSchema), asy
       paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
       note,
       paymentMethod,
-      status: "completed",
+      status: "pending",
     })
     .returning();
 

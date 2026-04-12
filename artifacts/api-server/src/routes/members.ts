@@ -357,10 +357,29 @@ router.post("/invitations/:token/accept", requireAuth, validateParams(invitation
     return;
   }
 
+  const existingMembership = await db
+    .select()
+    .from(circleMembersTable)
+    .where(
+      and(
+        eq(circleMembersTable.circleId, invitation.circleId),
+        eq(circleMembersTable.userId, userId),
+      ),
+    )
+    .limit(1)
+    .then((r) => r[0] ?? null);
+
   await db
     .update(circleInvitationsTable)
     .set({ status: "accepted", acceptedAt: new Date() })
     .where(eq(circleInvitationsTable.id, invitation.id));
+
+  const user = req.dbUser!;
+
+  if (existingMembership) {
+    res.json(memberToApi(existingMembership, { displayName: user.displayName, email: user.email }));
+    return;
+  }
 
   const [member] = await db
     .insert(circleMembersTable)
@@ -373,7 +392,6 @@ router.post("/invitations/:token/accept", requireAuth, validateParams(invitation
     })
     .returning();
 
-  const user = req.dbUser!;
   res.json(memberToApi(member, { displayName: user.displayName, email: user.email }));
 });
 

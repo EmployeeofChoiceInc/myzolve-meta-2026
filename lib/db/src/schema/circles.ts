@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -42,7 +42,9 @@ export const circleMembersTable = pgTable("circle_members", {
     .notNull()
     .defaultNow()
     .$onUpdate(() => new Date()),
-});
+}, (table) => [
+  uniqueIndex("circle_members_circle_user_uniq").on(table.circleId, table.userId),
+]);
 
 export const circleInvitationsTable = pgTable("circle_invitations", {
   id: serial("id").primaryKey(),
