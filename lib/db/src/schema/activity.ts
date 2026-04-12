@@ -14,7 +14,7 @@ export const activityFeedItemsTable = pgTable("activity_feed_items", {
   id: serial("id").primaryKey(),
   circleId: integer("circle_id")
     .notNull()
-    .references(() => circlesTable.id),
+    .references(() => circlesTable.id, { onDelete: "cascade" }),
   actorUserId: integer("actor_user_id").references(() => usersTable.id),
   activityType: text("activity_type").notNull(),
   targetEntityType: text("target_entity_type"),
@@ -30,7 +30,7 @@ export const ledgerEntriesTable = pgTable("ledger_entries", {
   id: serial("id").primaryKey(),
   circleId: integer("circle_id")
     .notNull()
-    .references(() => circlesTable.id),
+    .references(() => circlesTable.id, { onDelete: "cascade" }),
   entryKind: text("entry_kind").notNull(),
   sourceType: text("source_type").notNull(),
   sourceId: integer("source_id").notNull(),

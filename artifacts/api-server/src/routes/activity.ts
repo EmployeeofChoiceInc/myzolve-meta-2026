@@ -153,6 +153,7 @@ router.get("/circles/:circleId/ledger", requireAuth, validateParams(circleIdPara
 router.get(
   "/circles/:circleId/ledger/summary",
   requireAuth,
+  validateParams(circleIdParam),
   async (req, res) => {
     const userId = req.dbUser!.id;
     const circleId = parseInt(String(req.params.circleId));
@@ -160,6 +161,21 @@ router.get(
     const member = await assertCircleMember(circleId, userId);
     if (!member) {
       res.status(404).json({ error: "Circle not found" });
+      return;
+    }
+
+    const circle = await db
+      .select({ ledgerMode: circlesTable.ledgerMode })
+      .from(circlesTable)
+      .where(eq(circlesTable.id, circleId))
+      .limit(1)
+      .then((r) => r[0]);
+
+    const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+    const ledgerMode = circle?.ledgerMode ?? "private";
+
+    if ((ledgerMode === "private" || ledgerMode === "admin_only") && !isAdminOrOwner) {
+      res.status(403).json({ error: "Ledger is not visible to members" });
       return;
     }
 

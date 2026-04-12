@@ -30,7 +30,7 @@ export const circleMembersTable = pgTable("circle_members", {
   id: serial("id").primaryKey(),
   circleId: integer("circle_id")
     .notNull()
-    .references(() => circlesTable.id),
+    .references(() => circlesTable.id, { onDelete: "cascade" }),
   userId: integer("user_id").references(() => usersTable.id),
   role: text("role").notNull().default("member"),
   status: text("status").notNull().default("active"),
@@ -48,7 +48,7 @@ export const circleInvitationsTable = pgTable("circle_invitations", {
   id: serial("id").primaryKey(),
   circleId: integer("circle_id")
     .notNull()
-    .references(() => circlesTable.id),
+    .references(() => circlesTable.id, { onDelete: "cascade" }),
   invitedEmail: text("invited_email"),
   invitedByUserId: integer("invited_by_user_id")
     .notNull()

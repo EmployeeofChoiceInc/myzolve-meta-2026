@@ -16,7 +16,7 @@ export const servicePostsTable = pgTable("service_posts", {
   id: serial("id").primaryKey(),
   circleId: integer("circle_id")
     .notNull()
-    .references(() => circlesTable.id),
+    .references(() => circlesTable.id, { onDelete: "cascade" }),
   createdByUserId: integer("created_by_user_id")
     .notNull()
     .references(() => usersTable.id),
@@ -46,7 +46,7 @@ export const serviceMatchesTable = pgTable("service_matches", {
   id: serial("id").primaryKey(),
   servicePostId: integer("service_post_id")
     .notNull()
-    .references(() => servicePostsTable.id),
+    .references(() => servicePostsTable.id, { onDelete: "cascade" }),
   matchedByUserId: integer("matched_by_user_id")
     .notNull()
     .references(() => usersTable.id),

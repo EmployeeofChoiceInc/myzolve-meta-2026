@@ -16,7 +16,7 @@ export const supportRequestsTable = pgTable("support_requests", {
   id: serial("id").primaryKey(),
   circleId: integer("circle_id")
     .notNull()
-    .references(() => circlesTable.id),
+    .references(() => circlesTable.id, { onDelete: "cascade" }),
   createdByUserId: integer("created_by_user_id")
     .notNull()
     .references(() => usersTable.id),
@@ -53,10 +53,10 @@ export const supportContributionsTable = pgTable("support_contributions", {
   id: serial("id").primaryKey(),
   requestId: integer("request_id")
     .notNull()
-    .references(() => supportRequestsTable.id),
+    .references(() => supportRequestsTable.id, { onDelete: "cascade" }),
   circleId: integer("circle_id")
     .notNull()
-    .references(() => circlesTable.id),
+    .references(() => circlesTable.id, { onDelete: "cascade" }),
   contributorUserId: integer("contributor_user_id")
     .notNull()
     .references(() => usersTable.id),
@@ -79,7 +79,7 @@ export const repaymentPlansTable = pgTable("repayment_plans", {
   id: serial("id").primaryKey(),
   requestId: integer("request_id")
     .notNull()
-    .references(() => supportRequestsTable.id),
+    .references(() => supportRequestsTable.id, { onDelete: "cascade" }),
   totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
   startDate: timestamp("start_date", { withTimezone: true }),
   frequency: text("frequency").notNull().default("one_time"),
@@ -104,7 +104,7 @@ export const repaymentsTable = pgTable("repayments", {
   id: serial("id").primaryKey(),
   requestId: integer("request_id")
     .notNull()
-    .references(() => supportRequestsTable.id),
+    .references(() => supportRequestsTable.id, { onDelete: "cascade" }),
   payerUserId: integer("payer_user_id")
     .notNull()
     .references(() => usersTable.id),

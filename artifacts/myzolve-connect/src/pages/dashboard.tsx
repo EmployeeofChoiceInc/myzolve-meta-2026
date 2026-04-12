@@ -1,4 +1,5 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import { useEffect } from "react";
 import { Plus, HandHeart, CalendarClock, ArrowRight, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -109,7 +110,14 @@ function RepaymentRemindersSection({ circleId }: { circleId: number }) {
 
 export default function DashboardPage() {
   const { data: circles, isLoading } = useListCircles();
+  const [, navigate] = useLocation();
   const firstCircleId = circles?.[0]?.id;
+
+  useEffect(() => {
+    if (!isLoading && circles && circles.length === 0) {
+      navigate("/onboarding");
+    }
+  }, [isLoading, circles, navigate]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">

@@ -572,9 +572,25 @@ router.post("/requests/:requestId/confirm-receipt", requireAuth, validateParams(
       ),
     );
 
+  const confirmedContributions = await db
+    .select({ amount: supportContributionsTable.amount })
+    .from(supportContributionsTable)
+    .where(
+      and(
+        eq(supportContributionsTable.requestId, requestId),
+        eq(supportContributionsTable.status, "confirmed"),
+      ),
+    );
+  const totalConfirmed = confirmedContributions.reduce(
+    (sum, c) => sum + parseFloat(c.amount),
+    0,
+  );
+  const amountRequested = parseFloat(access.req.amountRequested);
+  const newStatus = totalConfirmed >= amountRequested ? "fully_funded" : "partially_funded";
+
   const [updated] = await db
     .update(supportRequestsTable)
-    .set({ status: "fully_funded" })
+    .set({ status: newStatus, amountFunded: String(totalConfirmed) })
     .where(eq(supportRequestsTable.id, requestId))
     .returning();
 
