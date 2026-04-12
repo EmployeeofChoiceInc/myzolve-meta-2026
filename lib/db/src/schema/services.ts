@@ -5,6 +5,7 @@ import {
   timestamp,
   integer,
   numeric,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -41,8 +42,29 @@ export const servicePostsTable = pgTable("service_posts", {
     .$onUpdate(() => new Date()),
 });
 
+export const serviceMatchesTable = pgTable("service_matches", {
+  id: serial("id").primaryKey(),
+  servicePostId: integer("service_post_id")
+    .notNull()
+    .references(() => servicePostsTable.id),
+  matchedByUserId: integer("matched_by_user_id")
+    .notNull()
+    .references(() => usersTable.id),
+  note: text("note"),
+  status: text("status").notNull().default("pending"),
+  isAccepted: boolean("is_accepted"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
 export const insertServicePostSchema = createInsertSchema(
   servicePostsTable,
 ).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertServicePost = z.infer<typeof insertServicePostSchema>;
 export type ServicePost = typeof servicePostsTable.$inferSelect;
+export type ServiceMatch = typeof serviceMatchesTable.$inferSelect;

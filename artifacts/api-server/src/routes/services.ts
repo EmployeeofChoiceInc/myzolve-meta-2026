@@ -3,9 +3,11 @@ import { requireAuth } from "../middlewares/requireAuth";
 import { db } from "@workspace/db";
 import {
   servicePostsTable,
+  serviceMatchesTable,
   circleMembersTable,
   usersTable,
   activityFeedItemsTable,
+  type ServicePost,
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 
@@ -35,7 +37,7 @@ async function getUserName(userId: number) {
     .then((r) => r[0]?.displayName ?? "Unknown");
 }
 
-function serviceToApi(post: any, createdByName: string) {
+function serviceToApi(post: ServicePost, createdByName: string) {
   return {
     id: post.id,
     circleId: post.circleId,
@@ -235,6 +237,15 @@ router.post("/services/:serviceId/match", requireAuth, async (req, res) => {
     res.status(403).json({ error: "Forbidden" });
     return;
   }
+
+  const { note } = req.body;
+
+  await db.insert(serviceMatchesTable).values({
+    servicePostId: serviceId,
+    matchedByUserId: userId,
+    note: note ?? null,
+    status: "pending",
+  });
 
   const [updated] = await db
     .update(servicePostsTable)

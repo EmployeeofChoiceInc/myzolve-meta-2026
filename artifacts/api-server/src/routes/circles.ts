@@ -1,9 +1,12 @@
 import { Router } from "express";
+import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
+import { validateBody } from "../middlewares/validate";
 import { db } from "@workspace/db";
 import {
   circlesTable,
   circleMembersTable,
+  type Circle,
 } from "@workspace/db";
 import { eq, and, count, sql } from "drizzle-orm";
 import {
@@ -15,7 +18,16 @@ import {
 
 const router = Router();
 
-function circleToApi(circle: any, memberCount: number, myRole: string) {
+const createCircleSchema = z.object({
+  name: z.string().min(1).max(100),
+  circleType: z.enum(["family", "chosen_family", "friends", "caregiving_circle", "neighborhood_circle", "other"]).optional().default("family"),
+  description: z.string().max(1000).optional(),
+  currency: z.string().length(3).optional().default("USD"),
+  privacyMode: z.enum(["private", "invite_only", "public"]).optional().default("private"),
+  ledgerMode: z.enum(["private", "members_only", "transparent"]).optional().default("private"),
+});
+
+function circleToApi(circle: Circle, memberCount: number, myRole: string | null) {
   return {
     id: circle.id,
     name: circle.name,
@@ -77,7 +89,7 @@ router.get("/circles", requireAuth, async (req, res) => {
   res.json(result);
 });
 
-router.post("/circles", requireAuth, async (req, res) => {
+router.post("/circles", requireAuth, validateBody(createCircleSchema), async (req, res) => {
   const userId = req.dbUser!.id;
   const {
     name,
@@ -87,11 +99,6 @@ router.post("/circles", requireAuth, async (req, res) => {
     privacyMode = "private",
     ledgerMode = "private",
   } = req.body;
-
-  if (!name) {
-    res.status(400).json({ error: "name is required" });
-    return;
-  }
 
   const [circle] = await db
     .insert(circlesTable)

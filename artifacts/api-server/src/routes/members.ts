@@ -1,11 +1,14 @@
 import { Router } from "express";
+import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
+import { validateBody } from "../middlewares/validate";
 import { db } from "@workspace/db";
 import {
   circleMembersTable,
   circlesTable,
   circleInvitationsTable,
   usersTable,
+  type CircleMember,
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { randomBytes } from "crypto";
@@ -13,8 +16,15 @@ import { addDays } from "date-fns";
 
 const router = Router();
 
+const createInvitationSchema = z.object({
+  invitedEmail: z.string().email().optional(),
+  role: z.enum(["member", "admin"]).optional().default("member"),
+  customMessage: z.string().max(1000).optional(),
+  expiresInDays: z.number().int().min(1).max(365).optional().default(7),
+});
+
 function memberToApi(
-  member: any,
+  member: CircleMember,
   user: { displayName: string; email: string } | null,
 ) {
   return {
@@ -233,7 +243,7 @@ router.get("/circles/:circleId/invitations", requireAuth, async (req, res) => {
   res.json(invitations);
 });
 
-router.post("/circles/:circleId/invitations", requireAuth, async (req, res) => {
+router.post("/circles/:circleId/invitations", requireAuth, validateBody(createInvitationSchema), async (req, res) => {
   const userId = req.dbUser!.id;
   const circleId = parseInt(String(req.params.circleId));
 

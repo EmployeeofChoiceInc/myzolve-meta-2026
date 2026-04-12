@@ -1,5 +1,7 @@
 import { Router } from "express";
+import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
+import { validateBody } from "../middlewares/validate";
 import { db } from "@workspace/db";
 import {
   supportRequestsTable,
@@ -10,10 +12,45 @@ import {
   usersTable,
   activityFeedItemsTable,
   ledgerEntriesTable,
+  type SupportRequest,
+  type Contribution,
+  type Repayment,
 } from "@workspace/db";
 import { eq, and, sql, desc } from "drizzle-orm";
 
 const router = Router();
+
+const createRequestSchema = z.object({
+  title: z.string().min(1).max(200),
+  description: z.string().max(5000).optional(),
+  amountRequested: z.number().positive(),
+  currency: z.string().length(3).optional().default("USD"),
+  requestType: z.enum(["money", "service", "emergency"]).optional().default("money"),
+  visibilityScope: z.enum(["specific_person", "selected_members", "whole_circle", "admins_only", "private_draft"]).optional().default("whole_circle"),
+  repaymentExpected: z.boolean().optional().default(false),
+  repaymentStyle: z.enum(["one_time", "installments", "flexible", "no_repayment", "gift", "discuss_later"]).optional().default("discuss_later"),
+  urgencyLevel: z.enum(["low", "normal", "high", "critical"]).optional().default("normal"),
+  category: z.string().max(100).optional().default("other"),
+  privacyLevel: z.enum(["standard", "sensitive", "very_sensitive"]).optional().default("standard"),
+  dueDate: z.string().datetime().optional(),
+});
+
+const createContributionSchema = z.object({
+  amount: z.number().positive(),
+  currency: z.string().length(3).optional().default("USD"),
+  contributionType: z.enum(["loan", "gift", "partial_gift"]).optional().default("loan"),
+  note: z.string().max(1000).optional(),
+  paymentMethod: z.string().optional(),
+});
+
+const createRepaymentSchema = z.object({
+  requestId: z.number().int().positive(),
+  amount: z.number().positive(),
+  currency: z.string().length(3).optional().default("USD"),
+  paymentDate: z.string().datetime().optional(),
+  note: z.string().max(1000).optional(),
+  paymentMethod: z.string().optional(),
+});
 
 async function assertCircleMember(circleId: number, userId: number) {
   return db
@@ -39,7 +76,7 @@ async function getUserName(userId: number) {
     .then((r) => r[0]?.displayName ?? "Unknown");
 }
 
-function requestToApi(req: any, createdByName: string) {
+function requestToApi(req: SupportRequest, createdByName: string) {
   return {
     id: req.id,
     circleId: req.circleId,
@@ -64,7 +101,7 @@ function requestToApi(req: any, createdByName: string) {
   };
 }
 
-function contributionToApi(c: any, contributorName: string) {
+function contributionToApi(c: Contribution, contributorName: string) {
   return {
     id: c.id,
     requestId: c.requestId,
@@ -116,7 +153,7 @@ router.get("/circles/:circleId/requests", requireAuth, async (req, res) => {
   );
 });
 
-router.post("/circles/:circleId/requests", requireAuth, async (req, res) => {
+router.post("/circles/:circleId/requests", requireAuth, validateBody(createRequestSchema), async (req, res) => {
   const userId = req.dbUser!.id;
   const circleId = parseInt(String(req.params.circleId));
 
@@ -676,7 +713,7 @@ router.post("/requests/:requestId/repayment-plan", requireAuth, async (req, res)
   });
 });
 
-router.post("/repayments", requireAuth, async (req, res) => {
+router.post("/repayments", requireAuth, validateBody(createRepaymentSchema), async (req, res) => {
   const userId = req.dbUser!.id;
   const {
     requestId,
@@ -707,6 +744,11 @@ router.post("/repayments", requireAuth, async (req, res) => {
   const member = await assertCircleMember(existing.circleId, userId);
   if (!member) {
     res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  if (existing.createdByUserId !== userId) {
+    res.status(403).json({ error: "Only the person who received support can log a return" });
     return;
   }
 
