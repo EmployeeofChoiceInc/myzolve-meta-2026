@@ -63,7 +63,7 @@ export default function ActivityPage() {
                     {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
                   </span>
                   <p className="text-foreground leading-relaxed">
-                    <span className="font-semibold">{item.actorName}</span> {item.summaryText}
+                    {item.summaryText}
                   </p>
                 </CardContent>
               </Card>

@@ -1,7 +1,9 @@
 import { useParams, Link } from "wouter";
 import { 
   useListCircleMembers, 
-  useListCircleInvitations, 
+  useListCircleInvitations,
+  useRevokeInvitation,
+  getListCircleInvitationsQueryKey,
   useCreateCircleInvitation,
   type CircleInvitation
 } from "@workspace/api-client-react";
@@ -45,6 +47,22 @@ export default function MembersPage() {
   });
 
   const createInvitation = useCreateCircleInvitation();
+  const revokeInvitation = useRevokeInvitation();
+
+  function handleRevokeInvitation(invitationId: number) {
+    revokeInvitation.mutate(
+      { invitationId },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListCircleInvitationsQueryKey(circleId) });
+          toast({ title: "Invitation revoked" });
+        },
+        onError: () => {
+          toast({ title: "Could not revoke invitation", variant: "destructive" });
+        },
+      }
+    );
+  }
 
   const form = useForm<z.infer<typeof inviteFormSchema>>({
     resolver: zodResolver(inviteFormSchema),
@@ -262,8 +280,14 @@ export default function MembersPage() {
                         <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-transparent capitalize">
                           {inv.role}
                         </Badge>
-                        <Button variant="ghost" size="sm" className="h-8 text-xs text-destructive hover:text-destructive">
-                          Revoke
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 text-xs text-destructive hover:text-destructive"
+                          onClick={() => handleRevokeInvitation(inv.id)}
+                          disabled={revokeInvitation.isPending}
+                        >
+                          {revokeInvitation.isPending ? "Revoking..." : "Revoke"}
                         </Button>
                       </div>
                     </div>

@@ -14,7 +14,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { icon: Home, label: "Home", href: "/dashboard" },
     { icon: Users, label: "My Circles", href: "/circles" },
-    { icon: Search, label: "Discover Needs", href: "/discover" },
+    { icon: Search, label: "Discover Circles", href: "/circles" },
   ];
 
   const NavLinks = () => (

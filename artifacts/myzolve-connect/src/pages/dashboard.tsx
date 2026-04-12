@@ -149,7 +149,7 @@ export default function DashboardPage() {
                   <h3 className="font-semibold text-lg mb-2">You don't have any circles yet</h3>
                   <p className="text-muted-foreground mb-6 max-w-sm">Create a space for your family or friends to support each other.</p>
                   <Button className="rounded-full" asChild>
-                    <Link href="/circles/new">Create a Circle</Link>
+                    <Link href="/circles">Create a Circle</Link>
                   </Button>
                 </CardContent>
               </Card>
