@@ -150,16 +150,24 @@ router.get("/circles/:circleId/requests", requireAuth, async (req, res) => {
     return;
   }
 
-  let query = db
+  const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+
+  const rows = await db
     .select({ req: supportRequestsTable, user: usersTable })
     .from(supportRequestsTable)
     .innerJoin(usersTable, eq(supportRequestsTable.createdByUserId, usersTable.id))
-    .where(eq(supportRequestsTable.circleId, circleId))
-    .$dynamic();
+    .where(eq(supportRequestsTable.circleId, circleId));
 
-  const rows = await query;
+  let filtered = rows.filter((r) => {
+    const scope = r.req.visibilityScope;
+    if (scope === "whole_circle") return true;
+    if (scope === "private_draft") return r.req.createdByUserId === userId;
+    if (scope === "admins_only") return isAdminOrOwner || r.req.createdByUserId === userId;
+    if (scope === "selected_members") return isAdminOrOwner || r.req.createdByUserId === userId;
+    if (scope === "specific_person") return isAdminOrOwner || r.req.createdByUserId === userId;
+    return true;
+  });
 
-  let filtered = rows;
   if (status) {
     filtered = filtered.filter((r) => r.req.status === status);
   }
@@ -258,6 +266,20 @@ router.get("/requests/:requestId", requireAuth, async (req, res) => {
 
   const member = await assertCircleMember(row.req.circleId, userId);
   if (!member) {
+    res.status(404).json({ error: "Request not found" });
+    return;
+  }
+
+  const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+  const scope = row.req.visibilityScope;
+  const isCreator = row.req.createdByUserId === userId;
+
+  if (
+    (scope === "private_draft" && !isCreator) ||
+    (scope === "admins_only" && !isAdminOrOwner && !isCreator) ||
+    (scope === "selected_members" && !isAdminOrOwner && !isCreator) ||
+    (scope === "specific_person" && !isAdminOrOwner && !isCreator)
+  ) {
     res.status(404).json({ error: "Request not found" });
     return;
   }

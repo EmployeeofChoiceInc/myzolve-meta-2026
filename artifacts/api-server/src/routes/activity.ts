@@ -5,6 +5,7 @@ import {
   activityFeedItemsTable,
   ledgerEntriesTable,
   circleMembersTable,
+  circlesTable,
   usersTable,
   supportContributionsTable,
   supportRequestsTable,
@@ -42,17 +43,46 @@ router.get("/circles/:circleId/activity", requireAuth, async (req, res) => {
     return;
   }
 
+  const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+
   const items = await db
     .select({ item: activityFeedItemsTable, actor: usersTable })
     .from(activityFeedItemsTable)
     .leftJoin(usersTable, eq(activityFeedItemsTable.actorUserId, usersTable.id))
     .where(eq(activityFeedItemsTable.circleId, circleId))
     .orderBy(desc(activityFeedItemsTable.createdAt))
-    .limit(limit)
+    .limit(limit + 50)
     .offset(offset);
 
+  const requestIds = items
+    .filter((i) => i.item.targetEntityType === "support_request" && i.item.targetEntityId !== null)
+    .map((i) => i.item.targetEntityId as number);
+
+  let restrictedRequestIds = new Set<number>();
+  if (requestIds.length > 0 && !isAdminOrOwner) {
+    const requests = await db
+      .select({ id: supportRequestsTable.id, visibilityScope: supportRequestsTable.visibilityScope, createdByUserId: supportRequestsTable.createdByUserId })
+      .from(supportRequestsTable)
+      .where(eq(supportRequestsTable.circleId, circleId));
+    for (const r of requests) {
+      if (
+        (r.visibilityScope === "private_draft" || r.visibilityScope === "admins_only") &&
+        r.createdByUserId !== userId
+      ) {
+        restrictedRequestIds.add(r.id);
+      }
+    }
+  }
+
+  const visible = items.filter((i) => {
+    if (i.item.targetEntityType === "support_request" && i.item.targetEntityId !== null) {
+      return !restrictedRequestIds.has(i.item.targetEntityId);
+    }
+    return true;
+  }).slice(0, limit);
+
   res.json(
-    items.map((i) => ({
+    visible.map((i) => ({
       id: i.item.id,
       circleId: i.item.circleId,
       actorUserId: i.item.actorUserId,
@@ -78,6 +108,21 @@ router.get("/circles/:circleId/ledger", requireAuth, async (req, res) => {
     return;
   }
 
+  const circle = await db
+    .select({ ledgerMode: circlesTable.ledgerMode })
+    .from(circlesTable)
+    .where(eq(circlesTable.id, circleId))
+    .limit(1)
+    .then((r) => r[0]);
+
+  const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+  const ledgerMode = circle?.ledgerMode ?? "private";
+
+  if ((ledgerMode === "private" || ledgerMode === "admin_only") && !isAdminOrOwner) {
+    res.status(403).json({ error: "Ledger is not visible to members" });
+    return;
+  }
+
   const entries = await db
     .select()
     .from(ledgerEntriesTable)
@@ -86,6 +131,8 @@ router.get("/circles/:circleId/ledger", requireAuth, async (req, res) => {
     .limit(limit)
     .offset(offset);
 
+  const isSummaryMode = ledgerMode === "summary" && !isAdminOrOwner;
+
   res.json(
     entries.map((e) => ({
       id: e.id,
@@ -93,11 +140,11 @@ router.get("/circles/:circleId/ledger", requireAuth, async (req, res) => {
       entryKind: e.entryKind,
       sourceType: e.sourceType,
       sourceId: e.sourceId,
-      giverName: e.giverName,
-      receiverName: e.receiverName,
+      giverName: isSummaryMode ? null : e.giverName,
+      receiverName: isSummaryMode ? null : e.receiverName,
       amount: e.amount ? parseFloat(e.amount) : null,
       currency: e.currency,
-      description: e.description,
+      description: isSummaryMode ? null : e.description,
       date: e.date,
       createdAt: e.createdAt,
     })),
