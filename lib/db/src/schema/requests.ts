@@ -11,6 +11,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
 import { circlesTable } from "./circles";
+import { placeholderMembersTable } from "./placeholders";
 
 export const supportRequestsTable = pgTable("support_requests", {
   id: serial("id").primaryKey(),
@@ -20,6 +21,10 @@ export const supportRequestsTable = pgTable("support_requests", {
   createdByUserId: integer("created_by_user_id")
     .notNull()
     .references(() => usersTable.id),
+  onBehalfOfPlaceholderId: integer("on_behalf_of_placeholder_id").references(
+    () => placeholderMembersTable.id,
+    { onDelete: "set null" },
+  ),
   title: text("title").notNull(),
   description: text("description"),
   amountRequested: numeric("amount_requested", {
@@ -60,6 +65,10 @@ export const supportContributionsTable = pgTable("support_contributions", {
   contributorUserId: integer("contributor_user_id")
     .notNull()
     .references(() => usersTable.id),
+  onBehalfOfPlaceholderId: integer("on_behalf_of_placeholder_id").references(
+    () => placeholderMembersTable.id,
+    { onDelete: "set null" },
+  ),
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
   currency: text("currency").notNull().default("USD"),
   contributionType: text("contribution_type").notNull().default("gift"),

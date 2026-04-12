@@ -273,6 +273,54 @@ router.delete(
   },
 );
 
+router.get(
+  "/circles/:circleId/comments/:commentId/replies",
+  requireAuth,
+  validateParams(circleIdParam.merge(commentIdParam)),
+  validateQuery(paginationQuery),
+  async (req, res) => {
+    const userId = req.dbUser!.id;
+    const circleId = parseInt(String(req.params.circleId));
+    const commentId = parseInt(String(req.params.commentId));
+    const { limit, offset } = req.query as unknown as { limit: number; offset: number };
+
+    const member = await assertCircleMember(circleId, userId);
+    if (!member) {
+      res.status(404).json({ error: "Circle not found" });
+      return;
+    }
+
+    const parent = await db
+      .select()
+      .from(commentsTable)
+      .where(and(eq(commentsTable.id, commentId), eq(commentsTable.circleId, circleId)))
+      .limit(1)
+      .then((r) => r[0] ?? null);
+
+    if (!parent) {
+      res.status(404).json({ error: "Comment not found" });
+      return;
+    }
+
+    const rows = await db
+      .select({ comment: commentsTable, author: usersTable })
+      .from(commentsTable)
+      .leftJoin(usersTable, eq(commentsTable.authorUserId, usersTable.id))
+      .where(
+        and(
+          eq(commentsTable.circleId, circleId),
+          eq(commentsTable.parentCommentId, commentId),
+          eq(commentsTable.status, "active"),
+        ),
+      )
+      .orderBy(desc(commentsTable.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    res.json(rows.map((r) => commentToApi(r.comment, r.author?.displayName ?? "Someone")));
+  },
+);
+
 router.post(
   "/circles/:circleId/reactions/:entityType/:entityId",
   requireAuth,

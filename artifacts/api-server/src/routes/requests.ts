@@ -34,6 +34,7 @@ const createRequestSchema = z.object({
   category: z.string().max(100).optional().default("other"),
   privacyLevel: z.enum(["standard", "sensitive", "fully_private"]).optional().default("standard"),
   dueDate: z.string().datetime().optional(),
+  onBehalfOfPlaceholderId: z.number().int().positive().optional(),
 });
 
 const createContributionSchema = z.object({
@@ -42,6 +43,7 @@ const createContributionSchema = z.object({
   contributionType: z.enum(["loan", "gift", "installment", "partial_support", "pledge"]).optional().default("loan"),
   note: z.string().max(1000).optional(),
   paymentMethod: z.string().optional(),
+  onBehalfOfPlaceholderId: z.number().int().positive().optional(),
 });
 
 const createRepaymentSchema = z.object({
@@ -128,10 +130,16 @@ async function getRequestWithVisibilityCheck(requestId: number, userId: number) 
 }
 
 function requestToApi(req: SupportRequest, createdByName: string) {
+  const isEmergencyExpired =
+    req.dueDate &&
+    req.dueDate < new Date() &&
+    ["open", "accepted", "partially_funded"].includes(req.status);
+
   return {
     id: req.id,
     circleId: req.circleId,
     createdByUserId: req.createdByUserId,
+    onBehalfOfPlaceholderId: req.onBehalfOfPlaceholderId ?? null,
     createdByName,
     title: req.title,
     description: req.description,
@@ -146,6 +154,7 @@ function requestToApi(req: SupportRequest, createdByName: string) {
     category: req.category,
     privacyLevel: req.privacyLevel,
     status: req.status,
+    isExpired: Boolean(isEmergencyExpired),
     dueDate: req.dueDate,
     createdAt: req.createdAt,
     updatedAt: req.updatedAt,
@@ -157,6 +166,7 @@ function contributionToApi(c: Contribution, contributorName: string) {
     id: c.id,
     requestId: c.requestId,
     contributorUserId: c.contributorUserId,
+    onBehalfOfPlaceholderId: c.onBehalfOfPlaceholderId ?? null,
     contributorName,
     amount: parseFloat(c.amount),
     currency: c.currency,
@@ -235,6 +245,7 @@ router.post("/circles/:circleId/requests", requireAuth, validateParams(circleIdP
     category = "other",
     privacyLevel = "standard",
     dueDate,
+    onBehalfOfPlaceholderId,
   } = req.body;
 
   const [supportReq] = await db
@@ -242,6 +253,7 @@ router.post("/circles/:circleId/requests", requireAuth, validateParams(circleIdP
     .values({
       circleId,
       createdByUserId: userId,
+      onBehalfOfPlaceholderId: onBehalfOfPlaceholderId ?? null,
       title,
       description,
       amountRequested: String(amountRequested),
@@ -477,6 +489,54 @@ router.post("/requests/:requestId/complete", requireAuth, validateParams(request
   res.json(requestToApi(updated, userName));
 });
 
+router.post("/requests/:requestId/expire", requireAuth, validateParams(requestIdParam), async (req, res) => {
+  const userId = req.dbUser!.id;
+  const requestId = parseInt(String(req.params.requestId));
+
+  const access = await getRequestWithVisibilityCheck(requestId, userId);
+  if (!access) {
+    res.status(404).json({ error: "Request not found" });
+    return;
+  }
+
+  if (!access.isCreator && !access.isAdminOrOwner) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  const { req: existing } = access;
+
+  if (!["open", "accepted", "partially_funded"].includes(existing.status)) {
+    res.status(409).json({ error: "Only open or partially funded requests can be expired" });
+    return;
+  }
+
+  const now = new Date();
+  if (!existing.dueDate || existing.dueDate > now) {
+    res.status(409).json({ error: "This request has not yet reached its due date" });
+    return;
+  }
+
+  const [updated] = await db
+    .update(supportRequestsTable)
+    .set({ status: "archived", archivedAt: now })
+    .where(eq(supportRequestsTable.id, requestId))
+    .returning();
+
+  const userName = await getUserName(updated.createdByUserId);
+
+  await createAuditLog({
+    circleId: existing.circleId,
+    actorUserId: userId,
+    action: "request_expired",
+    targetEntityType: "support_request",
+    targetEntityId: requestId,
+    metadata: { urgencyLevel: existing.urgencyLevel, requestType: existing.requestType, dueDate: existing.dueDate },
+  });
+
+  res.json(requestToApi(updated, userName));
+});
+
 router.get("/requests/:requestId/contributions", requireAuth, validateParams(requestIdParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const requestId = parseInt(String(req.params.requestId));
@@ -513,6 +573,7 @@ router.post("/requests/:requestId/contributions", requireAuth, validateParams(re
     contributionType = "gift",
     note,
     paymentMethod,
+    onBehalfOfPlaceholderId,
   } = req.body;
 
   const [contribution] = await db
@@ -521,6 +582,7 @@ router.post("/requests/:requestId/contributions", requireAuth, validateParams(re
       requestId,
       circleId: existing.circleId,
       contributorUserId: userId,
+      onBehalfOfPlaceholderId: onBehalfOfPlaceholderId ?? null,
       amount: String(amount),
       currency,
       contributionType,
