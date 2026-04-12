@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { usePlaceholderMembers } from "@/hooks/use-api";
 
 export default function RequestsPage() {
   const { id } = useParams<{ id: string }>();
@@ -22,6 +23,7 @@ export default function RequestsPage() {
 
   const { data: requests, isLoading } = useListSupportRequests(circleId);
   const createRequest = useCreateSupportRequest();
+  const { data: placeholders } = usePlaceholderMembers(circleId);
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
@@ -32,6 +34,7 @@ export default function RequestsPage() {
     category: "other",
     repaymentExpected: false,
     repaymentStyle: "discuss_later",
+    onBehalfOfPlaceholderId: "",
   });
 
   const handleOpen = () => setOpen(true);
@@ -54,6 +57,7 @@ export default function RequestsPage() {
           repaymentStyle: form.repaymentStyle as "flexible" | "one_time" | "installments" | "no_repayment" | "gift" | "discuss_later",
           requestType: "money",
           visibilityScope: "whole_circle",
+          onBehalfOfPlaceholderId: form.onBehalfOfPlaceholderId ? parseInt(form.onBehalfOfPlaceholderId) : undefined,
         },
       },
       {
@@ -61,7 +65,7 @@ export default function RequestsPage() {
           toast({ title: "Support request shared with your circle." });
           queryClient.invalidateQueries({ queryKey: getListSupportRequestsQueryKey(circleId) });
           setOpen(false);
-          setForm({ title: "", description: "", amountRequested: "", urgencyLevel: "normal", category: "other", repaymentExpected: false, repaymentStyle: "discuss_later" });
+          setForm({ title: "", description: "", amountRequested: "", urgencyLevel: "normal", category: "other", repaymentExpected: false, repaymentStyle: "discuss_later", onBehalfOfPlaceholderId: "" });
         },
         onError: () => {
           toast({ title: "Could not create request. Please try again.", variant: "destructive" });
@@ -211,6 +215,27 @@ export default function RequestsPage() {
             <DialogTitle className="text-2xl font-bold">Ask for support</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            {placeholders && placeholders.length > 0 && (
+              <div className="space-y-1.5">
+                <Label>Requesting on behalf of (optional)</Label>
+                <Select
+                  value={form.onBehalfOfPlaceholderId}
+                  onValueChange={(v) => setForm({ ...form, onBehalfOfPlaceholderId: v === "self" ? "" : v })}
+                >
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue placeholder="Myself" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="self">Myself</SelectItem>
+                    {placeholders.map((p) => (
+                      <SelectItem key={p.id} value={String(p.id)}>
+                        {p.displayName}{p.relationship ? ` — ${p.relationship}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="title">What do you need help with? <span className="text-destructive">*</span></Label>
               <Input

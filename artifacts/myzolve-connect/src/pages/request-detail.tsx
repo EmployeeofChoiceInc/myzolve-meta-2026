@@ -30,6 +30,7 @@ import {
   useRequestUploadUrl,
   useCreateAttachment,
   useCreateGratitudeNote,
+  usePlaceholderMembers,
 } from "@/hooks/use-api";
 import { customFetch } from "@workspace/api-client-react";
 
@@ -67,10 +68,12 @@ export default function RequestDetailPage() {
     amount: string;
     contributionType: "loan" | "gift" | "installment" | "partial_support" | "pledge";
     note: string;
+    onBehalfOfPlaceholderId: string;
   }>({
     amount: "",
     contributionType: "loan",
     note: "",
+    onBehalfOfPlaceholderId: "",
   });
 
   const [returnForm, setReturnForm] = useState({
@@ -81,6 +84,7 @@ export default function RequestDetailPage() {
 
   const circleId = requestData?.circleId ?? 0;
 
+  const { data: placeholders } = usePlaceholderMembers(circleId);
   const { data: comments } = useComments(circleId, "support_request", requestId);
   const { data: reactions } = useReactions(circleId, "support_request", requestId);
   const { data: attachments } = useAttachments(circleId, "support_request", requestId);
@@ -152,6 +156,7 @@ export default function RequestDetailPage() {
           amount: parseFloat(offerForm.amount),
           contributionType: offerForm.contributionType,
           note: offerForm.note || undefined,
+          onBehalfOfPlaceholderId: offerForm.onBehalfOfPlaceholderId ? parseInt(offerForm.onBehalfOfPlaceholderId) : undefined,
         },
       },
       {
@@ -159,7 +164,7 @@ export default function RequestDetailPage() {
           toast({ title: "Support offered!", description: "Your generosity means a lot." });
           queryClient.invalidateQueries({ queryKey: getGetSupportRequestQueryKey(requestId) });
           setOfferOpen(false);
-          setOfferForm({ amount: "", contributionType: "loan", note: "" });
+          setOfferForm({ amount: "", contributionType: "loan", note: "", onBehalfOfPlaceholderId: "" });
         },
         onError: () => {
           toast({ title: "Could not offer support. Please try again.", variant: "destructive" });
@@ -559,6 +564,27 @@ export default function RequestDetailPage() {
             <DialogTitle className="text-xl font-bold">Offer support</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            {placeholders && placeholders.length > 0 && (
+              <div className="space-y-1.5">
+                <Label>Offering on behalf of (optional)</Label>
+                <Select
+                  value={offerForm.onBehalfOfPlaceholderId}
+                  onValueChange={(v) => setOfferForm({ ...offerForm, onBehalfOfPlaceholderId: v === "self" ? "" : v })}
+                >
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue placeholder="Myself" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="self">Myself</SelectItem>
+                    {placeholders.map((p) => (
+                      <SelectItem key={p.id} value={String(p.id)}>
+                        {p.displayName}{p.relationship ? ` — ${p.relationship}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="offer-amount">Amount ($) <span className="text-destructive">*</span></Label>
               <Input

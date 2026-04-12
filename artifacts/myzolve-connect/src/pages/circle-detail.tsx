@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
@@ -53,6 +54,7 @@ const placeholderSchema = z.object({
 const connectionSchema = z.object({
   receiverCircleId: z.coerce.number().int().positive("Enter a valid circle ID"),
   message: z.string().max(500).optional(),
+  permissionScope: z.enum(["service_only", "referral", "support_sharing"]).default("service_only"),
 });
 
 export default function CircleDetailPage() {
@@ -101,7 +103,7 @@ export default function CircleDetailPage() {
 
   const connectionForm = useForm<z.infer<typeof connectionSchema>>({
     resolver: zodResolver(connectionSchema),
-    defaultValues: { receiverCircleId: 0, message: "" },
+    defaultValues: { receiverCircleId: 0, message: "", permissionScope: "service_only" as const },
   });
 
   useEffect(() => {
@@ -170,7 +172,7 @@ export default function CircleDetailPage() {
 
   function onSubmitConnection(values: z.infer<typeof connectionSchema>) {
     createConnection.mutate(
-      { circleId, data: { receiverCircleId: values.receiverCircleId, message: values.message || undefined } },
+      { circleId, data: { receiverCircleId: values.receiverCircleId, permissionScope: values.permissionScope, message: values.message || undefined } },
       {
         onSuccess: () => {
           toast({ title: "Connection request sent" });
@@ -605,6 +607,24 @@ export default function CircleDetailPage() {
                   <FormItem>
                     <FormLabel>Circle ID <span className="text-destructive">*</span></FormLabel>
                     <FormControl><Input type="number" placeholder="Circle ID to connect with" {...field} className="rounded-xl" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={connectionForm.control} name="permissionScope" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>What to share</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="rounded-xl">
+                          <SelectValue placeholder="Choose what to share" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="service_only">Services only — share skills and offers</SelectItem>
+                        <SelectItem value="referral">Referrals — vouch for members</SelectItem>
+                        <SelectItem value="support_sharing">Full support — share financial requests</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )} />

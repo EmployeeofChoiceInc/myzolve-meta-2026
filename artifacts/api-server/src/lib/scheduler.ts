@@ -1,8 +1,8 @@
 import { db } from "@workspace/db";
-import { supportRequestsTable } from "@workspace/db";
-import { and, eq, inArray, lt, isNotNull } from "drizzle-orm";
+import { supportRequestsTable, repaymentPlansTable } from "@workspace/db";
+import { and, eq, inArray, lt, lte, gte, isNotNull } from "drizzle-orm";
 import { logger } from "./logger";
-import { createAuditLog } from "./helpers";
+import { createAuditLog, createNotification } from "./helpers";
 
 const EXPIRY_CHECK_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 
@@ -42,9 +42,65 @@ async function expireUrgentRequests(): Promise<void> {
   }
 }
 
+async function sendRepaymentDueReminders(): Promise<void> {
+  try {
+    const now = new Date();
+    const windowEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 h ahead
+
+    const duePlans = await db
+      .select({
+        planId: repaymentPlansTable.id,
+        requestId: repaymentPlansTable.requestId,
+        nextDueDate: repaymentPlansTable.nextDueDate,
+        totalAmount: repaymentPlansTable.totalAmount,
+        installmentAmount: repaymentPlansTable.installmentAmount,
+        circleId: supportRequestsTable.circleId,
+        createdByUserId: supportRequestsTable.createdByUserId,
+      })
+      .from(repaymentPlansTable)
+      .innerJoin(supportRequestsTable, eq(repaymentPlansTable.requestId, supportRequestsTable.id))
+      .where(
+        and(
+          eq(repaymentPlansTable.status, "active"),
+          isNotNull(repaymentPlansTable.nextDueDate),
+          gte(repaymentPlansTable.nextDueDate, now),
+          lte(repaymentPlansTable.nextDueDate, windowEnd),
+        ),
+      );
+
+    for (const plan of duePlans) {
+      const amount = plan.installmentAmount ?? plan.totalAmount;
+      const dueDateStr = plan.nextDueDate
+        ? new Date(plan.nextDueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+        : "soon";
+
+      await createNotification({
+        userId: plan.createdByUserId,
+        circleId: plan.circleId,
+        notificationType: "repayment_due",
+        title: "A repayment is coming up",
+        body: `Your repayment of $${Number(amount).toFixed(2)} is due ${dueDateStr}. Return what you can when you can.`,
+        targetEntityType: "support_request",
+        targetEntityId: plan.requestId,
+      });
+    }
+
+    if (duePlans.length > 0) {
+      logger.info({ count: duePlans.length }, "Sent repayment_due reminders");
+    }
+  } catch (err) {
+    logger.error({ err }, "Error during repayment due reminder check");
+  }
+}
+
+async function runScheduledChecks(): Promise<void> {
+  await expireUrgentRequests();
+  await sendRepaymentDueReminders();
+}
+
 export function startScheduler(): void {
-  expireUrgentRequests();
-  const interval = setInterval(expireUrgentRequests, EXPIRY_CHECK_INTERVAL_MS);
+  runScheduledChecks();
+  const interval = setInterval(runScheduledChecks, EXPIRY_CHECK_INTERVAL_MS);
   interval.unref();
-  logger.info("Request auto-expiry scheduler started (interval: 1h)");
+  logger.info("Scheduler started (request auto-expiry + repayment_due reminders, interval: 1h)");
 }

@@ -133,7 +133,7 @@ router.post(
 
     const normalizedKey = storage.normalizeObjectEntityPath(storageKey);
 
-    const isOwner = validateAndConsumePendingUpload(normalizedKey, userId);
+    const isOwner = validateAndConsumePendingUpload(normalizedKey, userId, circleId);
     if (!isOwner) {
       res.status(403).json({ error: "Invalid or expired upload token. Please re-upload the file." });
       return;
