@@ -293,8 +293,6 @@ export type SupportRequestVisibilityScope =
   (typeof SupportRequestVisibilityScope)[keyof typeof SupportRequestVisibilityScope];
 
 export const SupportRequestVisibilityScope = {
-  specific_person: "specific_person",
-  selected_members: "selected_members",
   whole_circle: "whole_circle",
   admins_only: "admins_only",
   private_draft: "private_draft",
@@ -467,8 +465,6 @@ export type CreateSupportRequestBodyVisibilityScope =
   (typeof CreateSupportRequestBodyVisibilityScope)[keyof typeof CreateSupportRequestBodyVisibilityScope];
 
 export const CreateSupportRequestBodyVisibilityScope = {
-  specific_person: "specific_person",
-  selected_members: "selected_members",
   whole_circle: "whole_circle",
   admins_only: "admins_only",
   private_draft: "private_draft",
@@ -714,7 +710,6 @@ export type ServicePostVisibilityScope =
 
 export const ServicePostVisibilityScope = {
   whole_circle: "whole_circle",
-  selected_members: "selected_members",
   admins_only: "admins_only",
 } as const;
 
@@ -774,7 +769,6 @@ export type CreateServicePostBodyVisibilityScope =
 
 export const CreateServicePostBodyVisibilityScope = {
   whole_circle: "whole_circle",
-  selected_members: "selected_members",
   admins_only: "admins_only",
 } as const;
 

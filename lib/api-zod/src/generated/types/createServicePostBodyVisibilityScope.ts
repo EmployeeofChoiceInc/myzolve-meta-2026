@@ -11,6 +11,5 @@ export type CreateServicePostBodyVisibilityScope =
 
 export const CreateServicePostBodyVisibilityScope = {
   whole_circle: "whole_circle",
-  selected_members: "selected_members",
   admins_only: "admins_only",
 } as const;

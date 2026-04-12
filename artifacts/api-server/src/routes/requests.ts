@@ -26,7 +26,7 @@ const createRequestSchema = z.object({
   amountRequested: z.number().positive(),
   currency: z.string().length(3).optional().default("USD"),
   requestType: z.enum(["money", "service", "emergency"]).optional().default("money"),
-  visibilityScope: z.enum(["specific_person", "selected_members", "whole_circle", "admins_only", "private_draft"]).optional().default("whole_circle"),
+  visibilityScope: z.enum(["whole_circle", "admins_only", "private_draft"]).optional().default("whole_circle"),
   repaymentExpected: z.boolean().optional().default(false),
   repaymentStyle: z.enum(["one_time", "installments", "flexible", "no_repayment", "gift", "discuss_later"]).optional().default("discuss_later"),
   urgencyLevel: z.enum(["low", "normal", "important", "urgent", "emergency"]).optional().default("normal"),
@@ -676,6 +676,11 @@ router.post("/requests/:requestId/repayment-plan", requireAuth, validateParams(r
   const access = await getRequestWithVisibilityCheck(requestId, userId);
   if (!access) {
     res.status(404).json({ error: "Request not found" });
+    return;
+  }
+
+  if (!access.isCreator && !access.isAdminOrOwner) {
+    res.status(403).json({ error: "Only the request creator or a circle admin can set up a return plan" });
     return;
   }
 

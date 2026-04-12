@@ -348,13 +348,7 @@ export const ListSupportRequestsResponseItem = zod.object({
   amountFunded: zod.number(),
   currency: zod.string(),
   requestType: zod.enum(["money", "service", "emergency"]),
-  visibilityScope: zod.enum([
-    "specific_person",
-    "selected_members",
-    "whole_circle",
-    "admins_only",
-    "private_draft",
-  ]),
+  visibilityScope: zod.enum(["whole_circle", "admins_only", "private_draft"]),
   repaymentExpected: zod.boolean(),
   repaymentStyle: zod.enum([
     "one_time",
@@ -411,13 +405,7 @@ export const CreateSupportRequestBody = zod.object({
     .enum(["money", "service", "emergency"])
     .default(createSupportRequestBodyRequestTypeDefault),
   visibilityScope: zod
-    .enum([
-      "specific_person",
-      "selected_members",
-      "whole_circle",
-      "admins_only",
-      "private_draft",
-    ])
+    .enum(["whole_circle", "admins_only", "private_draft"])
     .default(createSupportRequestBodyVisibilityScopeDefault),
   repaymentExpected: zod
     .boolean()
@@ -461,13 +449,7 @@ export const GetSupportRequestResponse = zod
     amountFunded: zod.number(),
     currency: zod.string(),
     requestType: zod.enum(["money", "service", "emergency"]),
-    visibilityScope: zod.enum([
-      "specific_person",
-      "selected_members",
-      "whole_circle",
-      "admins_only",
-      "private_draft",
-    ]),
+    visibilityScope: zod.enum(["whole_circle", "admins_only", "private_draft"]),
     repaymentExpected: zod.boolean(),
     repaymentStyle: zod.enum([
       "one_time",
@@ -610,13 +592,7 @@ export const UpdateSupportRequestResponse = zod.object({
   amountFunded: zod.number(),
   currency: zod.string(),
   requestType: zod.enum(["money", "service", "emergency"]),
-  visibilityScope: zod.enum([
-    "specific_person",
-    "selected_members",
-    "whole_circle",
-    "admins_only",
-    "private_draft",
-  ]),
+  visibilityScope: zod.enum(["whole_circle", "admins_only", "private_draft"]),
   repaymentExpected: zod.boolean(),
   repaymentStyle: zod.enum([
     "one_time",
@@ -663,13 +639,7 @@ export const CancelSupportRequestResponse = zod.object({
   amountFunded: zod.number(),
   currency: zod.string(),
   requestType: zod.enum(["money", "service", "emergency"]),
-  visibilityScope: zod.enum([
-    "specific_person",
-    "selected_members",
-    "whole_circle",
-    "admins_only",
-    "private_draft",
-  ]),
+  visibilityScope: zod.enum(["whole_circle", "admins_only", "private_draft"]),
   repaymentExpected: zod.boolean(),
   repaymentStyle: zod.enum([
     "one_time",
@@ -716,13 +686,7 @@ export const CompleteSupportRequestResponse = zod.object({
   amountFunded: zod.number(),
   currency: zod.string(),
   requestType: zod.enum(["money", "service", "emergency"]),
-  visibilityScope: zod.enum([
-    "specific_person",
-    "selected_members",
-    "whole_circle",
-    "admins_only",
-    "private_draft",
-  ]),
+  visibilityScope: zod.enum(["whole_circle", "admins_only", "private_draft"]),
   repaymentExpected: zod.boolean(),
   repaymentStyle: zod.enum([
     "one_time",
@@ -819,13 +783,7 @@ export const ConfirmReceiptResponse = zod.object({
   amountFunded: zod.number(),
   currency: zod.string(),
   requestType: zod.enum(["money", "service", "emergency"]),
-  visibilityScope: zod.enum([
-    "specific_person",
-    "selected_members",
-    "whole_circle",
-    "admins_only",
-    "private_draft",
-  ]),
+  visibilityScope: zod.enum(["whole_circle", "admins_only", "private_draft"]),
   repaymentExpected: zod.boolean(),
   repaymentStyle: zod.enum([
     "one_time",
@@ -1031,11 +989,7 @@ export const ListServicePostsResponseItem = zod.object({
     "withdrawn",
     "archived",
   ]),
-  visibilityScope: zod.enum([
-    "whole_circle",
-    "selected_members",
-    "admins_only",
-  ]),
+  visibilityScope: zod.enum(["whole_circle", "admins_only"]),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -1070,7 +1024,7 @@ export const CreateServicePostBody = zod.object({
     .default(createServicePostBodyExchangePreferenceDefault),
   estimatedValue: zod.number().optional(),
   visibilityScope: zod
-    .enum(["whole_circle", "selected_members", "admins_only"])
+    .enum(["whole_circle", "admins_only"])
     .default(createServicePostBodyVisibilityScopeDefault),
 });
 
@@ -1131,11 +1085,7 @@ export const GetServicePostResponse = zod.object({
     "withdrawn",
     "archived",
   ]),
-  visibilityScope: zod.enum([
-    "whole_circle",
-    "selected_members",
-    "admins_only",
-  ]),
+  visibilityScope: zod.enum(["whole_circle", "admins_only"]),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -1195,11 +1145,7 @@ export const UpdateServicePostResponse = zod.object({
     "withdrawn",
     "archived",
   ]),
-  visibilityScope: zod.enum([
-    "whole_circle",
-    "selected_members",
-    "admins_only",
-  ]),
+  visibilityScope: zod.enum(["whole_circle", "admins_only"]),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -1241,11 +1187,7 @@ export const MatchServicePostResponse = zod.object({
     "withdrawn",
     "archived",
   ]),
-  visibilityScope: zod.enum([
-    "whole_circle",
-    "selected_members",
-    "admins_only",
-  ]),
+  visibilityScope: zod.enum(["whole_circle", "admins_only"]),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -1283,11 +1225,7 @@ export const CompleteServicePostResponse = zod.object({
     "withdrawn",
     "archived",
   ]),
-  visibilityScope: zod.enum([
-    "whole_circle",
-    "selected_members",
-    "admins_only",
-  ]),
+  visibilityScope: zod.enum(["whole_circle", "admins_only"]),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });

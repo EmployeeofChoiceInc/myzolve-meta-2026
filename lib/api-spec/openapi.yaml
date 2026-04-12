@@ -1313,7 +1313,7 @@ components:
           enum: [money, service, emergency]
         visibilityScope:
           type: string
-          enum: [specific_person, selected_members, whole_circle, admins_only, private_draft]
+          enum: [whole_circle, admins_only, private_draft]
         repaymentExpected:
           type: boolean
         repaymentStyle:
@@ -1393,7 +1393,7 @@ components:
           default: money
         visibilityScope:
           type: string
-          enum: [specific_person, selected_members, whole_circle, admins_only, private_draft]
+          enum: [whole_circle, admins_only, private_draft]
           default: whole_circle
         repaymentExpected:
           type: boolean
@@ -1709,7 +1709,7 @@ components:
           enum: [open, matched, in_progress, completed, withdrawn, archived]
         visibilityScope:
           type: string
-          enum: [whole_circle, selected_members, admins_only]
+          enum: [whole_circle, admins_only]
         createdAt:
           type: string
           format: date-time
@@ -1759,7 +1759,7 @@ components:
           type: number
         visibilityScope:
           type: string
-          enum: [whole_circle, selected_members, admins_only]
+          enum: [whole_circle, admins_only]
           default: whole_circle
       required:
         - title

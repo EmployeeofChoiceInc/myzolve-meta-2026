@@ -236,7 +236,7 @@ router.delete(
   },
 );
 
-router.get("/circles/:circleId/invitations", requireAuth, async (req, res) => {
+router.get("/circles/:circleId/invitations", requireAuth, validateParams(circleIdParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const circleId = parseInt(String(req.params.circleId));
 
@@ -255,6 +255,11 @@ router.get("/circles/:circleId/invitations", requireAuth, async (req, res) => {
 
   if (!myMembership) {
     res.status(404).json({ error: "Circle not found" });
+    return;
+  }
+
+  if (!["owner", "admin"].includes(myMembership.role)) {
+    res.status(403).json({ error: "Only circle admins can view pending invitations" });
     return;
   }
 

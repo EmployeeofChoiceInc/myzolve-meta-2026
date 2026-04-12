@@ -24,7 +24,7 @@ const createServiceSchema = z.object({
   locationMode: z.enum(["in_person", "remote", "hybrid"]).optional().default("remote"),
   exchangePreference: z.enum(["free", "barter", "paid_later", "open_to_discuss"]).optional().default("free"),
   estimatedValue: z.number().positive().optional(),
-  visibilityScope: z.enum(["whole_circle", "selected_members", "admins_only"]).optional().default("whole_circle"),
+  visibilityScope: z.enum(["whole_circle", "admins_only"]).optional().default("whole_circle"),
 });
 
 const updateServiceSchema = z.object({
@@ -36,7 +36,7 @@ const updateServiceSchema = z.object({
   exchangePreference: z.enum(["free", "barter", "paid_later", "open_to_discuss"]).optional(),
   estimatedValue: z.number().positive().optional(),
   status: z.enum(["open", "matched", "in_progress", "completed", "withdrawn", "archived"]).optional(),
-  visibilityScope: z.enum(["whole_circle", "selected_members", "admins_only"]).optional(),
+  visibilityScope: z.enum(["whole_circle", "admins_only"]).optional(),
 });
 
 const createMatchSchema = z.object({
@@ -65,6 +65,32 @@ async function getUserName(userId: number) {
     .where(eq(usersTable.id, userId))
     .limit(1)
     .then((r) => r[0]?.displayName ?? "Unknown");
+}
+
+async function getServiceWithVisibilityCheck(serviceId: number, userId: number) {
+  const [post] = await db
+    .select()
+    .from(servicePostsTable)
+    .where(eq(servicePostsTable.id, serviceId))
+    .limit(1);
+
+  if (!post) return null;
+
+  const member = await assertCircleMember(post.circleId, userId);
+  if (!member) return null;
+
+  const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+  const isCreator = post.createdByUserId === userId;
+  const scope = post.visibilityScope;
+
+  if (
+    (scope === "admins_only" && !isAdminOrOwner && !isCreator) ||
+    (scope === "selected_members" && !isAdminOrOwner && !isCreator)
+  ) {
+    return null;
+  }
+
+  return { post, member, isAdminOrOwner, isCreator };
 }
 
 function serviceToApi(post: ServicePost, createdByName: string) {
@@ -268,23 +294,12 @@ router.post("/services/:serviceId/match", requireAuth, validateParams(serviceIdP
   const userId = req.dbUser!.id;
   const serviceId = parseInt(String(req.params.serviceId));
 
-  const existing = await db
-    .select()
-    .from(servicePostsTable)
-    .where(eq(servicePostsTable.id, serviceId))
-    .limit(1)
-    .then((r) => r[0]);
-
-  if (!existing) {
+  const access = await getServiceWithVisibilityCheck(serviceId, userId);
+  if (!access) {
     res.status(404).json({ error: "Service post not found" });
     return;
   }
-
-  const member = await assertCircleMember(existing.circleId, userId);
-  if (!member) {
-    res.status(403).json({ error: "Forbidden" });
-    return;
-  }
+  const existing = access.post;
 
   const { note } = req.body;
 
