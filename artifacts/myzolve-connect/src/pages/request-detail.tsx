@@ -4,6 +4,7 @@ import {
   useCreateContribution,
   useConfirmReceipt,
   useCreateRepayment,
+  useGetMe,
   getGetSupportRequestQueryKey
 } from "@workspace/api-client-react";
 import { ArrowLeft, HandHeart, CheckCircle2, Clock, RotateCcw } from "lucide-react";
@@ -18,17 +19,16 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useUser } from "@clerk/react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
 export default function RequestDetailPage() {
   const { id } = useParams<{ id: string }>();
   const requestId = parseInt(id!);
-  const { user } = useUser();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  const { data: me } = useGetMe();
   const { data: requestData, isLoading } = useGetSupportRequest(requestId, {
     query: { enabled: !!requestId, queryKey: getGetSupportRequestQueryKey(requestId) }
   });
@@ -61,7 +61,7 @@ export default function RequestDetailPage() {
   const { contributions, repaymentPlan, ...request } = requestData;
   const percentFunded = request.amountRequested > 0 ? Math.min(100, Math.round(((request.amountFunded ?? 0) / request.amountRequested) * 100)) : 0;
 
-  const isCreator = user?.fullName === request.createdByName;
+  const isCreator = me?.id === request.createdByUserId;
 
   const handleConfirmReceipt = () => {
     confirmReceipt.mutate({ requestId }, {

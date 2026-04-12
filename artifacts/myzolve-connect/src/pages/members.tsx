@@ -62,7 +62,7 @@ export default function MembersPage() {
     };
     createInvitation.mutate({
       circleId,
-      data: payload as any
+      data: payload
     }, {
       onSuccess: (data: any) => {
         queryClient.invalidateQueries({ queryKey: ['/api/circles', circleId, 'invitations'] });

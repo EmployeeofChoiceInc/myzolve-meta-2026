@@ -275,7 +275,7 @@ export const CreateInvitationBodyRole = {
 } as const;
 
 export interface CreateInvitationBody {
-  invitedEmail: string;
+  invitedEmail?: string | null;
   role?: CreateInvitationBodyRole;
   customMessage?: string;
 }

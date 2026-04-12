@@ -8,7 +8,7 @@
 import type { CreateInvitationBodyRole } from "./createInvitationBodyRole";
 
 export interface CreateInvitationBody {
-  invitedEmail: string;
+  invitedEmail?: string | null;
   role?: CreateInvitationBodyRole;
   customMessage?: string;
 }

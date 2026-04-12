@@ -291,7 +291,7 @@ export const CreateCircleInvitationParams = zod.object({
 export const createCircleInvitationBodyRoleDefault = `member`;
 
 export const CreateCircleInvitationBody = zod.object({
-  invitedEmail: zod.string().email(),
+  invitedEmail: zod.string().email().nullish(),
   role: zod
     .enum(["admin", "member", "guest"])
     .default(createCircleInvitationBodyRoleDefault),

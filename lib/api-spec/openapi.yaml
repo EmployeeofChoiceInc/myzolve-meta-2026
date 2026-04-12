@@ -1258,14 +1258,13 @@ components:
         invitedEmail:
           type: string
           format: email
+          nullable: true
         role:
           type: string
           enum: [admin, member, guest]
           default: member
         customMessage:
           type: string
-      required:
-        - invitedEmail
 
     # ── Support Requests ───────────────────────────────────────────────────────
     SupportRequest:
