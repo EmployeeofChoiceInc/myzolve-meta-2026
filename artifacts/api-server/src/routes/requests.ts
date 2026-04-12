@@ -52,6 +52,28 @@ const createRepaymentSchema = z.object({
   paymentMethod: z.string().optional(),
 });
 
+const updateRequestSchema = z.object({
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().max(5000).optional(),
+  amountRequested: z.number().positive().optional(),
+  urgencyLevel: z.enum(["low", "normal", "important", "urgent", "emergency"]).optional(),
+  category: z.string().max(100).optional(),
+  status: z.enum(["draft", "open", "accepted", "partially_funded", "fully_funded", "declined", "canceled", "completed", "archived"]).optional(),
+  dueDate: z.string().datetime().optional().nullable(),
+  repaymentExpected: z.boolean().optional(),
+  repaymentStyle: z.enum(["one_time", "installments", "flexible", "no_repayment", "gift", "discuss_later"]).optional(),
+});
+
+const createRepaymentPlanSchema = z.object({
+  totalAmount: z.number().positive(),
+  startDate: z.string().datetime().optional(),
+  frequency: z.enum(["one_time", "weekly", "biweekly", "monthly", "quarterly", "flexible"]).optional().default("one_time"),
+  installmentAmount: z.number().positive().optional(),
+  numberOfInstallments: z.number().int().positive().optional(),
+  flexibleNotes: z.string().max(1000).optional(),
+  nextDueDate: z.string().datetime().optional(),
+});
+
 async function assertCircleMember(circleId: number, userId: number) {
   return db
     .select()
@@ -272,7 +294,7 @@ router.get("/requests/:requestId", requireAuth, async (req, res) => {
   });
 });
 
-router.patch("/requests/:requestId", requireAuth, async (req, res) => {
+router.patch("/requests/:requestId", requireAuth, validateBody(updateRequestSchema), async (req, res) => {
   const userId = req.dbUser!.id;
   const requestId = parseInt(String(req.params.requestId));
 
@@ -652,7 +674,7 @@ router.get("/requests/:requestId/repayment-plan", requireAuth, async (req, res) 
   });
 });
 
-router.post("/requests/:requestId/repayment-plan", requireAuth, async (req, res) => {
+router.post("/requests/:requestId/repayment-plan", requireAuth, validateBody(createRepaymentPlanSchema), async (req, res) => {
   const userId = req.dbUser!.id;
   const requestId = parseInt(String(req.params.requestId));
 
@@ -683,11 +705,6 @@ router.post("/requests/:requestId/repayment-plan", requireAuth, async (req, res)
     flexibleNotes,
     nextDueDate,
   } = req.body;
-
-  if (!totalAmount || !frequency) {
-    res.status(400).json({ error: "totalAmount and frequency are required" });
-    return;
-  }
 
   const [plan] = await db
     .insert(repaymentPlansTable)

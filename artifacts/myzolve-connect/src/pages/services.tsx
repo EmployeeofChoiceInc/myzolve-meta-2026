@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 const serviceFormSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters."),
   description: z.string().min(5, "Description is required"),
-  serviceType: z.enum(["offer", "request"]),
+  serviceType: z.enum(["offer", "request", "barter_offer", "barter_request"]),
   category: z.string().min(2, "Category is required"),
   availability: z.string().optional(),
   locationMode: z.enum(["remote", "in_person", "hybrid"]),
@@ -110,6 +110,8 @@ export default function ServicesPage() {
                         <SelectContent>
                           <SelectItem value="offer">Offer a service</SelectItem>
                           <SelectItem value="request">Request a service</SelectItem>
+                          <SelectItem value="barter_offer">Barter — offering</SelectItem>
+                          <SelectItem value="barter_request">Barter — requesting</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -239,8 +241,16 @@ export default function ServicesPage() {
               <Card className="rounded-3xl hover:shadow-md transition-all cursor-pointer h-full border-border/50 flex flex-col hover:-translate-y-1">
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start mb-3 gap-2">
-                    <Badge variant="outline" className={`rounded-full px-2.5 font-medium border-transparent ${service.serviceType === 'offer' ? 'bg-secondary/10 text-secondary' : 'bg-primary/10 text-primary'}`}>
-                      {service.serviceType === 'offer' ? 'Offering' : 'Requesting'}
+                    <Badge variant="outline" className={`rounded-full px-2.5 font-medium border-transparent ${
+                        service.serviceType === 'offer' ? 'bg-secondary/10 text-secondary' :
+                        service.serviceType === 'request' ? 'bg-primary/10 text-primary' :
+                        service.serviceType === 'barter_offer' ? 'bg-amber-500/10 text-amber-600' :
+                        'bg-purple-500/10 text-purple-600'
+                      }`}>
+                      {service.serviceType === 'offer' ? 'Offering' :
+                       service.serviceType === 'request' ? 'Requesting' :
+                       service.serviceType === 'barter_offer' ? 'Barter: Offering' :
+                       'Barter: Seeking'}
                     </Badge>
                     <Badge variant="outline" className="rounded-full px-2.5 font-medium bg-background">
                       {service.category}

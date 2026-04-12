@@ -292,15 +292,10 @@ router.post("/circles/:circleId/invitations", requireAuth, validateBody(createIn
     return;
   }
 
-  const { invitedEmail, role = "member", customMessage } = req.body;
-
-  if (!invitedEmail) {
-    res.status(400).json({ error: "invitedEmail is required" });
-    return;
-  }
+  const { invitedEmail, role = "member", customMessage, expiresInDays = 7 } = req.body;
 
   const token = randomBytes(24).toString("hex");
-  const expiresAt = addDays(new Date(), 7);
+  const expiresAt = addDays(new Date(), expiresInDays);
 
   const [invitation] = await db
     .insert(circleInvitationsTable)
@@ -316,7 +311,10 @@ router.post("/circles/:circleId/invitations", requireAuth, validateBody(createIn
     })
     .returning();
 
-  res.status(201).json(invitation);
+  res.status(201).json({
+    ...invitation,
+    inviteLink: `/invite/${invitation.token}`,
+  });
 });
 
 router.post("/invitations/:token/accept", requireAuth, async (req, res) => {

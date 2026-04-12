@@ -63,8 +63,16 @@ export default function ServiceDetailPage() {
         <CardHeader className="pb-4 bg-muted/30 border-b border-border/50">
           <div className="flex justify-between items-start mb-4">
             <div className="flex flex-wrap gap-2">
-              <Badge variant="outline" className={`rounded-full px-3 py-1 font-medium border-transparent ${service.serviceType === "offer" ? "bg-secondary/10 text-secondary" : "bg-primary/10 text-primary"}`}>
-                {service.serviceType === "offer" ? "Offering" : "Requesting"}
+              <Badge variant="outline" className={`rounded-full px-3 py-1 font-medium border-transparent ${
+                service.serviceType === "offer" ? "bg-secondary/10 text-secondary" :
+                service.serviceType === "request" ? "bg-primary/10 text-primary" :
+                service.serviceType === "barter_offer" ? "bg-amber-500/10 text-amber-600" :
+                "bg-purple-500/10 text-purple-600"
+              }`}>
+                {service.serviceType === "offer" ? "Offering" :
+                 service.serviceType === "request" ? "Requesting" :
+                 service.serviceType === "barter_offer" ? "Barter: Offering" :
+                 "Barter: Seeking"}
               </Badge>
               <Badge variant="outline" className="rounded-full px-3 py-1 font-medium bg-background">
                 {service.category}
@@ -117,7 +125,12 @@ export default function ServiceDetailPage() {
           <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-border/50">
             {!isCreator && service.status === "open" && (
               <Button size="lg" className="rounded-full w-full" onClick={handleMatch} disabled={matchService.isPending}>
-                <UserPlus className="w-5 h-5 mr-2" /> {service.serviceType === "offer" ? "I'm interested" : "I can help"}
+                <UserPlus className="w-5 h-5 mr-2" /> {
+                  service.serviceType === "offer" ? "I'm interested" :
+                  service.serviceType === "request" ? "I can help" :
+                  service.serviceType === "barter_offer" ? "Let's trade" :
+                  "I have what you need"
+                }
               </Button>
             )}
             

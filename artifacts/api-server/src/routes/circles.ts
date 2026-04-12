@@ -27,6 +27,15 @@ const createCircleSchema = z.object({
   ledgerMode: z.enum(["private", "summary", "full", "admin_only"]).optional().default("private"),
 });
 
+const updateCircleSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  circleType: z.enum(["family", "chosen_family", "friends", "caregiving_circle", "neighborhood_circle", "other"]).optional(),
+  description: z.string().max(1000).optional(),
+  currency: z.string().length(3).optional(),
+  privacyMode: z.enum(["private", "hidden", "discoverable"]).optional(),
+  ledgerMode: z.enum(["private", "summary", "full", "admin_only"]).optional(),
+});
+
 function circleToApi(circle: Circle, memberCount: number, myRole: string | null) {
   return {
     id: circle.id,
@@ -167,7 +176,7 @@ router.get("/circles/:circleId", requireAuth, async (req, res) => {
   res.json(circleToApi(circle, Number(memberCount.cnt), role));
 });
 
-router.patch("/circles/:circleId", requireAuth, async (req, res) => {
+router.patch("/circles/:circleId", requireAuth, validateBody(updateCircleSchema), async (req, res) => {
   const userId = req.dbUser!.id;
   const circleId = parseInt(String(req.params.circleId));
 

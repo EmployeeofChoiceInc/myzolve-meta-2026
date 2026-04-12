@@ -11,12 +11,12 @@ import {
   activityFeedItemsTable,
   type ServicePost,
 } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, count, sql } from "drizzle-orm";
 
 const router = Router();
 
 const createServiceSchema = z.object({
-  serviceType: z.enum(["offer", "request"]).optional().default("offer"),
+  serviceType: z.enum(["offer", "request", "barter_offer", "barter_request"]).optional().default("offer"),
   title: z.string().min(1).max(200),
   description: z.string().max(2000).optional(),
   category: z.string().max(100).optional().default("other"),
@@ -296,6 +296,52 @@ router.post("/services/:serviceId/match", requireAuth, validateBody(createMatchS
   });
 
   res.json(serviceToApi(updated, creatorName));
+});
+
+router.get("/circles/:circleId/services/summary", requireAuth, async (req, res) => {
+  const userId = req.dbUser!.id;
+  const circleId = parseInt(String(req.params.circleId));
+
+  const member = await assertCircleMember(circleId, userId);
+  if (!member) {
+    res.status(404).json({ error: "Circle not found" });
+    return;
+  }
+
+  const rows = await db
+    .select()
+    .from(servicePostsTable)
+    .where(eq(servicePostsTable.circleId, circleId));
+
+  const total = rows.length;
+  const open = rows.filter((r) => r.status === "open").length;
+  const offers = rows.filter((r) => r.serviceType === "offer" || r.serviceType === "barter_offer").length;
+  const requests = rows.filter((r) => r.serviceType === "request" || r.serviceType === "barter_request").length;
+  const barter = rows.filter((r) => r.serviceType === "barter_offer" || r.serviceType === "barter_request").length;
+  const matched = rows.filter((r) => r.status === "matched" || r.status === "in_progress").length;
+  const completed = rows.filter((r) => r.status === "completed").length;
+
+  const categoryCounts: Record<string, number> = {};
+  for (const row of rows) {
+    const cat = row.category ?? "other";
+    categoryCounts[cat] = (categoryCounts[cat] ?? 0) + 1;
+  }
+  const topCategories = Object.entries(categoryCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([category, count]) => ({ category, count }));
+
+  res.json({
+    circleId,
+    totalServices: total,
+    openServices: open,
+    offers,
+    requests,
+    barterServices: barter,
+    matchedServices: matched,
+    completedServices: completed,
+    topCategories,
+  });
 });
 
 router.post("/services/:serviceId/complete", requireAuth, async (req, res) => {
