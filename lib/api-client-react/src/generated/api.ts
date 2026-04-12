@@ -21,6 +21,7 @@ import type {
   Attachment,
   AuditEntry,
   Circle,
+  CircleConnection,
   CircleInvitation,
   CircleMember,
   CircleStats,
@@ -29,6 +30,7 @@ import type {
   CreateAttachmentBody,
   CreateCircleBody,
   CreateCommentBody,
+  CreateConnectionBody,
   CreateContributionBody,
   CreateDisputeBody,
   CreateGratitudeNoteBody,
@@ -67,11 +69,13 @@ import type {
   Repayment,
   RepaymentPlan,
   ResolveDisputeBody,
+  RespondConnectionBody,
   ServiceBoardSummary,
   ServicePost,
   SupportRequest,
   SupportRequestDetail,
   ToggleReactionBody,
+  TransferOwnershipBody,
   UnauthorizedResponse,
   UpdateCircleBody,
   UpdateCircleMemberBody,
@@ -1495,6 +1499,405 @@ export const useRevokeInvitation = <
   TContext
 > => {
   return useMutation(getRevokeInvitationMutationOptions(options));
+};
+
+/**
+ * @summary List connections for a circle (as initiator or receiver)
+ */
+export const getListCircleConnectionsUrl = (circleId: number) => {
+  return `/api/circles/${circleId}/connections`;
+};
+
+export const listCircleConnections = async (
+  circleId: number,
+  options?: RequestInit,
+): Promise<CircleConnection[]> => {
+  return customFetch<CircleConnection[]>(
+    getListCircleConnectionsUrl(circleId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListCircleConnectionsQueryKey = (circleId: number) => {
+  return [`/api/circles/${circleId}/connections`] as const;
+};
+
+export const getListCircleConnectionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCircleConnections>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(
+  circleId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCircleConnections>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListCircleConnectionsQueryKey(circleId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listCircleConnections>>
+  > = ({ signal }) =>
+    listCircleConnections(circleId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!circleId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCircleConnections>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCircleConnectionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCircleConnections>>
+>;
+export type ListCircleConnectionsQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary List connections for a circle (as initiator or receiver)
+ */
+
+export function useListCircleConnections<
+  TData = Awaited<ReturnType<typeof listCircleConnections>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(
+  circleId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCircleConnections>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCircleConnectionsQueryOptions(circleId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Initiate a connection request to another circle (owner/admin only)
+ */
+export const getCreateCircleConnectionUrl = (circleId: number) => {
+  return `/api/circles/${circleId}/connections`;
+};
+
+export const createCircleConnection = async (
+  circleId: number,
+  createConnectionBody: CreateConnectionBody,
+  options?: RequestInit,
+): Promise<CircleConnection> => {
+  return customFetch<CircleConnection>(getCreateCircleConnectionUrl(circleId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createConnectionBody),
+  });
+};
+
+export const getCreateCircleConnectionMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCircleConnection>>,
+    TError,
+    { circleId: number; data: BodyType<CreateConnectionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createCircleConnection>>,
+  TError,
+  { circleId: number; data: BodyType<CreateConnectionBody> },
+  TContext
+> => {
+  const mutationKey = ["createCircleConnection"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createCircleConnection>>,
+    { circleId: number; data: BodyType<CreateConnectionBody> }
+  > = (props) => {
+    const { circleId, data } = props ?? {};
+
+    return createCircleConnection(circleId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateCircleConnectionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createCircleConnection>>
+>;
+export type CreateCircleConnectionMutationBody = BodyType<CreateConnectionBody>;
+export type CreateCircleConnectionMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | ErrorResponse
+>;
+
+/**
+ * @summary Initiate a connection request to another circle (owner/admin only)
+ */
+export const useCreateCircleConnection = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCircleConnection>>,
+    TError,
+    { circleId: number; data: BodyType<CreateConnectionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createCircleConnection>>,
+  TError,
+  { circleId: number; data: BodyType<CreateConnectionBody> },
+  TContext
+> => {
+  return useMutation(getCreateCircleConnectionMutationOptions(options));
+};
+
+/**
+ * @summary Approve or decline a connection request (receiver owner/admin only)
+ */
+export const getRespondCircleConnectionUrl = (
+  circleId: number,
+  connectionId: number,
+) => {
+  return `/api/circles/${circleId}/connections/${connectionId}/respond`;
+};
+
+export const respondCircleConnection = async (
+  circleId: number,
+  connectionId: number,
+  respondConnectionBody: RespondConnectionBody,
+  options?: RequestInit,
+): Promise<CircleConnection> => {
+  return customFetch<CircleConnection>(
+    getRespondCircleConnectionUrl(circleId, connectionId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(respondConnectionBody),
+    },
+  );
+};
+
+export const getRespondCircleConnectionMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof respondCircleConnection>>,
+    TError,
+    {
+      circleId: number;
+      connectionId: number;
+      data: BodyType<RespondConnectionBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof respondCircleConnection>>,
+  TError,
+  {
+    circleId: number;
+    connectionId: number;
+    data: BodyType<RespondConnectionBody>;
+  },
+  TContext
+> => {
+  const mutationKey = ["respondCircleConnection"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof respondCircleConnection>>,
+    {
+      circleId: number;
+      connectionId: number;
+      data: BodyType<RespondConnectionBody>;
+    }
+  > = (props) => {
+    const { circleId, connectionId, data } = props ?? {};
+
+    return respondCircleConnection(
+      circleId,
+      connectionId,
+      data,
+      requestOptions,
+    );
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RespondCircleConnectionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof respondCircleConnection>>
+>;
+export type RespondCircleConnectionMutationBody =
+  BodyType<RespondConnectionBody>;
+export type RespondCircleConnectionMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | ErrorResponse
+>;
+
+/**
+ * @summary Approve or decline a connection request (receiver owner/admin only)
+ */
+export const useRespondCircleConnection = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof respondCircleConnection>>,
+    TError,
+    {
+      circleId: number;
+      connectionId: number;
+      data: BodyType<RespondConnectionBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof respondCircleConnection>>,
+  TError,
+  {
+    circleId: number;
+    connectionId: number;
+    data: BodyType<RespondConnectionBody>;
+  },
+  TContext
+> => {
+  return useMutation(getRespondCircleConnectionMutationOptions(options));
+};
+
+/**
+ * @summary Transfer circle ownership to another member (current owner only)
+ */
+export const getTransferCircleOwnershipUrl = (circleId: number) => {
+  return `/api/circles/${circleId}/transfer-ownership`;
+};
+
+export const transferCircleOwnership = async (
+  circleId: number,
+  transferOwnershipBody: TransferOwnershipBody,
+  options?: RequestInit,
+): Promise<CircleMember> => {
+  return customFetch<CircleMember>(getTransferCircleOwnershipUrl(circleId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(transferOwnershipBody),
+  });
+};
+
+export const getTransferCircleOwnershipMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof transferCircleOwnership>>,
+    TError,
+    { circleId: number; data: BodyType<TransferOwnershipBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof transferCircleOwnership>>,
+  TError,
+  { circleId: number; data: BodyType<TransferOwnershipBody> },
+  TContext
+> => {
+  const mutationKey = ["transferCircleOwnership"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof transferCircleOwnership>>,
+    { circleId: number; data: BodyType<TransferOwnershipBody> }
+  > = (props) => {
+    const { circleId, data } = props ?? {};
+
+    return transferCircleOwnership(circleId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TransferCircleOwnershipMutationResult = NonNullable<
+  Awaited<ReturnType<typeof transferCircleOwnership>>
+>;
+export type TransferCircleOwnershipMutationBody =
+  BodyType<TransferOwnershipBody>;
+export type TransferCircleOwnershipMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Transfer circle ownership to another member (current owner only)
+ */
+export const useTransferCircleOwnership = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof transferCircleOwnership>>,
+    TError,
+    { circleId: number; data: BodyType<TransferOwnershipBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof transferCircleOwnership>>,
+  TError,
+  { circleId: number; data: BodyType<TransferOwnershipBody> },
+  TContext
+> => {
+  return useMutation(getTransferCircleOwnershipMutationOptions(options));
 };
 
 /**

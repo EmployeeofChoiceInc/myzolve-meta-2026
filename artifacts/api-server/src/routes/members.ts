@@ -502,4 +502,82 @@ router.delete("/invitations/:invitationId", requireAuth, validateParams(invitati
   res.status(204).end();
 });
 
+const transferOwnershipSchema = z.object({
+  newOwnerUserId: z.number().int().positive(),
+});
+
+router.post(
+  "/circles/:circleId/transfer-ownership",
+  requireAuth,
+  validateParams(circleIdParam),
+  validateBody(transferOwnershipSchema),
+  async (req, res) => {
+    const userId = req.dbUser!.id;
+    const circleId = parseInt(String(req.params.circleId));
+    const { newOwnerUserId } = req.body;
+
+    const currentOwner = await db
+      .select()
+      .from(circleMembersTable)
+      .where(
+        and(
+          eq(circleMembersTable.circleId, circleId),
+          eq(circleMembersTable.userId, userId),
+          eq(circleMembersTable.status, "active"),
+          eq(circleMembersTable.role, "owner"),
+        ),
+      )
+      .limit(1)
+      .then((r) => r[0] ?? null);
+
+    if (!currentOwner) {
+      res.status(403).json({ error: "Only the current circle owner can transfer ownership" });
+      return;
+    }
+
+    if (newOwnerUserId === userId) {
+      res.status(400).json({ error: "Cannot transfer ownership to yourself" });
+      return;
+    }
+
+    const newOwnerMember = await db
+      .select()
+      .from(circleMembersTable)
+      .where(
+        and(
+          eq(circleMembersTable.circleId, circleId),
+          eq(circleMembersTable.userId, newOwnerUserId),
+          eq(circleMembersTable.status, "active"),
+        ),
+      )
+      .limit(1)
+      .then((r) => r[0] ?? null);
+
+    if (!newOwnerMember) {
+      res.status(404).json({ error: "New owner must be an active member of this circle" });
+      return;
+    }
+
+    await db
+      .update(circleMembersTable)
+      .set({ role: "owner" })
+      .where(eq(circleMembersTable.id, newOwnerMember.id));
+
+    const [demoted] = await db
+      .update(circleMembersTable)
+      .set({ role: "admin" })
+      .where(eq(circleMembersTable.id, currentOwner.id))
+      .returning();
+
+    const ownerUser = await db
+      .select({ displayName: usersTable.displayName, email: usersTable.email })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .limit(1)
+      .then((r) => r[0] ?? null);
+
+    res.json(memberToApi(demoted, ownerUser));
+  },
+);
+
 export default router;

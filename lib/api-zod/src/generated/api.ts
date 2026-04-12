@@ -325,6 +325,95 @@ export const RevokeInvitationParams = zod.object({
 });
 
 /**
+ * @summary List connections for a circle (as initiator or receiver)
+ */
+export const ListCircleConnectionsParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const ListCircleConnectionsResponseItem = zod.object({
+  id: zod.number(),
+  initiatorCircleId: zod.number(),
+  receiverCircleId: zod.number(),
+  permissionScope: zod.enum(["service_only", "referral", "support_sharing"]),
+  status: zod.enum(["pending", "approved", "declined"]),
+  message: zod.string().nullish(),
+  token: zod.string(),
+  respondedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListCircleConnectionsResponse = zod.array(
+  ListCircleConnectionsResponseItem,
+);
+
+/**
+ * @summary Initiate a connection request to another circle (owner/admin only)
+ */
+export const CreateCircleConnectionParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const createCircleConnectionBodyPermissionScopeDefault = `service_only`;
+export const createCircleConnectionBodyMessageMax = 500;
+
+export const CreateCircleConnectionBody = zod.object({
+  receiverCircleId: zod.number(),
+  permissionScope: zod
+    .enum(["service_only", "referral", "support_sharing"])
+    .default(createCircleConnectionBodyPermissionScopeDefault),
+  message: zod.string().max(createCircleConnectionBodyMessageMax).optional(),
+});
+
+/**
+ * @summary Approve or decline a connection request (receiver owner/admin only)
+ */
+export const RespondCircleConnectionParams = zod.object({
+  circleId: zod.coerce.number(),
+  connectionId: zod.coerce.number(),
+});
+
+export const RespondCircleConnectionBody = zod.object({
+  action: zod.enum(["approve", "decline"]),
+});
+
+export const RespondCircleConnectionResponse = zod.object({
+  id: zod.number(),
+  initiatorCircleId: zod.number(),
+  receiverCircleId: zod.number(),
+  permissionScope: zod.enum(["service_only", "referral", "support_sharing"]),
+  status: zod.enum(["pending", "approved", "declined"]),
+  message: zod.string().nullish(),
+  token: zod.string(),
+  respondedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Transfer circle ownership to another member (current owner only)
+ */
+export const TransferCircleOwnershipParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const TransferCircleOwnershipBody = zod.object({
+  newOwnerUserId: zod
+    .number()
+    .describe("User ID of the active member who will become the new owner"),
+});
+
+export const TransferCircleOwnershipResponse = zod.object({
+  id: zod.number(),
+  circleId: zod.number(),
+  userId: zod.number().nullish(),
+  displayName: zod.string(),
+  email: zod.string().nullish(),
+  role: zod.enum(["owner", "admin", "member", "guest"]),
+  status: zod.enum(["active", "pending", "removed"]),
+  joinedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
  * @summary List support requests in a circle
  */
 export const ListSupportRequestsParams = zod.object({

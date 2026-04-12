@@ -8,12 +8,11 @@ import {
   reactionsTable,
   gratitudeNotesTable,
   usersTable,
-  circleMembersTable,
   supportRequestsTable,
   servicePostsTable,
 } from "@workspace/db";
 import { eq, and, desc, isNull, count, inArray } from "drizzle-orm";
-import { assertCircleMember, createNotification, getUserName } from "../lib/helpers";
+import { assertCircleMember, createNotification } from "../lib/helpers";
 
 const router = Router();
 
@@ -64,6 +63,90 @@ function commentToApi(comment: typeof commentsTable.$inferSelect, authorName: st
   };
 }
 
+async function assertEntityInCircle(
+  circleId: number,
+  entityType: string,
+  entityId: number,
+): Promise<{ ownerId: number | null } | null> {
+  if (entityType === "support_request") {
+    const row = await db
+      .select({ id: supportRequestsTable.id, createdByUserId: supportRequestsTable.createdByUserId })
+      .from(supportRequestsTable)
+      .where(and(eq(supportRequestsTable.id, entityId), eq(supportRequestsTable.circleId, circleId)))
+      .limit(1)
+      .then((r) => r[0] ?? null);
+    if (!row) return null;
+    return { ownerId: row.createdByUserId };
+  }
+  if (entityType === "service_post") {
+    const row = await db
+      .select({ id: servicePostsTable.id, createdByUserId: servicePostsTable.createdByUserId })
+      .from(servicePostsTable)
+      .where(and(eq(servicePostsTable.id, entityId), eq(servicePostsTable.circleId, circleId)))
+      .limit(1)
+      .then((r) => r[0] ?? null);
+    if (!row) return null;
+    return { ownerId: row.createdByUserId };
+  }
+  return null;
+}
+
+/**
+ * GET /circles/:circleId/comments/:commentId/replies
+ * MUST be registered BEFORE /:entityType/:entityId to avoid route shadowing.
+ */
+router.get(
+  "/circles/:circleId/comments/:commentId/replies",
+  requireAuth,
+  validateParams(circleIdParam.merge(commentIdParam)),
+  validateQuery(paginationQuery),
+  async (req, res) => {
+    const userId = req.dbUser!.id;
+    const circleId = parseInt(String(req.params.circleId));
+    const commentId = parseInt(String(req.params.commentId));
+    const { limit, offset } = req.query as unknown as { limit: number; offset: number };
+
+    const member = await assertCircleMember(circleId, userId);
+    if (!member) {
+      res.status(404).json({ error: "Circle not found" });
+      return;
+    }
+
+    const parent = await db
+      .select()
+      .from(commentsTable)
+      .where(and(eq(commentsTable.id, commentId), eq(commentsTable.circleId, circleId)))
+      .limit(1)
+      .then((r) => r[0] ?? null);
+
+    if (!parent) {
+      res.status(404).json({ error: "Comment not found" });
+      return;
+    }
+
+    const rows = await db
+      .select({ comment: commentsTable, author: usersTable })
+      .from(commentsTable)
+      .leftJoin(usersTable, eq(commentsTable.authorUserId, usersTable.id))
+      .where(
+        and(
+          eq(commentsTable.circleId, circleId),
+          eq(commentsTable.parentCommentId, commentId),
+          eq(commentsTable.status, "active"),
+        ),
+      )
+      .orderBy(desc(commentsTable.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    res.json(rows.map((r) => commentToApi(r.comment, r.author?.displayName ?? "Someone")));
+  },
+);
+
+/**
+ * GET /circles/:circleId/comments/:entityType/:entityId
+ * Registered AFTER the replies route to prevent shadowing.
+ */
 router.get(
   "/circles/:circleId/comments/:entityType/:entityId",
   requireAuth,
@@ -139,6 +222,34 @@ router.post(
       return;
     }
 
+    const entity = await assertEntityInCircle(circleId, entityType, entityId);
+    if (!entity) {
+      res.status(404).json({ error: `${entityType.replace("_", " ")} not found in this circle` });
+      return;
+    }
+
+    if (parentCommentId != null) {
+      const parentComment = await db
+        .select({ id: commentsTable.id })
+        .from(commentsTable)
+        .where(
+          and(
+            eq(commentsTable.id, parentCommentId),
+            eq(commentsTable.circleId, circleId),
+            eq(commentsTable.targetEntityType, entityType),
+            eq(commentsTable.targetEntityId, entityId),
+            eq(commentsTable.status, "active"),
+          ),
+        )
+        .limit(1)
+        .then((r) => r[0] ?? null);
+
+      if (!parentComment) {
+        res.status(404).json({ error: "Parent comment not found in this entity" });
+        return;
+      }
+    }
+
     const [comment] = await db
       .insert(commentsTable)
       .values({
@@ -154,26 +265,9 @@ router.post(
 
     const authorName = req.dbUser!.displayName;
 
-    let entityOwnerId: number | null = null;
-    if (entityType === "support_request") {
-      const req2 = await db.select({ createdByUserId: supportRequestsTable.createdByUserId })
-        .from(supportRequestsTable)
-        .where(eq(supportRequestsTable.id, entityId))
-        .limit(1)
-        .then((r) => r[0] ?? null);
-      entityOwnerId = req2?.createdByUserId ?? null;
-    } else if (entityType === "service_post") {
-      const post = await db.select({ createdByUserId: servicePostsTable.createdByUserId })
-        .from(servicePostsTable)
-        .where(eq(servicePostsTable.id, entityId))
-        .limit(1)
-        .then((r) => r[0] ?? null);
-      entityOwnerId = post?.createdByUserId ?? null;
-    }
-
-    if (entityOwnerId && entityOwnerId !== userId) {
+    if (entity.ownerId && entity.ownerId !== userId) {
       await createNotification({
-        userId: entityOwnerId,
+        userId: entity.ownerId,
         circleId,
         notificationType: "new_comment",
         title: "New comment on your post",
@@ -258,66 +352,15 @@ router.delete(
       return;
     }
 
-    const isAdminOrOwner = ["owner", "admin"].includes(member.role);
-    if (existing.authorUserId !== userId && !isAdminOrOwner) {
-      res.status(403).json({ error: "Only the author or an admin can delete this comment" });
+    const isOwnerOrAdmin = ["owner", "admin"].includes(member.role);
+    if (existing.authorUserId !== userId && !isOwnerOrAdmin) {
+      res.status(403).json({ error: "Only the author or circle admin can delete this comment" });
       return;
     }
 
-    await db
-      .update(commentsTable)
-      .set({ status: "deleted", deletedAt: new Date() })
-      .where(eq(commentsTable.id, commentId));
+    await db.update(commentsTable).set({ status: "deleted" }).where(eq(commentsTable.id, commentId));
 
     res.status(204).send();
-  },
-);
-
-router.get(
-  "/circles/:circleId/comments/:commentId/replies",
-  requireAuth,
-  validateParams(circleIdParam.merge(commentIdParam)),
-  validateQuery(paginationQuery),
-  async (req, res) => {
-    const userId = req.dbUser!.id;
-    const circleId = parseInt(String(req.params.circleId));
-    const commentId = parseInt(String(req.params.commentId));
-    const { limit, offset } = req.query as unknown as { limit: number; offset: number };
-
-    const member = await assertCircleMember(circleId, userId);
-    if (!member) {
-      res.status(404).json({ error: "Circle not found" });
-      return;
-    }
-
-    const parent = await db
-      .select()
-      .from(commentsTable)
-      .where(and(eq(commentsTable.id, commentId), eq(commentsTable.circleId, circleId)))
-      .limit(1)
-      .then((r) => r[0] ?? null);
-
-    if (!parent) {
-      res.status(404).json({ error: "Comment not found" });
-      return;
-    }
-
-    const rows = await db
-      .select({ comment: commentsTable, author: usersTable })
-      .from(commentsTable)
-      .leftJoin(usersTable, eq(commentsTable.authorUserId, usersTable.id))
-      .where(
-        and(
-          eq(commentsTable.circleId, circleId),
-          eq(commentsTable.parentCommentId, commentId),
-          eq(commentsTable.status, "active"),
-        ),
-      )
-      .orderBy(desc(commentsTable.createdAt))
-      .limit(limit)
-      .offset(offset);
-
-    res.json(rows.map((r) => commentToApi(r.comment, r.author?.displayName ?? "Someone")));
   },
 );
 
@@ -334,6 +377,12 @@ router.post(
     const member = await assertCircleMember(circleId, userId);
     if (!member) {
       res.status(404).json({ error: "Circle not found" });
+      return;
+    }
+
+    const entity = await assertEntityInCircle(circleId, entityType, entityId);
+    if (!entity) {
+      res.status(404).json({ error: `${entityType.replace("_", " ")} not found in this circle` });
       return;
     }
 

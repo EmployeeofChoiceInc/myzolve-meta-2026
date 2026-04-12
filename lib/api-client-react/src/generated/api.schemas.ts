@@ -265,6 +265,71 @@ export interface CircleInvitation {
   createdAt: string;
 }
 
+export type CircleConnectionPermissionScope =
+  (typeof CircleConnectionPermissionScope)[keyof typeof CircleConnectionPermissionScope];
+
+export const CircleConnectionPermissionScope = {
+  service_only: "service_only",
+  referral: "referral",
+  support_sharing: "support_sharing",
+} as const;
+
+export type CircleConnectionStatus =
+  (typeof CircleConnectionStatus)[keyof typeof CircleConnectionStatus];
+
+export const CircleConnectionStatus = {
+  pending: "pending",
+  approved: "approved",
+  declined: "declined",
+} as const;
+
+export interface CircleConnection {
+  id: number;
+  initiatorCircleId: number;
+  receiverCircleId: number;
+  permissionScope: CircleConnectionPermissionScope;
+  status: CircleConnectionStatus;
+  /** @nullable */
+  message?: string | null;
+  token: string;
+  /** @nullable */
+  respondedAt?: string | null;
+  createdAt: string;
+}
+
+export type CreateConnectionBodyPermissionScope =
+  (typeof CreateConnectionBodyPermissionScope)[keyof typeof CreateConnectionBodyPermissionScope];
+
+export const CreateConnectionBodyPermissionScope = {
+  service_only: "service_only",
+  referral: "referral",
+  support_sharing: "support_sharing",
+} as const;
+
+export interface CreateConnectionBody {
+  receiverCircleId: number;
+  permissionScope?: CreateConnectionBodyPermissionScope;
+  /** @maxLength 500 */
+  message?: string;
+}
+
+export type RespondConnectionBodyAction =
+  (typeof RespondConnectionBodyAction)[keyof typeof RespondConnectionBodyAction];
+
+export const RespondConnectionBodyAction = {
+  approve: "approve",
+  decline: "decline",
+} as const;
+
+export interface RespondConnectionBody {
+  action: RespondConnectionBodyAction;
+}
+
+export interface TransferOwnershipBody {
+  /** User ID of the active member who will become the new owner */
+  newOwnerUserId: number;
+}
+
 export type CreateInvitationBodyRole =
   (typeof CreateInvitationBodyRole)[keyof typeof CreateInvitationBodyRole];
 

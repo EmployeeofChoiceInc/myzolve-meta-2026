@@ -378,6 +378,125 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  # ── Cross-circle Connections ────────────────────────────────────────────────
+  /circles/{circleId}/connections:
+    get:
+      operationId: listCircleConnections
+      tags: [connections]
+      summary: List connections for a circle (as initiator or receiver)
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      responses:
+        "200":
+          description: List of connections
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CircleConnection"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createCircleConnection
+      tags: [connections]
+      summary: Initiate a connection request to another circle (owner/admin only)
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateConnectionBody"
+      responses:
+        "201":
+          description: Connection request created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CircleConnection"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: A connection between these circles already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /circles/{circleId}/connections/{connectionId}/respond:
+    post:
+      operationId: respondCircleConnection
+      tags: [connections]
+      summary: Approve or decline a connection request (receiver owner/admin only)
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - name: connectionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RespondConnectionBody"
+      responses:
+        "200":
+          description: Connection updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CircleConnection"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Connection is no longer pending
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Transfer Ownership ──────────────────────────────────────────────────────
+  /circles/{circleId}/transfer-ownership:
+    post:
+      operationId: transferCircleOwnership
+      tags: [circles]
+      summary: Transfer circle ownership to another member (current owner only)
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransferOwnershipBody"
+      responses:
+        "200":
+          description: Ownership transferred; caller's role demoted to admin
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CircleMember"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   # ── Support Requests ───────────────────────────────────────────────────────
   /circles/{circleId}/requests:
     get:
@@ -2025,6 +2144,73 @@ components:
         - status
         - token
         - createdAt
+
+    CircleConnection:
+      type: object
+      properties:
+        id:
+          type: integer
+        initiatorCircleId:
+          type: integer
+        receiverCircleId:
+          type: integer
+        permissionScope:
+          type: string
+          enum: [service_only, referral, support_sharing]
+        status:
+          type: string
+          enum: [pending, approved, declined]
+        message:
+          type: ["string", "null"]
+        token:
+          type: string
+        respondedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - initiatorCircleId
+        - receiverCircleId
+        - permissionScope
+        - status
+        - token
+        - createdAt
+
+    CreateConnectionBody:
+      type: object
+      properties:
+        receiverCircleId:
+          type: integer
+        permissionScope:
+          type: string
+          enum: [service_only, referral, support_sharing]
+          default: service_only
+        message:
+          type: string
+          maxLength: 500
+      required:
+        - receiverCircleId
+
+    RespondConnectionBody:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [approve, decline]
+      required:
+        - action
+
+    TransferOwnershipBody:
+      type: object
+      properties:
+        newOwnerUserId:
+          type: integer
+          description: User ID of the active member who will become the new owner
+      required:
+        - newOwnerUserId
 
     CreateInvitationBody:
       type: object
