@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
-import { validateBody, validateParams, circleIdParam, requestIdParam, contributionIdParam, repaymentIdParam } from "../middlewares/validate";
+import { validateBody, validateQuery, validateParams, circleIdParam, requestIdParam, contributionIdParam, repaymentIdParam, requestsListQuery, repaymentsListQuery } from "../middlewares/validate";
 import { db } from "@workspace/db";
 import {
   supportRequestsTable,
@@ -167,10 +167,10 @@ function contributionToApi(c: Contribution, contributorName: string) {
   };
 }
 
-router.get("/circles/:circleId/requests", requireAuth, validateParams(circleIdParam), async (req, res) => {
+router.get("/circles/:circleId/requests", requireAuth, validateParams(circleIdParam), validateQuery(requestsListQuery), async (req, res) => {
   const userId = req.dbUser!.id;
   const circleId = parseInt(String(req.params.circleId));
-  const { status, urgency, category } = req.query;
+  const { status, urgency, category } = req.query as unknown as { status?: string; urgency?: string; category?: string };
 
   const member = await assertCircleMember(circleId, userId);
   if (!member) {
@@ -782,7 +782,7 @@ router.post("/repayments", requireAuth, validateBody(createRepaymentSchema), asy
       paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
       note,
       paymentMethod,
-      status: "pending",
+      status: "pending_confirmation",
     })
     .returning();
 
@@ -831,7 +831,7 @@ router.post("/repayments", requireAuth, validateBody(createRepaymentSchema), asy
   });
 });
 
-router.get("/circles/:circleId/repayments", requireAuth, validateParams(circleIdParam), async (req, res) => {
+router.get("/circles/:circleId/repayments", requireAuth, validateParams(circleIdParam), validateQuery(repaymentsListQuery), async (req, res) => {
   const userId = req.dbUser!.id;
   const circleId = parseInt(String(req.params.circleId));
 

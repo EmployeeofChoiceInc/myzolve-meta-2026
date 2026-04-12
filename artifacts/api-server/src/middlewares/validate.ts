@@ -96,3 +96,19 @@ export const paginationQuery = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
   offset: z.coerce.number().int().min(0).optional().default(0),
 });
+
+export const requestsListQuery = paginationQuery.extend({
+  status: z.enum(["open", "funded", "partially_funded", "completed", "cancelled"]).optional(),
+  urgency: z.enum(["low", "normal", "high", "urgent", "emergency"]).optional(),
+  category: z.string().max(100).optional(),
+});
+
+export const servicesListQuery = paginationQuery.extend({
+  serviceType: z.enum(["offer", "request"]).optional(),
+  category: z.string().max(100).optional(),
+  status: z.enum(["open", "matched", "completed", "cancelled"]).optional(),
+});
+
+export const repaymentsListQuery = paginationQuery.extend({
+  requestId: z.coerce.number().int().positive().optional(),
+});

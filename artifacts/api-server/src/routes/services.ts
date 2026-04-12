@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
-import { validateBody, validateParams, serviceIdParam, circleIdParam } from "../middlewares/validate";
+import { validateBody, validateQuery, validateParams, serviceIdParam, circleIdParam, servicesListQuery } from "../middlewares/validate";
 import { db } from "@workspace/db";
 import {
   servicePostsTable,
@@ -114,10 +114,10 @@ function serviceToApi(post: ServicePost, createdByName: string) {
   };
 }
 
-router.get("/circles/:circleId/services", requireAuth, validateParams(circleIdParam), async (req, res) => {
+router.get("/circles/:circleId/services", requireAuth, validateParams(circleIdParam), validateQuery(servicesListQuery), async (req, res) => {
   const userId = req.dbUser!.id;
   const circleId = parseInt(String(req.params.circleId));
-  const { serviceType, category, status } = req.query;
+  const { serviceType, category, status } = req.query as unknown as { serviceType?: string; category?: string; status?: string };
 
   const member = await assertCircleMember(circleId, userId);
   if (!member) {
@@ -174,11 +174,6 @@ router.post("/circles/:circleId/services", requireAuth, validateParams(circleIdP
     estimatedValue,
     visibilityScope = "whole_circle",
   } = req.body;
-
-  if (!title) {
-    res.status(400).json({ error: "title is required" });
-    return;
-  }
 
   const [post] = await db
     .insert(servicePostsTable)
