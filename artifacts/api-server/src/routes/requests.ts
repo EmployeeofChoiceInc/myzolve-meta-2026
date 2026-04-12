@@ -67,7 +67,7 @@ const updateRequestSchema = z.object({
 const createRepaymentPlanSchema = z.object({
   totalAmount: z.number().positive(),
   startDate: z.string().datetime().optional(),
-  frequency: z.enum(["one_time", "weekly", "biweekly", "monthly", "quarterly", "flexible"]).optional().default("one_time"),
+  frequency: z.enum(["one_time", "weekly", "biweekly", "monthly", "custom"]).optional().default("one_time"),
   installmentAmount: z.number().positive().optional(),
   numberOfInstallments: z.number().int().positive().optional(),
   flexibleNotes: z.string().max(1000).optional(),

@@ -49,7 +49,7 @@ async function seed() {
       ownerId: alice.id,
       currency: "USD",
       privacyMode: "private",
-      ledgerMode: "members_only",
+      ledgerMode: "summary",
     })
     .returning();
 
@@ -186,7 +186,7 @@ async function seed() {
       visibilityScope: "whole_circle",
       repaymentExpected: true,
       repaymentStyle: "flexible",
-      urgencyLevel: "medium",
+      urgencyLevel: "normal",
       category: "Housing",
       privacyLevel: "standard",
       status: "fully_funded",

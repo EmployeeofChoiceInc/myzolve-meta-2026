@@ -2,7 +2,8 @@ import { useParams, Link } from "wouter";
 import { 
   useListCircleMembers, 
   useListCircleInvitations, 
-  useCreateCircleInvitation 
+  useCreateCircleInvitation,
+  type CircleInvitation
 } from "@workspace/api-client-react";
 import { ArrowLeft, UserPlus, Mail, ShieldAlert, Link2, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -64,7 +65,7 @@ export default function MembersPage() {
       circleId,
       data: payload
     }, {
-      onSuccess: (data: any) => {
+      onSuccess: (data: CircleInvitation & { inviteLink?: string }) => {
         queryClient.invalidateQueries({ queryKey: ['/api/circles', circleId, 'invitations'] });
         form.reset();
         const link = data?.inviteLink ? `${window.location.origin}${data.inviteLink}` : null;
