@@ -1,5 +1,7 @@
 import { Router } from "express";
+import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
+import { validateBody } from "../middlewares/validate";
 import { db } from "@workspace/db";
 import {
   servicePostsTable,
@@ -12,6 +14,34 @@ import {
 import { eq, and } from "drizzle-orm";
 
 const router = Router();
+
+const createServiceSchema = z.object({
+  serviceType: z.enum(["offer", "request"]).optional().default("offer"),
+  title: z.string().min(1).max(200),
+  description: z.string().max(2000).optional(),
+  category: z.string().max(100).optional().default("other"),
+  availability: z.string().max(200).optional(),
+  locationMode: z.enum(["in_person", "remote", "hybrid"]).optional().default("remote"),
+  exchangePreference: z.enum(["free", "barter", "paid_later", "open_to_discuss"]).optional().default("free"),
+  estimatedValue: z.number().positive().optional(),
+  visibilityScope: z.enum(["whole_circle", "close_contacts_only"]).optional().default("whole_circle"),
+});
+
+const updateServiceSchema = z.object({
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().max(2000).optional(),
+  category: z.string().max(100).optional(),
+  availability: z.string().max(200).optional(),
+  locationMode: z.enum(["in_person", "remote", "hybrid"]).optional(),
+  exchangePreference: z.enum(["free", "barter", "paid_later", "open_to_discuss"]).optional(),
+  estimatedValue: z.number().positive().optional(),
+  status: z.enum(["open", "matched", "in_progress", "completed", "withdrawn", "archived"]).optional(),
+  visibilityScope: z.enum(["whole_circle", "close_contacts_only"]).optional(),
+});
+
+const createMatchSchema = z.object({
+  note: z.string().max(1000).optional(),
+});
 
 async function assertCircleMember(circleId: number, userId: number) {
   return db
@@ -89,7 +119,7 @@ router.get("/circles/:circleId/services", requireAuth, async (req, res) => {
   res.json(filtered.map((r) => serviceToApi(r.post, r.user.displayName)));
 });
 
-router.post("/circles/:circleId/services", requireAuth, async (req, res) => {
+router.post("/circles/:circleId/services", requireAuth, validateBody(createServiceSchema), async (req, res) => {
   const userId = req.dbUser!.id;
   const circleId = parseInt(String(req.params.circleId));
 
@@ -173,7 +203,7 @@ router.get("/services/:serviceId", requireAuth, async (req, res) => {
   res.json(serviceToApi(row.post, row.user.displayName));
 });
 
-router.patch("/services/:serviceId", requireAuth, async (req, res) => {
+router.patch("/services/:serviceId", requireAuth, validateBody(updateServiceSchema), async (req, res) => {
   const userId = req.dbUser!.id;
   const serviceId = parseInt(String(req.params.serviceId));
 
@@ -216,7 +246,7 @@ router.patch("/services/:serviceId", requireAuth, async (req, res) => {
   res.json(serviceToApi(updated, userName));
 });
 
-router.post("/services/:serviceId/match", requireAuth, async (req, res) => {
+router.post("/services/:serviceId/match", requireAuth, validateBody(createMatchSchema), async (req, res) => {
   const userId = req.dbUser!.id;
   const serviceId = parseInt(String(req.params.serviceId));
 

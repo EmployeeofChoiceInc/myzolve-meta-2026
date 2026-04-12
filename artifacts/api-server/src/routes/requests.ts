@@ -781,7 +781,8 @@ router.post("/repayments", requireAuth, validateBody(createRepaymentSchema), asy
     .returning();
 
   const payerName = await getUserName(userId);
-  const payeeName = await getUserName(existing.createdByUserId);
+  const payeeId = primaryContribution?.contributorUserId ?? null;
+  const payeeName = payeeId ? await getUserName(payeeId) : "Unknown";
 
   await db.insert(activityFeedItemsTable).values({
     circleId: existing.circleId,
@@ -799,7 +800,7 @@ router.post("/repayments", requireAuth, validateBody(createRepaymentSchema), asy
     sourceId: repayment.id,
     giverUserId: userId,
     giverName: payerName,
-    receiverUserId: existing.createdByUserId,
+    receiverUserId: payeeId,
     receiverName: payeeName,
     amount: String(amount),
     currency,

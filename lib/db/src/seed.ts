@@ -6,6 +6,7 @@ import {
   circleMembersTable,
   supportRequestsTable,
   supportContributionsTable,
+  repaymentsTable,
   servicePostsTable,
   activityFeedItemsTable,
   ledgerEntriesTable,
@@ -171,14 +172,119 @@ async function seed() {
     description: "Support for car repair",
   });
 
+  const [completedRequest] = await db
+    .insert(supportRequestsTable)
+    .values({
+      circleId: circle.id,
+      createdByUserId: carol.id,
+      title: "Help with moving costs",
+      description: "I needed help covering moving van rental last month. Thanks to everyone who pitched in!",
+      amountRequested: "150.00",
+      amountFunded: "150.00",
+      currency: "USD",
+      requestType: "money",
+      visibilityScope: "whole_circle",
+      repaymentExpected: true,
+      repaymentStyle: "flexible",
+      urgencyLevel: "medium",
+      category: "Housing",
+      privacyLevel: "standard",
+      status: "fully_funded",
+    })
+    .returning();
+
+  const [completedContrib] = await db
+    .insert(supportContributionsTable)
+    .values({
+      requestId: completedRequest.id,
+      circleId: circle.id,
+      contributorUserId: alice.id,
+      amount: "150.00",
+      currency: "USD",
+      contributionType: "loan",
+      note: "Of course! Happy to help you settle in.",
+      status: "confirmed",
+    })
+    .returning();
+
+  await db.insert(ledgerEntriesTable).values({
+    circleId: circle.id,
+    giverUserId: alice.id,
+    giverName: alice.displayName,
+    receiverUserId: carol.id,
+    receiverName: carol.displayName,
+    sourceType: "contribution",
+    sourceId: completedContrib.id,
+    entryKind: "money_given",
+    amount: "150.00",
+    currency: "USD",
+    description: "Support for moving costs",
+  });
+
+  const [repayment] = await db
+    .insert(repaymentsTable)
+    .values({
+      requestId: completedRequest.id,
+      payerUserId: carol.id,
+      payeeUserId: alice.id,
+      amount: "150.00",
+      currency: "USD",
+      note: "Thank you so much Alice! Paying back in full.",
+      status: "completed",
+      paymentDate: new Date(),
+    })
+    .returning();
+
+  await db.insert(ledgerEntriesTable).values({
+    circleId: circle.id,
+    giverUserId: carol.id,
+    giverName: carol.displayName,
+    receiverUserId: alice.id,
+    receiverName: alice.displayName,
+    sourceType: "repayment",
+    sourceId: repayment.id,
+    entryKind: "money_repaid",
+    amount: "150.00",
+    currency: "USD",
+    description: "Returned support for moving costs",
+  });
+
+  await db.insert(activityFeedItemsTable).values([
+    {
+      circleId: circle.id,
+      actorUserId: carol.id,
+      activityType: "request_posted",
+      targetEntityType: "support_request",
+      targetEntityId: completedRequest.id,
+      summaryText: "posted a support request: \"Help with moving costs\"",
+    },
+    {
+      circleId: circle.id,
+      actorUserId: alice.id,
+      activityType: "contribution_made",
+      targetEntityType: "support_request",
+      targetEntityId: completedRequest.id,
+      summaryText: "offered $150 support for Carol's moving costs",
+    },
+    {
+      circleId: circle.id,
+      actorUserId: carol.id,
+      activityType: "repayment_marked",
+      targetEntityType: "support_request",
+      targetEntityId: completedRequest.id,
+      summaryText: "returned $150 support for \"Help with moving costs\"",
+    },
+  ]);
+
   console.log("Seed complete! Created:");
   console.log(`  - 3 demo users: Alice, Ben, Carol`);
   console.log(`  - 1 circle: Johnson Family Circle`);
-  console.log(`  - 1 support request (partially funded)`);
-  console.log(`  - 1 contribution by Ben`);
+  console.log(`  - 2 support requests (1 partially funded, 1 fully funded + repaid)`);
+  console.log(`  - 2 contributions`);
+  console.log(`  - 1 completed repayment`);
   console.log(`  - 2 service posts`);
   console.log(`  - Activity feed entries`);
-  console.log(`  - Ledger entry`);
+  console.log(`  - Ledger entries`);
 }
 
 seed().catch(console.error).finally(() => process.exit());

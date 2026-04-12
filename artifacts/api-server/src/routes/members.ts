@@ -117,11 +117,28 @@ router.patch(
     }
 
     if (circle.ownerId !== userId && myMembership.role !== "admin") {
-      res.status(403).json({ error: "Forbidden" });
+      res.status(403).json({ error: "Only owners and admins can update member roles" });
       return;
     }
 
     const { role } = req.body;
+
+    const targetMember = await db
+      .select()
+      .from(circleMembersTable)
+      .where(and(eq(circleMembersTable.id, memberId), eq(circleMembersTable.circleId, circleId)))
+      .limit(1)
+      .then((r) => r[0]);
+
+    if (!targetMember) {
+      res.status(404).json({ error: "Member not found" });
+      return;
+    }
+
+    if (targetMember.role === "owner") {
+      res.status(403).json({ error: "The circle owner's role cannot be changed" });
+      return;
+    }
 
     const [updated] = await db
       .update(circleMembersTable)
@@ -187,6 +204,11 @@ router.delete(
 
     if (!target) {
       res.status(404).json({ error: "Member not found" });
+      return;
+    }
+
+    if (target.role === "owner") {
+      res.status(403).json({ error: "The circle owner cannot be removed" });
       return;
     }
 
@@ -260,8 +282,8 @@ router.post("/circles/:circleId/invitations", requireAuth, validateBody(createIn
     .limit(1)
     .then((r) => r[0]);
 
-  if (!myMembership || !["owner", "admin", "member"].includes(myMembership.role)) {
-    res.status(403).json({ error: "Forbidden" });
+  if (!myMembership || !["owner", "admin"].includes(myMembership.role)) {
+    res.status(403).json({ error: "Only circle owners and admins can send invitations" });
     return;
   }
 
