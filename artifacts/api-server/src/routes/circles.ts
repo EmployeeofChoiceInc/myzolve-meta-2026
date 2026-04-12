@@ -296,35 +296,43 @@ router.get("/circles/:circleId/stats", requireAuth, validateParams(circleIdParam
       ),
     );
 
-  const [openRow] = await db
-    .select({ cnt: count() })
-    .from(supportRequestsTable)
-    .where(
-      and(
-        eq(supportRequestsTable.circleId, circleId),
-        eq(supportRequestsTable.status, "open"),
-      ),
-    );
+  const isAdminOrOwner = ["owner", "admin"].includes(member.role);
 
-  const [completedRow] = await db
-    .select({ cnt: count() })
-    .from(supportRequestsTable)
-    .where(
-      and(
-        eq(supportRequestsTable.circleId, circleId),
-        eq(supportRequestsTable.status, "completed"),
-      ),
-    );
+  const isRequestVisible = (r: { visibilityScope: string | null; createdByUserId: number }) => {
+    if (isAdminOrOwner) return true;
+    if (r.visibilityScope === "private_draft" || r.visibilityScope === "admins_only") {
+      return r.createdByUserId === userId;
+    }
+    return true;
+  };
 
-  const [activeServicesRow] = await db
-    .select({ cnt: count() })
+  const allOpenRequests = await db
+    .select({ visibilityScope: supportRequestsTable.visibilityScope, createdByUserId: supportRequestsTable.createdByUserId })
+    .from(supportRequestsTable)
+    .where(and(eq(supportRequestsTable.circleId, circleId), eq(supportRequestsTable.status, "open")));
+
+  const openRow = { cnt: allOpenRequests.filter(isRequestVisible).length };
+
+  const allCompletedRequests = await db
+    .select({ visibilityScope: supportRequestsTable.visibilityScope, createdByUserId: supportRequestsTable.createdByUserId })
+    .from(supportRequestsTable)
+    .where(and(eq(supportRequestsTable.circleId, circleId), eq(supportRequestsTable.status, "completed")));
+
+  const completedRow = { cnt: allCompletedRequests.filter(isRequestVisible).length };
+
+  const allActiveServices = await db
+    .select({ visibilityScope: servicePostsTable.visibilityScope, createdByUserId: servicePostsTable.createdByUserId })
     .from(servicePostsTable)
-    .where(
-      and(
-        eq(servicePostsTable.circleId, circleId),
-        eq(servicePostsTable.status, "open"),
-      ),
-    );
+    .where(and(eq(servicePostsTable.circleId, circleId), eq(servicePostsTable.status, "open")));
+
+  const activeServicesRow = {
+    cnt: isAdminOrOwner
+      ? allActiveServices.length
+      : allActiveServices.filter((s) => {
+          if (s.visibilityScope === "admins_only") return s.createdByUserId === userId;
+          return true;
+        }).length,
+  };
 
   const [recentActivityRow] = await db
     .select({ cnt: count() })

@@ -377,7 +377,16 @@ router.post("/invitations/:token/accept", requireAuth, validateParams(invitation
   const user = req.dbUser!;
 
   if (existingMembership) {
-    res.json(memberToApi(existingMembership, { displayName: user.displayName, email: user.email }));
+    if (existingMembership.status === "active") {
+      res.json(memberToApi(existingMembership, { displayName: user.displayName, email: user.email }));
+      return;
+    }
+    const [reactivated] = await db
+      .update(circleMembersTable)
+      .set({ status: "active", role: invitation.role, joinedAt: new Date(), updatedAt: new Date() })
+      .where(eq(circleMembersTable.id, existingMembership.id))
+      .returning();
+    res.json(memberToApi(reactivated, { displayName: user.displayName, email: user.email }));
     return;
   }
 
