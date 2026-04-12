@@ -17,6 +17,7 @@ import {
   type Repayment,
 } from "@workspace/db";
 import { eq, and, sql, desc } from "drizzle-orm";
+import { createNotification, createAuditLog } from "../lib/helpers";
 
 const router = Router();
 
@@ -267,6 +268,34 @@ router.post("/circles/:circleId/requests", requireAuth, validateParams(circleIdP
     targetEntityId: supportReq.id,
     summaryText: `${userName} posted a support request: "${title}"`,
   });
+
+  await createAuditLog({
+    circleId,
+    actorUserId: userId,
+    action: "request_created",
+    targetEntityType: "support_request",
+    targetEntityId: supportReq.id,
+    metadata: { title, amountRequested, requestType, visibilityScope },
+  });
+
+  const circleMembers = await db
+    .select({ memberId: circleMembersTable.userId })
+    .from(circleMembersTable)
+    .where(and(eq(circleMembersTable.circleId, circleId), eq(circleMembersTable.status, "active")))
+    .then((rows) => rows.filter((r) => r.memberId !== null && r.memberId !== userId)) as { memberId: number }[];
+
+  const urgencyPrefix = urgencyLevel === "emergency" ? "[URGENT] " : urgencyLevel === "urgent" ? "[Time-sensitive] " : "";
+  for (const cm of circleMembers) {
+    await createNotification({
+      userId: cm.memberId,
+      circleId,
+      notificationType: "new_request",
+      title: `${urgencyPrefix}${userName} posted a support request`,
+      body: `"${title}" — $${amountRequested} needed`,
+      targetEntityType: "support_request",
+      targetEntityId: supportReq.id,
+    });
+  }
 
   res.status(201).json(requestToApi(supportReq, userName));
 });
@@ -519,6 +548,8 @@ router.post("/requests/:requestId/contributions", requireAuth, validateParams(re
     summaryText: `${userName} offered support for "${existing.title}"`,
   });
 
+  const receiverName = await getUserName(existing.createdByUserId);
+
   await db.insert(ledgerEntriesTable).values({
     circleId: existing.circleId,
     entryKind: contributionType === "gift" ? "gift_given" : "money_given",
@@ -527,11 +558,30 @@ router.post("/requests/:requestId/contributions", requireAuth, validateParams(re
     giverUserId: userId,
     giverName: userName,
     receiverUserId: existing.createdByUserId,
-    receiverName: await getUserName(existing.createdByUserId),
+    receiverName,
     amount: String(amount),
     currency,
     description: `${contributionType === "gift" ? "Gift" : "Support"} for "${existing.title}"`,
     date: new Date(),
+  });
+
+  await createNotification({
+    userId: existing.createdByUserId,
+    circleId: existing.circleId,
+    notificationType: "support_received",
+    title: `${userName} offered you support`,
+    body: `$${amount} ${contributionType === "gift" ? "as a gift" : "as a " + contributionType.replace("_", " ")} toward "${existing.title}"`,
+    targetEntityType: "support_request",
+    targetEntityId: existing.id,
+  });
+
+  await createAuditLog({
+    circleId: existing.circleId,
+    actorUserId: userId,
+    action: "contribution_created",
+    targetEntityType: "contribution",
+    targetEntityId: contribution.id,
+    metadata: { amount, contributionType, requestId },
   });
 
   res.status(201).json(contributionToApi(contribution, userName));
@@ -812,6 +862,27 @@ router.post("/repayments", requireAuth, validateBody(createRepaymentSchema), asy
     currency,
     description: `Returned support for "${existing.title}"`,
     date: new Date(),
+  });
+
+  if (payeeId) {
+    await createNotification({
+      userId: payeeId,
+      circleId: existing.circleId,
+      notificationType: "repayment_received",
+      title: `${payerName} returned support`,
+      body: `$${amount} returned toward "${existing.title}" — thank you for keeping the circle going.`,
+      targetEntityType: "support_request",
+      targetEntityId: requestId,
+    });
+  }
+
+  await createAuditLog({
+    circleId: existing.circleId,
+    actorUserId: userId,
+    action: "repayment_created",
+    targetEntityType: "repayment",
+    targetEntityId: repayment.id,
+    metadata: { amount, requestId, payeeId },
   });
 
   res.status(201).json({

@@ -13,6 +13,7 @@ import {
 import { eq, and } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { addDays } from "date-fns";
+import { createAuditLog, createNotification } from "../lib/helpers";
 
 const router = Router();
 
@@ -163,6 +164,27 @@ router.patch(
       .where(eq(usersTable.id, updated.userId!))
       .limit(1)
       .then((r) => r[0] ?? null);
+
+    await createAuditLog({
+      circleId,
+      actorUserId: userId,
+      action: "member_role_changed",
+      targetEntityType: "circle_member",
+      targetEntityId: updated.id,
+      metadata: { newRole: role, targetUserId: updated.userId },
+    });
+
+    if (updated.userId && updated.userId !== userId) {
+      await createNotification({
+        userId: updated.userId,
+        circleId,
+        notificationType: "circle_update",
+        title: "Your circle role was updated",
+        body: `Your role has been changed to ${role}.`,
+        targetEntityType: "circle_member",
+        targetEntityId: updated.id,
+      });
+    }
 
     res.json(memberToApi(updated, user ? { displayName: user.displayName, email: user.email } : null));
   },

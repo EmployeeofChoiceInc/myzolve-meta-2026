@@ -3,7 +3,14 @@ import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
 import { validateBody, validateParams, circleIdParam, validateQuery, paginationQuery } from "../middlewares/validate";
 import { db } from "@workspace/db";
-import { disputesTable, usersTable, supportContributionsTable, repaymentsTable, circleMembersTable } from "@workspace/db";
+import {
+  disputesTable,
+  usersTable,
+  supportContributionsTable,
+  repaymentsTable,
+  supportRequestsTable,
+  circleMembersTable,
+} from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { assertCircleMember, createAuditLog, createNotification, getUserName } from "../lib/helpers";
 
@@ -40,6 +47,115 @@ function disputeToApi(dispute: typeof disputesTable.$inferSelect, raiserName: st
     resolvedAt: dispute.resolvedAt,
     createdAt: dispute.createdAt,
   };
+}
+
+async function verifyEntityBelongsToCircle(
+  targetEntityType: string,
+  targetEntityId: number,
+  circleId: number,
+): Promise<boolean> {
+  if (targetEntityType === "contribution") {
+    const contrib = await db
+      .select({ id: supportContributionsTable.id })
+      .from(supportContributionsTable)
+      .where(
+        and(
+          eq(supportContributionsTable.id, targetEntityId),
+          eq(supportContributionsTable.circleId, circleId),
+        ),
+      )
+      .limit(1)
+      .then((r) => r[0] ?? null);
+    return contrib !== null;
+  }
+  if (targetEntityType === "repayment") {
+    const repayment = await db
+      .select({ id: repaymentsTable.id })
+      .from(repaymentsTable)
+      .innerJoin(supportRequestsTable, eq(repaymentsTable.requestId, supportRequestsTable.id))
+      .where(
+        and(
+          eq(repaymentsTable.id, targetEntityId),
+          eq(supportRequestsTable.circleId, circleId),
+        ),
+      )
+      .limit(1)
+      .then((r) => r[0] ?? null);
+    return repayment !== null;
+  }
+  return false;
+}
+
+async function freezeEntity(targetEntityType: string, targetEntityId: number, circleId: number) {
+  if (targetEntityType === "contribution") {
+    await db
+      .update(supportContributionsTable)
+      .set({ status: "disputed" })
+      .where(
+        and(
+          eq(supportContributionsTable.id, targetEntityId),
+          eq(supportContributionsTable.circleId, circleId),
+        ),
+      );
+  } else if (targetEntityType === "repayment") {
+    const request = await db
+      .select({ circleId: supportRequestsTable.circleId })
+      .from(repaymentsTable)
+      .innerJoin(supportRequestsTable, eq(repaymentsTable.requestId, supportRequestsTable.id))
+      .where(
+        and(
+          eq(repaymentsTable.id, targetEntityId),
+          eq(supportRequestsTable.circleId, circleId),
+        ),
+      )
+      .limit(1)
+      .then((r) => r[0] ?? null);
+    if (request) {
+      await db
+        .update(repaymentsTable)
+        .set({ status: "disputed" })
+        .where(eq(repaymentsTable.id, targetEntityId));
+    }
+  }
+}
+
+async function unfreezeEntity(targetEntityType: string, targetEntityId: number, circleId: number) {
+  if (targetEntityType === "contribution") {
+    await db
+      .update(supportContributionsTable)
+      .set({ status: "pledged" })
+      .where(
+        and(
+          eq(supportContributionsTable.id, targetEntityId),
+          eq(supportContributionsTable.circleId, circleId),
+          eq(supportContributionsTable.status, "disputed"),
+        ),
+      );
+  } else if (targetEntityType === "repayment") {
+    const request = await db
+      .select({ circleId: supportRequestsTable.circleId })
+      .from(repaymentsTable)
+      .innerJoin(supportRequestsTable, eq(repaymentsTable.requestId, supportRequestsTable.id))
+      .where(
+        and(
+          eq(repaymentsTable.id, targetEntityId),
+          eq(supportRequestsTable.circleId, circleId),
+        ),
+      )
+      .limit(1)
+      .then((r) => r[0] ?? null);
+    if (request) {
+      await db
+        .update(repaymentsTable)
+        .set({ status: "pending_confirmation" })
+        .where(
+          and(
+            eq(repaymentsTable.id, targetEntityId),
+            eq(repaymentsTable.status, "disputed"),
+          ),
+        );
+    }
+  }
 }
 
 router.get(
@@ -93,6 +209,14 @@ router.post(
       return;
     }
 
+    const entityValid = await verifyEntityBelongsToCircle(targetEntityType, targetEntityId, circleId);
+    if (!entityValid) {
+      res.status(404).json({ error: "Target entity not found in this circle" });
+      return;
+    }
+
+    await freezeEntity(targetEntityType, targetEntityId, circleId);
+
     const [dispute] = await db
       .insert(disputesTable)
       .values({
@@ -105,18 +229,6 @@ router.post(
       })
       .returning();
 
-    if (targetEntityType === "contribution") {
-      await db
-        .update(supportContributionsTable)
-        .set({ status: "disputed" })
-        .where(and(eq(supportContributionsTable.id, targetEntityId), eq(supportContributionsTable.circleId, circleId)));
-    } else if (targetEntityType === "repayment") {
-      await db
-        .update(repaymentsTable)
-        .set({ status: "disputed" })
-        .where(eq(repaymentsTable.id, targetEntityId));
-    }
-
     await createAuditLog({
       circleId,
       actorUserId: userId,
@@ -126,21 +238,16 @@ router.post(
       metadata: { reason: reason.slice(0, 200) },
     });
 
-    const admins = await db
+    const circleMembers = await db
       .select({ userId: circleMembersTable.userId })
       .from(circleMembersTable)
-      .where(
-        and(
-          eq(circleMembersTable.circleId, circleId),
-          eq(circleMembersTable.status, "active"),
-        ),
-      )
+      .where(and(eq(circleMembersTable.circleId, circleId), eq(circleMembersTable.status, "active")))
       .then((rows) => rows.filter((r) => r.userId !== null && r.userId !== userId)) as { userId: number }[];
 
     const raisedByName = req.dbUser!.displayName;
-    for (const admin of admins) {
+    for (const cm of circleMembers) {
       await createNotification({
-        userId: admin.userId,
+        userId: cm.userId,
         circleId,
         notificationType: "dispute_opened",
         title: "A dispute has been raised",
@@ -205,17 +312,7 @@ router.post(
       .where(eq(disputesTable.id, disputeId))
       .returning();
 
-    if (dispute.targetEntityType === "contribution") {
-      await db
-        .update(supportContributionsTable)
-        .set({ status: "pledged" })
-        .where(and(eq(supportContributionsTable.id, dispute.targetEntityId), eq(supportContributionsTable.status, "disputed")));
-    } else if (dispute.targetEntityType === "repayment") {
-      await db
-        .update(repaymentsTable)
-        .set({ status: "pending_confirmation" })
-        .where(and(eq(repaymentsTable.id, dispute.targetEntityId), eq(repaymentsTable.status, "disputed")));
-    }
+    await unfreezeEntity(dispute.targetEntityType, dispute.targetEntityId, circleId);
 
     await createAuditLog({
       circleId,
