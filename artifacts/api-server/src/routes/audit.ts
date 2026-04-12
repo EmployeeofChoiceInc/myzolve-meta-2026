@@ -9,7 +9,7 @@ import { assertCircleMember } from "../lib/helpers";
 const router = Router();
 
 router.get(
-  "/circles/:circleId/audit-logs",
+  "/circles/:circleId/audit",
   requireAuth,
   validateParams(circleIdParam),
   validateQuery(paginationQuery),
