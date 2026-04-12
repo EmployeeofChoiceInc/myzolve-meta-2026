@@ -98,15 +98,15 @@ export const paginationQuery = z.object({
 });
 
 export const requestsListQuery = paginationQuery.extend({
-  status: z.enum(["open", "funded", "partially_funded", "completed", "cancelled"]).optional(),
-  urgency: z.enum(["low", "normal", "high", "urgent", "emergency"]).optional(),
+  status: z.enum(["draft", "open", "accepted", "partially_funded", "fully_funded", "declined", "canceled", "completed", "archived"]).optional(),
+  urgency: z.enum(["low", "normal", "important", "urgent", "emergency"]).optional(),
   category: z.string().max(100).optional(),
 });
 
 export const servicesListQuery = paginationQuery.extend({
-  serviceType: z.enum(["offer", "request"]).optional(),
+  serviceType: z.enum(["offer", "request", "barter_offer", "barter_request"]).optional(),
   category: z.string().max(100).optional(),
-  status: z.enum(["open", "matched", "completed", "cancelled"]).optional(),
+  status: z.enum(["open", "matched", "completed", "canceled"]).optional(),
 });
 
 export const repaymentsListQuery = paginationQuery.extend({
