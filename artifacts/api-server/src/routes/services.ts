@@ -316,7 +316,7 @@ router.post("/services/:serviceId/match", requireAuth, validateBody(createMatchS
   res.json(serviceToApi(updated, creatorName));
 });
 
-router.get("/circles/:circleId/services/summary", requireAuth, async (req, res) => {
+router.get("/circles/:circleId/services/summary", requireAuth, validateParams(circleIdParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const circleId = parseInt(String(req.params.circleId));
 
@@ -326,10 +326,19 @@ router.get("/circles/:circleId/services/summary", requireAuth, async (req, res) 
     return;
   }
 
-  const rows = await db
+  const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+
+  const allRows = await db
     .select()
     .from(servicePostsTable)
     .where(eq(servicePostsTable.circleId, circleId));
+
+  const rows = allRows.filter((r) => {
+    const scope = r.visibilityScope;
+    if (scope === "admins_only") return isAdminOrOwner || r.createdByUserId === userId;
+    if (scope === "selected_members") return isAdminOrOwner || r.createdByUserId === userId;
+    return true;
+  });
 
   const total = rows.length;
   const open = rows.filter((r) => r.status === "open").length;

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useLocation } from "wouter";
-import { useAcceptInvitation } from "@workspace/api-client-react";
+import { useAcceptInvitation, type AcceptInvitationMutationError } from "@workspace/api-client-react";
 import { useUser } from "@clerk/react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,9 +24,17 @@ export default function InviteAcceptPage() {
           setStatus("success");
           setTimeout(() => setLocation("/dashboard"), 2000);
         },
-        onError: (err: any) => {
+        onError: (err: AcceptInvitationMutationError) => {
           setStatus("error");
-          setErrorMessage(err?.response?.data?.error ?? "This invite link may have already been used or expired.");
+          const raw: unknown = err.data;
+          const message =
+            raw !== null &&
+            typeof raw === "object" &&
+            "error" in (raw as object) &&
+            typeof (raw as Record<string, unknown>).error === "string"
+              ? (raw as Record<string, unknown>).error as string
+              : "This invite link may have already been used or expired.";
+          setErrorMessage(message);
         },
       }
     );

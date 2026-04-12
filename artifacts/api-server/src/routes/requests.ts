@@ -98,6 +98,34 @@ async function getUserName(userId: number) {
     .then((r) => r[0]?.displayName ?? "Unknown");
 }
 
+async function getRequestWithVisibilityCheck(requestId: number, userId: number) {
+  const [row] = await db
+    .select()
+    .from(supportRequestsTable)
+    .where(eq(supportRequestsTable.id, requestId))
+    .limit(1);
+
+  if (!row) return null;
+
+  const member = await assertCircleMember(row.circleId, userId);
+  if (!member) return null;
+
+  const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+  const isCreator = row.createdByUserId === userId;
+  const scope = row.visibilityScope;
+
+  if (
+    (scope === "private_draft" && !isCreator) ||
+    (scope === "admins_only" && !isAdminOrOwner && !isCreator) ||
+    (scope === "selected_members" && !isAdminOrOwner && !isCreator) ||
+    (scope === "specific_person" && !isAdminOrOwner && !isCreator)
+  ) {
+    return null;
+  }
+
+  return { req: row, member, isAdminOrOwner, isCreator };
+}
+
 function requestToApi(req: SupportRequest, createdByName: string) {
   return {
     id: req.id,
@@ -365,24 +393,17 @@ router.patch("/requests/:requestId", requireAuth, validateParams(requestIdParam)
   res.json(requestToApi(updated, userName));
 });
 
-router.post("/requests/:requestId/cancel", requireAuth, async (req, res) => {
+router.post("/requests/:requestId/cancel", requireAuth, validateParams(requestIdParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const requestId = parseInt(String(req.params.requestId));
 
-  const existing = await db
-    .select()
-    .from(supportRequestsTable)
-    .where(eq(supportRequestsTable.id, requestId))
-    .limit(1)
-    .then((r) => r[0]);
-
-  if (!existing) {
+  const access = await getRequestWithVisibilityCheck(requestId, userId);
+  if (!access) {
     res.status(404).json({ error: "Request not found" });
     return;
   }
 
-  const member = await assertCircleMember(existing.circleId, userId);
-  if (!member || (existing.createdByUserId !== userId && !["owner", "admin"].includes(member.role))) {
+  if (!access.isCreator && !access.isAdminOrOwner) {
     res.status(403).json({ error: "Forbidden" });
     return;
   }
@@ -397,24 +418,17 @@ router.post("/requests/:requestId/cancel", requireAuth, async (req, res) => {
   res.json(requestToApi(updated, userName));
 });
 
-router.post("/requests/:requestId/complete", requireAuth, async (req, res) => {
+router.post("/requests/:requestId/complete", requireAuth, validateParams(requestIdParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const requestId = parseInt(String(req.params.requestId));
 
-  const existing = await db
-    .select()
-    .from(supportRequestsTable)
-    .where(eq(supportRequestsTable.id, requestId))
-    .limit(1)
-    .then((r) => r[0]);
-
-  if (!existing) {
+  const access = await getRequestWithVisibilityCheck(requestId, userId);
+  if (!access) {
     res.status(404).json({ error: "Request not found" });
     return;
   }
 
-  const member = await assertCircleMember(existing.circleId, userId);
-  if (!member || (existing.createdByUserId !== userId && !["owner", "admin"].includes(member.role))) {
+  if (!access.isCreator && !access.isAdminOrOwner) {
     res.status(403).json({ error: "Forbidden" });
     return;
   }
@@ -428,35 +442,23 @@ router.post("/requests/:requestId/complete", requireAuth, async (req, res) => {
   const userName = await getUserName(updated.createdByUserId);
 
   await db.insert(activityFeedItemsTable).values({
-    circleId: existing.circleId,
+    circleId: access.req.circleId,
     actorUserId: userId,
     activityType: "request_completed",
     targetEntityType: "support_request",
     targetEntityId: requestId,
-    summaryText: `"${existing.title}" has been marked as completed`,
+    summaryText: `"${access.req.title}" has been marked as completed`,
   });
 
   res.json(requestToApi(updated, userName));
 });
 
-router.get("/requests/:requestId/contributions", requireAuth, async (req, res) => {
+router.get("/requests/:requestId/contributions", requireAuth, validateParams(requestIdParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const requestId = parseInt(String(req.params.requestId));
 
-  const existing = await db
-    .select()
-    .from(supportRequestsTable)
-    .where(eq(supportRequestsTable.id, requestId))
-    .limit(1)
-    .then((r) => r[0]);
-
-  if (!existing) {
-    res.status(404).json({ error: "Request not found" });
-    return;
-  }
-
-  const member = await assertCircleMember(existing.circleId, userId);
-  if (!member) {
+  const access = await getRequestWithVisibilityCheck(requestId, userId);
+  if (!access) {
     res.status(404).json({ error: "Request not found" });
     return;
   }
@@ -470,27 +472,16 @@ router.get("/requests/:requestId/contributions", requireAuth, async (req, res) =
   res.json(rows.map((r) => contributionToApi(r.c, r.u.displayName)));
 });
 
-router.post("/requests/:requestId/contributions", requireAuth, validateBody(createContributionSchema), async (req, res) => {
+router.post("/requests/:requestId/contributions", requireAuth, validateParams(requestIdParam), validateBody(createContributionSchema), async (req, res) => {
   const userId = req.dbUser!.id;
   const requestId = parseInt(String(req.params.requestId));
 
-  const existing = await db
-    .select()
-    .from(supportRequestsTable)
-    .where(eq(supportRequestsTable.id, requestId))
-    .limit(1)
-    .then((r) => r[0]);
-
-  if (!existing) {
+  const access = await getRequestWithVisibilityCheck(requestId, userId);
+  if (!access) {
     res.status(404).json({ error: "Request not found" });
     return;
   }
-
-  const member = await assertCircleMember(existing.circleId, userId);
-  if (!member) {
-    res.status(403).json({ error: "Forbidden" });
-    return;
-  }
+  const existing = access.req;
 
   const {
     amount,
@@ -556,23 +547,17 @@ router.post("/requests/:requestId/contributions", requireAuth, validateBody(crea
   res.status(201).json(contributionToApi(contribution, userName));
 });
 
-router.post("/requests/:requestId/confirm-receipt", requireAuth, async (req, res) => {
+router.post("/requests/:requestId/confirm-receipt", requireAuth, validateParams(requestIdParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const requestId = parseInt(String(req.params.requestId));
 
-  const existing = await db
-    .select()
-    .from(supportRequestsTable)
-    .where(eq(supportRequestsTable.id, requestId))
-    .limit(1)
-    .then((r) => r[0]);
-
-  if (!existing) {
+  const access = await getRequestWithVisibilityCheck(requestId, userId);
+  if (!access) {
     res.status(404).json({ error: "Request not found" });
     return;
   }
 
-  if (existing.createdByUserId !== userId) {
+  if (!access.isCreator) {
     res.status(403).json({ error: "Only the requester can confirm receipt" });
     return;
   }
@@ -653,24 +638,12 @@ router.post("/contributions/:contributionId/forgive", requireAuth, async (req, r
   res.json(contributionToApi(updated, userName));
 });
 
-router.get("/requests/:requestId/repayment-plan", requireAuth, async (req, res) => {
+router.get("/requests/:requestId/repayment-plan", requireAuth, validateParams(requestIdParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const requestId = parseInt(String(req.params.requestId));
 
-  const existing = await db
-    .select()
-    .from(supportRequestsTable)
-    .where(eq(supportRequestsTable.id, requestId))
-    .limit(1)
-    .then((r) => r[0]);
-
-  if (!existing) {
-    res.status(404).json({ error: "Request not found" });
-    return;
-  }
-
-  const member = await assertCircleMember(existing.circleId, userId);
-  if (!member) {
+  const access = await getRequestWithVisibilityCheck(requestId, userId);
+  if (!access) {
     res.status(404).json({ error: "Request not found" });
     return;
   }
@@ -696,25 +669,13 @@ router.get("/requests/:requestId/repayment-plan", requireAuth, async (req, res) 
   });
 });
 
-router.post("/requests/:requestId/repayment-plan", requireAuth, validateBody(createRepaymentPlanSchema), async (req, res) => {
+router.post("/requests/:requestId/repayment-plan", requireAuth, validateParams(requestIdParam), validateBody(createRepaymentPlanSchema), async (req, res) => {
   const userId = req.dbUser!.id;
   const requestId = parseInt(String(req.params.requestId));
 
-  const existing = await db
-    .select()
-    .from(supportRequestsTable)
-    .where(eq(supportRequestsTable.id, requestId))
-    .limit(1)
-    .then((r) => r[0]);
-
-  if (!existing) {
+  const access = await getRequestWithVisibilityCheck(requestId, userId);
+  if (!access) {
     res.status(404).json({ error: "Request not found" });
-    return;
-  }
-
-  const member = await assertCircleMember(existing.circleId, userId);
-  if (!member) {
-    res.status(403).json({ error: "Forbidden" });
     return;
   }
 
