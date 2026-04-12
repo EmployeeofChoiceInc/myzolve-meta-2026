@@ -1,0 +1,198 @@
+import { Router } from "express";
+import { z } from "zod";
+import { requireAuth } from "../middlewares/requireAuth";
+import { validateBody, validateParams, circleIdParam, validateQuery, paginationQuery } from "../middlewares/validate";
+import { db } from "@workspace/db";
+import { disputesTable, usersTable } from "@workspace/db";
+import { eq, and, desc } from "drizzle-orm";
+import { assertCircleMember, createAuditLog, createNotification, getUserName } from "../lib/helpers";
+
+const router = Router();
+
+const disputeIdParam = z.object({
+  disputeId: z.coerce.number().int().positive(),
+});
+
+const createDisputeSchema = z.object({
+  targetEntityType: z.enum(["contribution", "repayment"]),
+  targetEntityId: z.number().int().positive(),
+  reason: z.string().min(1).max(2000),
+});
+
+const resolveDisputeSchema = z.object({
+  resolution: z.enum(["resolved", "dismissed"]),
+  resolutionNote: z.string().min(1).max(2000),
+});
+
+function disputeToApi(dispute: typeof disputesTable.$inferSelect, raiserName: string, resolverName?: string) {
+  return {
+    id: dispute.id,
+    circleId: dispute.circleId,
+    raisedByUserId: dispute.raisedByUserId,
+    raisedByName: raiserName,
+    targetEntityType: dispute.targetEntityType,
+    targetEntityId: dispute.targetEntityId,
+    reason: dispute.reason,
+    status: dispute.status,
+    resolvedByUserId: dispute.resolvedByUserId,
+    resolvedByName: resolverName ?? null,
+    resolutionNote: dispute.resolutionNote,
+    resolvedAt: dispute.resolvedAt,
+    createdAt: dispute.createdAt,
+  };
+}
+
+router.get(
+  "/circles/:circleId/disputes",
+  requireAuth,
+  validateParams(circleIdParam),
+  validateQuery(paginationQuery),
+  async (req, res) => {
+    const userId = req.dbUser!.id;
+    const circleId = parseInt(String(req.params.circleId));
+    const { limit, offset } = req.query as unknown as { limit: number; offset: number };
+
+    const member = await assertCircleMember(circleId, userId);
+    if (!member) {
+      res.status(404).json({ error: "Circle not found" });
+      return;
+    }
+
+    const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+
+    const rows = await db
+      .select({ dispute: disputesTable, raiser: usersTable })
+      .from(disputesTable)
+      .leftJoin(usersTable, eq(disputesTable.raisedByUserId, usersTable.id))
+      .where(eq(disputesTable.circleId, circleId))
+      .orderBy(desc(disputesTable.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const visible = isAdminOrOwner
+      ? rows
+      : rows.filter((r) => r.dispute.raisedByUserId === userId);
+
+    res.json(visible.map((r) => disputeToApi(r.dispute, r.raiser?.displayName ?? "Someone")));
+  },
+);
+
+router.post(
+  "/circles/:circleId/disputes",
+  requireAuth,
+  validateParams(circleIdParam),
+  validateBody(createDisputeSchema),
+  async (req, res) => {
+    const userId = req.dbUser!.id;
+    const circleId = parseInt(String(req.params.circleId));
+    const { targetEntityType, targetEntityId, reason } = req.body;
+
+    const member = await assertCircleMember(circleId, userId);
+    if (!member) {
+      res.status(404).json({ error: "Circle not found" });
+      return;
+    }
+
+    const [dispute] = await db
+      .insert(disputesTable)
+      .values({
+        circleId,
+        raisedByUserId: userId,
+        targetEntityType,
+        targetEntityId,
+        reason,
+        status: "open",
+      })
+      .returning();
+
+    await createAuditLog({
+      circleId,
+      actorUserId: userId,
+      action: "dispute_opened",
+      targetEntityType,
+      targetEntityId,
+      metadata: { reason: reason.slice(0, 200) },
+    });
+
+    const raisedByName = req.dbUser!.displayName;
+    res.status(201).json(disputeToApi(dispute, raisedByName));
+  },
+);
+
+router.post(
+  "/circles/:circleId/disputes/:disputeId/resolve",
+  requireAuth,
+  validateParams(circleIdParam.merge(disputeIdParam)),
+  validateBody(resolveDisputeSchema),
+  async (req, res) => {
+    const userId = req.dbUser!.id;
+    const circleId = parseInt(String(req.params.circleId));
+    const disputeId = parseInt(String(req.params.disputeId));
+    const { resolution, resolutionNote } = req.body;
+
+    const member = await assertCircleMember(circleId, userId);
+    if (!member) {
+      res.status(404).json({ error: "Circle not found" });
+      return;
+    }
+
+    const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+    if (!isAdminOrOwner) {
+      res.status(403).json({ error: "Only admins can resolve disputes" });
+      return;
+    }
+
+    const dispute = await db
+      .select()
+      .from(disputesTable)
+      .where(and(eq(disputesTable.id, disputeId), eq(disputesTable.circleId, circleId)))
+      .limit(1)
+      .then((r) => r[0]);
+
+    if (!dispute) {
+      res.status(404).json({ error: "Dispute not found" });
+      return;
+    }
+
+    if (dispute.status !== "open") {
+      res.status(409).json({ error: "Dispute is already resolved" });
+      return;
+    }
+
+    const [updated] = await db
+      .update(disputesTable)
+      .set({
+        status: resolution,
+        resolvedByUserId: userId,
+        resolutionNote,
+        resolvedAt: new Date(),
+      })
+      .where(eq(disputesTable.id, disputeId))
+      .returning();
+
+    await createAuditLog({
+      circleId,
+      actorUserId: userId,
+      action: `dispute_${resolution}`,
+      targetEntityType: "dispute",
+      targetEntityId: disputeId,
+      metadata: { resolutionNote: resolutionNote.slice(0, 200) },
+    });
+
+    await createNotification({
+      userId: dispute.raisedByUserId,
+      circleId,
+      notificationType: "dispute_resolved",
+      title: `Your dispute has been ${resolution}`,
+      body: resolutionNote,
+      targetEntityType: "dispute",
+      targetEntityId: disputeId,
+    });
+
+    const resolverName = await getUserName(userId);
+    const raiserName = await getUserName(dispute.raisedByUserId);
+    res.json(disputeToApi(updated, raiserName, resolverName));
+  },
+);
+
+export default router;
