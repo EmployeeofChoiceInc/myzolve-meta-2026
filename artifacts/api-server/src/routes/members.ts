@@ -357,49 +357,51 @@ router.post("/invitations/:token/accept", requireAuth, validateParams(invitation
     return;
   }
 
-  const existingMembership = await db
-    .select()
-    .from(circleMembersTable)
-    .where(
-      and(
-        eq(circleMembersTable.circleId, invitation.circleId),
-        eq(circleMembersTable.userId, userId),
-      ),
-    )
-    .limit(1)
-    .then((r) => r[0] ?? null);
-
-  await db
-    .update(circleInvitationsTable)
-    .set({ status: "accepted", acceptedAt: new Date() })
-    .where(eq(circleInvitationsTable.id, invitation.id));
-
   const user = req.dbUser!;
+  const now = new Date();
 
-  if (existingMembership) {
-    if (existingMembership.status === "active") {
-      res.json(memberToApi(existingMembership, { displayName: user.displayName, email: user.email }));
-      return;
+  const member = await db.transaction(async (tx) => {
+    const existingMembership = await tx
+      .select()
+      .from(circleMembersTable)
+      .where(
+        and(
+          eq(circleMembersTable.circleId, invitation.circleId),
+          eq(circleMembersTable.userId, userId),
+        ),
+      )
+      .limit(1)
+      .then((r) => r[0] ?? null);
+
+    await tx
+      .update(circleInvitationsTable)
+      .set({ status: "accepted", acceptedAt: now })
+      .where(eq(circleInvitationsTable.id, invitation.id));
+
+    if (existingMembership) {
+      if (existingMembership.status === "active") {
+        return existingMembership;
+      }
+      const [reactivated] = await tx
+        .update(circleMembersTable)
+        .set({ status: "active", role: invitation.role, joinedAt: now, updatedAt: now })
+        .where(eq(circleMembersTable.id, existingMembership.id))
+        .returning();
+      return reactivated;
     }
-    const [reactivated] = await db
-      .update(circleMembersTable)
-      .set({ status: "active", role: invitation.role, joinedAt: new Date(), updatedAt: new Date() })
-      .where(eq(circleMembersTable.id, existingMembership.id))
-      .returning();
-    res.json(memberToApi(reactivated, { displayName: user.displayName, email: user.email }));
-    return;
-  }
 
-  const [member] = await db
-    .insert(circleMembersTable)
-    .values({
-      circleId: invitation.circleId,
-      userId,
-      role: invitation.role,
-      status: "active",
-      joinedAt: new Date(),
-    })
-    .returning();
+    const [inserted] = await tx
+      .insert(circleMembersTable)
+      .values({
+        circleId: invitation.circleId,
+        userId,
+        role: invitation.role,
+        status: "active",
+        joinedAt: now,
+      })
+      .returning();
+    return inserted;
+  });
 
   res.json(memberToApi(member, { displayName: user.displayName, email: user.email }));
 });
