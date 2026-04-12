@@ -38,7 +38,7 @@ export const reactionsTable = pgTable("reactions", {
   reactionType: text("reaction_type").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
-  uniqueIndex("reactions_user_entity_uniq").on(table.userId, table.targetEntityType, table.targetEntityId, table.reactionType),
+  uniqueIndex("reactions_user_entity_uniq").on(table.circleId, table.userId, table.targetEntityType, table.targetEntityId, table.reactionType),
 ]);
 
 export const gratitudeNotesTable = pgTable("gratitude_notes", {

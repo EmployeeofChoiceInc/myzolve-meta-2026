@@ -95,22 +95,24 @@ async function freezeEntity(targetEntityType: string, targetEntityId: number, ci
         and(
           eq(supportContributionsTable.id, targetEntityId),
           eq(supportContributionsTable.circleId, circleId),
+          eq(supportContributionsTable.status, "pledged"),
         ),
       );
   } else if (targetEntityType === "repayment") {
-    const request = await db
-      .select({ circleId: supportRequestsTable.circleId })
+    const repayment = await db
+      .select({ id: repaymentsTable.id, status: repaymentsTable.status })
       .from(repaymentsTable)
       .innerJoin(supportRequestsTable, eq(repaymentsTable.requestId, supportRequestsTable.id))
       .where(
         and(
           eq(repaymentsTable.id, targetEntityId),
           eq(supportRequestsTable.circleId, circleId),
+          eq(repaymentsTable.status, "pending_confirmation"),
         ),
       )
       .limit(1)
       .then((r) => r[0] ?? null);
-    if (request) {
+    if (repayment) {
       await db
         .update(repaymentsTable)
         .set({ status: "disputed" })

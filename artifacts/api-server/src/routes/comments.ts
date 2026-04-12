@@ -262,6 +262,7 @@ router.post(
       .from(reactionsTable)
       .where(
         and(
+          eq(reactionsTable.circleId, circleId),
           eq(reactionsTable.userId, userId),
           eq(reactionsTable.targetEntityType, entityType),
           eq(reactionsTable.targetEntityId, entityId),

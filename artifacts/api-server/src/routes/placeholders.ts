@@ -241,11 +241,33 @@ router.post(
         ),
       )
       .limit(1)
-      .then((r) => r[0]);
+      .then((r) => r[0] ?? null);
 
     if (!existingMembership) {
-      res.status(403).json({ error: "You must be a circle member to claim a placeholder" });
-      return;
+      const claimantUser = await db
+        .select({ email: usersTable.email })
+        .from(usersTable)
+        .where(eq(usersTable.id, userId))
+        .limit(1)
+        .then((r) => r[0] ?? null);
+
+      const emailMatches =
+        placeholder.email &&
+        claimantUser?.email &&
+        placeholder.email.toLowerCase() === claimantUser.email.toLowerCase();
+
+      if (!emailMatches) {
+        res.status(403).json({ error: "You must be a circle member or match the placeholder email to claim" });
+        return;
+      }
+
+      await db.insert(circleMembersTable).values({
+        circleId,
+        userId,
+        role: "member",
+        status: "active",
+        joinedAt: new Date(),
+      });
     }
 
     const [updated] = await db
