@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
-import { validateBody, validateParams, circleIdParam, requestIdParam } from "../middlewares/validate";
+import { validateBody, validateParams, circleIdParam, requestIdParam, contributionIdParam, repaymentIdParam } from "../middlewares/validate";
 import { db } from "@workspace/db";
 import {
   supportRequestsTable,
@@ -582,7 +582,7 @@ router.post("/requests/:requestId/confirm-receipt", requireAuth, validateParams(
   res.json(requestToApi(updated, userName));
 });
 
-router.post("/contributions/:contributionId/forgive", requireAuth, async (req, res) => {
+router.post("/contributions/:contributionId/forgive", requireAuth, validateParams(contributionIdParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const contributionId = parseInt(String(req.params.contributionId));
 
@@ -879,7 +879,7 @@ router.get("/circles/:circleId/repayments", requireAuth, validateParams(circleId
   res.json(result);
 });
 
-router.post("/repayments/:repaymentId/confirm", requireAuth, async (req, res) => {
+router.post("/repayments/:repaymentId/confirm", requireAuth, validateParams(repaymentIdParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const repaymentId = parseInt(String(req.params.repaymentId));
 

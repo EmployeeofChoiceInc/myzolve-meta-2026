@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
-import { validateBody, validateParams, circleIdParam, memberIdParam, circleAndMemberIdParam } from "../middlewares/validate";
+import { validateBody, validateParams, circleIdParam, memberIdParam, circleAndMemberIdParam, invitationIdParam, invitationTokenParam } from "../middlewares/validate";
 import { db } from "@workspace/db";
 import {
   circleMembersTable,
@@ -324,7 +324,7 @@ router.post("/circles/:circleId/invitations", requireAuth, validateParams(circle
   });
 });
 
-router.post("/invitations/:token/accept", requireAuth, async (req, res) => {
+router.post("/invitations/:token/accept", requireAuth, validateParams(invitationTokenParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const token = String(req.params.token);
 
@@ -377,7 +377,7 @@ router.post("/invitations/:token/accept", requireAuth, async (req, res) => {
   res.json(memberToApi(member, { displayName: user.displayName, email: user.email }));
 });
 
-router.delete("/invitations/:invitationId", requireAuth, async (req, res) => {
+router.delete("/invitations/:invitationId", requireAuth, validateParams(invitationIdParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const invitationId = parseInt(String(req.params.invitationId));
 

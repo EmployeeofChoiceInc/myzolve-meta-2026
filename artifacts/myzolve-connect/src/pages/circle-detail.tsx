@@ -1,13 +1,41 @@
-import { useParams, Link } from "wouter";
-import { useGetCircle, useGetCircleStats, getGetCircleQueryKey } from "@workspace/api-client-react";
-import { Heart, HandHeart, Sparkles, BookOpen, Users, Settings } from "lucide-react";
+import { useParams, Link, useLocation } from "wouter";
+import { 
+  useGetCircle, 
+  useGetCircleStats, 
+  useUpdateCircle,
+  useDeleteCircle,
+  getGetCircleQueryKey,
+  getListCirclesQueryKey,
+} from "@workspace/api-client-react";
+import { Heart, HandHeart, Sparkles, BookOpen, Users, Settings, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect, useRef } from "react";
+import { useToast } from "@/hooks/use-toast";
+
+const circleSettingsSchema = z.object({
+  name: z.string().min(1, "Name is required").max(100),
+  description: z.string().max(1000).optional(),
+});
 
 export default function CircleDetailPage() {
   const { id } = useParams<{ id: string }>();
   const circleId = parseInt(id!);
+  const [, navigate] = useLocation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const initialized = useRef(false);
   
   const { data: circle, isLoading: circleLoading } = useGetCircle(circleId, { 
     query: { enabled: !!circleId, queryKey: getGetCircleQueryKey(circleId) } 
@@ -16,6 +44,57 @@ export default function CircleDetailPage() {
   const { data: stats, isLoading: statsLoading } = useGetCircleStats(circleId, {
     query: { enabled: !!circleId, queryKey: ["circle-stats", circleId] as const }
   });
+
+  const updateCircle = useUpdateCircle();
+  const deleteCircle = useDeleteCircle();
+
+  const form = useForm<z.infer<typeof circleSettingsSchema>>({
+    resolver: zodResolver(circleSettingsSchema),
+    defaultValues: { name: "", description: "" },
+  });
+
+  useEffect(() => {
+    if (circle && !initialized.current) {
+      form.reset({
+        name: circle.name || "",
+        description: circle.description || "",
+      });
+      initialized.current = true;
+    }
+  }, [circle, form]);
+
+  function onSubmitSettings(values: z.infer<typeof circleSettingsSchema>) {
+    updateCircle.mutate(
+      { circleId, data: values },
+      {
+        onSuccess: (updated) => {
+          queryClient.setQueryData(getGetCircleQueryKey(circleId), updated);
+          queryClient.invalidateQueries({ queryKey: getListCirclesQueryKey() });
+          setSettingsOpen(false);
+          toast({ title: "Circle updated" });
+        },
+        onError: () => {
+          toast({ title: "Could not update circle", variant: "destructive" });
+        },
+      }
+    );
+  }
+
+  function handleDeleteCircle() {
+    deleteCircle.mutate(
+      { circleId },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListCirclesQueryKey() });
+          toast({ title: "Circle removed", description: "The circle has been permanently removed." });
+          navigate("/circles");
+        },
+        onError: () => {
+          toast({ title: "Could not remove circle", variant: "destructive" });
+        },
+      }
+    );
+  }
 
   const CIRCLE_TYPE_LABELS: Record<string, string> = {
     family: "Family",
@@ -43,10 +122,10 @@ export default function CircleDetailPage() {
   if (!circle) return <div>Circle not found</div>;
 
   const isAdmin = circle.myRole === 'owner' || circle.myRole === 'admin';
+  const isOwner = circle.myRole === 'owner';
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Header */}
       <div className="bg-card border border-border/50 rounded-3xl p-8 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4 pointer-events-none" />
         
@@ -68,7 +147,7 @@ export default function CircleDetailPage() {
           
           <div className="flex gap-3">
             {isAdmin && (
-              <Button variant="outline" className="rounded-full bg-card">
+              <Button variant="outline" className="rounded-full bg-card" onClick={() => setSettingsOpen(true)}>
                 <Settings className="w-4 h-4 mr-2" /> Settings
               </Button>
             )}
@@ -79,7 +158,6 @@ export default function CircleDetailPage() {
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="rounded-2xl shadow-none border-border/50 bg-card">
           <CardContent className="p-6">
@@ -115,7 +193,6 @@ export default function CircleDetailPage() {
         </Card>
       </div>
 
-      {/* Navigation Areas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <Link href={`/circles/${circle.id}/requests`}>
           <Card className="rounded-3xl hover:shadow-md transition-shadow cursor-pointer h-full border-border/50 group">
@@ -177,6 +254,95 @@ export default function CircleDetailPage() {
           </Card>
         </Link>
       </div>
+
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="sm:max-w-[480px] rounded-3xl">
+          <DialogHeader>
+            <DialogTitle>Circle Settings</DialogTitle>
+            <DialogDescription>Update your circle's name and description.</DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmitSettings)} className="space-y-4 pt-2">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Circle Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Our Family Circle" {...field} className="rounded-xl" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="A brief description of your circle..." 
+                        className="resize-none rounded-xl" 
+                        rows={3}
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-between items-center pt-2">
+                {isOwner && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive rounded-full gap-1.5"
+                    onClick={() => setConfirmDelete(true)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Remove Circle
+                  </Button>
+                )}
+                <div className="flex gap-3 ml-auto">
+                  <Button type="button" variant="outline" className="rounded-full" onClick={() => setSettingsOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={updateCircle.isPending} className="rounded-full">
+                    {updateCircle.isPending ? "Saving..." : "Save Changes"}
+                  </Button>
+                </div>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <DialogContent className="sm:max-w-[360px] rounded-3xl">
+          <DialogHeader>
+            <DialogTitle>Remove this circle?</DialogTitle>
+            <DialogDescription>
+              This will permanently remove <strong>{circle.name}</strong> and all its data. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="outline" className="rounded-full" onClick={() => setConfirmDelete(false)}>
+              Keep Circle
+            </Button>
+            <Button
+              variant="destructive"
+              className="rounded-full"
+              disabled={deleteCircle.isPending}
+              onClick={handleDeleteCircle}
+            >
+              {deleteCircle.isPending ? "Removing..." : "Yes, Remove"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

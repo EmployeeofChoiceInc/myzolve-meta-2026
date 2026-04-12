@@ -75,3 +75,24 @@ export const circleAndMemberIdParam = z.object({
   circleId: z.coerce.number().int().positive(),
   memberId: z.coerce.number().int().positive(),
 });
+
+export const invitationIdParam = z.object({
+  invitationId: z.coerce.number().int().positive(),
+});
+
+export const invitationTokenParam = z.object({
+  token: z.string().min(1).max(200),
+});
+
+export const contributionIdParam = z.object({
+  contributionId: z.coerce.number().int().positive(),
+});
+
+export const repaymentIdParam = z.object({
+  repaymentId: z.coerce.number().int().positive(),
+});
+
+export const paginationQuery = z.object({
+  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  offset: z.coerce.number().int().min(0).optional().default(0),
+});
