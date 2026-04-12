@@ -24,7 +24,7 @@ const createServiceSchema = z.object({
   locationMode: z.enum(["in_person", "remote", "hybrid"]).optional().default("remote"),
   exchangePreference: z.enum(["free", "barter", "paid_later", "open_to_discuss"]).optional().default("free"),
   estimatedValue: z.number().positive().optional(),
-  visibilityScope: z.enum(["whole_circle", "close_contacts_only"]).optional().default("whole_circle"),
+  visibilityScope: z.enum(["whole_circle", "selected_members", "admins_only"]).optional().default("whole_circle"),
 });
 
 const updateServiceSchema = z.object({
@@ -36,7 +36,7 @@ const updateServiceSchema = z.object({
   exchangePreference: z.enum(["free", "barter", "paid_later", "open_to_discuss"]).optional(),
   estimatedValue: z.number().positive().optional(),
   status: z.enum(["open", "matched", "in_progress", "completed", "withdrawn", "archived"]).optional(),
-  visibilityScope: z.enum(["whole_circle", "close_contacts_only"]).optional(),
+  visibilityScope: z.enum(["whole_circle", "selected_members", "admins_only"]).optional(),
 });
 
 const createMatchSchema = z.object({

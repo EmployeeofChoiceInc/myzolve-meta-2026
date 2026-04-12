@@ -18,13 +18,13 @@ const router = Router();
 
 const createInvitationSchema = z.object({
   invitedEmail: z.string().email().optional(),
-  role: z.enum(["member", "admin"]).optional().default("member"),
+  role: z.enum(["member", "admin", "guest"]).optional().default("member"),
   customMessage: z.string().max(1000).optional(),
   expiresInDays: z.number().int().min(1).max(365).optional().default(7),
 });
 
 const updateMemberSchema = z.object({
-  role: z.enum(["member", "admin"]),
+  role: z.enum(["member", "admin", "guest"]),
 });
 
 function memberToApi(

@@ -31,14 +31,14 @@ const createRequestSchema = z.object({
   repaymentStyle: z.enum(["one_time", "installments", "flexible", "no_repayment", "gift", "discuss_later"]).optional().default("discuss_later"),
   urgencyLevel: z.enum(["low", "normal", "important", "urgent", "emergency"]).optional().default("normal"),
   category: z.string().max(100).optional().default("other"),
-  privacyLevel: z.enum(["standard", "sensitive", "very_sensitive"]).optional().default("standard"),
+  privacyLevel: z.enum(["standard", "sensitive", "fully_private"]).optional().default("standard"),
   dueDate: z.string().datetime().optional(),
 });
 
 const createContributionSchema = z.object({
   amount: z.number().positive(),
   currency: z.string().length(3).optional().default("USD"),
-  contributionType: z.enum(["loan", "gift", "partial_gift"]).optional().default("loan"),
+  contributionType: z.enum(["loan", "gift", "installment", "partial_support", "pledge"]).optional().default("loan"),
   note: z.string().max(1000).optional(),
   paymentMethod: z.string().optional(),
 });

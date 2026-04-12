@@ -23,8 +23,8 @@ const createCircleSchema = z.object({
   circleType: z.enum(["family", "chosen_family", "friends", "caregiving_circle", "neighborhood_circle", "other"]).optional().default("family"),
   description: z.string().max(1000).optional(),
   currency: z.string().length(3).optional().default("USD"),
-  privacyMode: z.enum(["private", "invite_only", "public"]).optional().default("private"),
-  ledgerMode: z.enum(["private", "members_only", "transparent"]).optional().default("private"),
+  privacyMode: z.enum(["private", "hidden", "discoverable"]).optional().default("private"),
+  ledgerMode: z.enum(["private", "summary", "full", "admin_only"]).optional().default("private"),
 });
 
 function circleToApi(circle: Circle, memberCount: number, myRole: string | null) {

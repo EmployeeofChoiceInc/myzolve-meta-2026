@@ -1,58 +1,88 @@
 import { Link } from "wouter";
-import { Plus, HandHeart, CalendarClock, ArrowRight } from "lucide-react";
+import { Plus, HandHeart, CalendarClock, ArrowRight, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { useListCircles, useListSupportRequests } from "@workspace/api-client-react";
-import { useState } from "react";
+import { useListCircles, useGetCircleDashboard, useListSupportRequests } from "@workspace/api-client-react";
 
-function OpenRequestsSection({ circleId }: { circleId: number }) {
-  const { data: requests, isLoading } = useListSupportRequests(circleId);
-  const open = requests?.filter((r) => r.status !== "completed" && r.status !== "archived" && r.status !== "canceled").slice(0, 3);
+function CircleDashboardSection({ circleId }: { circleId: number }) {
+  const { data: dashboard, isLoading } = useGetCircleDashboard(circleId);
+  const { data: requests } = useListSupportRequests(circleId);
 
-  if (isLoading) return <div className="h-24 bg-muted/30 rounded-2xl animate-pulse" />;
-  if (!open || open.length === 0) return null;
+  const openRequests = requests?.filter((r) => r.status !== "completed" && r.status !== "archived" && r.status !== "canceled").slice(0, 3);
+
+  if (isLoading) return <div className="space-y-3"><div className="h-24 bg-muted/30 rounded-2xl animate-pulse" /><div className="h-24 bg-muted/30 rounded-2xl animate-pulse" /></div>;
 
   return (
-    <div className="space-y-3">
-      {open.map((req) => {
-        const pct = req.amountRequested > 0 ? Math.min(100, Math.round(((req.amountFunded ?? 0) / req.amountRequested) * 100)) : 0;
-        return (
-          <Link key={req.id} href={`/requests/${req.id}`}>
-            <Card className="rounded-2xl border-border/50 hover:shadow-sm transition-all cursor-pointer">
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm leading-tight truncate">{req.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{req.createdByName}</p>
-                  </div>
-                  <Badge variant="outline" className="rounded-full text-xs ml-2 shrink-0 bg-primary/5 text-primary border-transparent">
-                    {req.urgencyLevel}
-                  </Badge>
-                </div>
-                <div className="space-y-1.5">
-                  <Progress value={pct} className="h-1.5 bg-primary/10" />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>${req.amountFunded ?? 0} supported</span>
-                    <span>Goal: ${req.amountRequested}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        );
-      })}
+    <div className="space-y-6">
+      {dashboard && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-primary/5 rounded-2xl p-4 text-center">
+            <div className="text-2xl font-bold text-primary">{dashboard.openRequestsCount}</div>
+            <div className="text-xs text-muted-foreground mt-1">Open requests</div>
+          </div>
+          <div className="bg-secondary/5 rounded-2xl p-4 text-center">
+            <div className="text-2xl font-bold text-secondary">{dashboard.activeServices}</div>
+            <div className="text-xs text-muted-foreground mt-1">Active services</div>
+          </div>
+          <div className={`rounded-2xl p-4 text-center ${dashboard.urgentRequestsCount > 0 ? "bg-orange-500/5" : "bg-muted/30"}`}>
+            <div className={`text-2xl font-bold ${dashboard.urgentRequestsCount > 0 ? "text-orange-600" : "text-muted-foreground"}`}>{dashboard.urgentRequestsCount}</div>
+            <div className="text-xs text-muted-foreground mt-1">Urgent</div>
+          </div>
+        </div>
+      )}
+
+      {openRequests && openRequests.length > 0 && (
+        <div className="space-y-3">
+          {openRequests.map((req) => {
+            const pct = req.amountRequested > 0 ? Math.min(100, Math.round(((req.amountFunded ?? 0) / req.amountRequested) * 100)) : 0;
+            return (
+              <Link key={req.id} href={`/requests/${req.id}`}>
+                <Card className="rounded-2xl border-border/50 hover:shadow-sm transition-all cursor-pointer">
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm leading-tight truncate">{req.title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{req.createdByName}</p>
+                      </div>
+                      <Badge variant="outline" className="rounded-full text-xs ml-2 shrink-0 bg-primary/5 text-primary border-transparent">
+                        {req.urgencyLevel}
+                      </Badge>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Progress value={pct} className="h-1.5 bg-primary/10" />
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>${req.amountFunded ?? 0} supported</span>
+                        <span>Goal: ${req.amountRequested}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
+      {(!openRequests || openRequests.length === 0) && (
+        <div className="text-center py-8 text-muted-foreground">
+          <CalendarClock className="w-8 h-8 mx-auto mb-2 opacity-20" />
+          <p className="text-sm">No open requests right now. All is well.</p>
+        </div>
+      )}
     </div>
   );
 }
 
 function RepaymentRemindersSection({ circleId }: { circleId: number }) {
-  const { data: requests, isLoading } = useListSupportRequests(circleId);
-  const repaymentDue = requests?.filter((r) => r.repaymentExpected && (r.status === "fully_funded" || r.status === "completed")).slice(0, 3);
+  const { data: dashboard, isLoading } = useGetCircleDashboard(circleId);
 
   if (isLoading) return <div className="h-16 bg-muted/30 rounded-2xl animate-pulse" />;
-  if (!repaymentDue || repaymentDue.length === 0) {
+
+  const reminders = dashboard?.pendingRepayments ?? [];
+
+  if (reminders.length === 0) {
     return (
       <p className="text-sm text-muted-foreground text-center py-4">
         You're all caught up on returning support.
@@ -62,12 +92,12 @@ function RepaymentRemindersSection({ circleId }: { circleId: number }) {
 
   return (
     <div className="space-y-2">
-      {repaymentDue.map((req) => (
-        <Link key={req.id} href={`/requests/${req.id}`}>
+      {reminders.slice(0, 3).map((reminder) => (
+        <Link key={reminder.requestId} href={`/requests/${reminder.requestId}`}>
           <div className="flex items-center justify-between text-sm p-3 bg-secondary/5 rounded-xl hover:bg-secondary/10 transition-colors cursor-pointer">
             <div>
-              <p className="font-medium text-foreground truncate max-w-[180px]">{req.title}</p>
-              <p className="text-xs text-muted-foreground">${req.amountFunded ?? 0} received</p>
+              <p className="font-medium text-foreground truncate max-w-[180px]">{reminder.requestTitle}</p>
+              <p className="text-xs text-muted-foreground">${reminder.amountOwed} to return</p>
             </div>
             <ArrowRight className="w-4 h-4 text-muted-foreground" />
           </div>
@@ -152,7 +182,7 @@ export default function DashboardPage() {
                   View all <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
-              <OpenRequestsSection circleId={firstCircleId} />
+              <CircleDashboardSection circleId={firstCircleId} />
             </section>
           )}
 
