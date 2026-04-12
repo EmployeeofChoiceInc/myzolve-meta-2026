@@ -3,10 +3,29 @@ import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
 import { validateBody, validateParams, circleIdParam } from "../middlewares/validate";
 import { db } from "@workspace/db";
-import { attachmentsTable } from "@workspace/db";
+import { attachmentsTable, supportRequestsTable, servicePostsTable, repaymentsTable } from "@workspace/db";
 import { eq, and, isNull } from "drizzle-orm";
 import { assertCircleMember, createAuditLog } from "../lib/helpers";
 import { ObjectStorageService } from "../lib/objectStorage";
+
+async function assertAttachmentEntityInCircle(circleId: number, entityType: string, entityId: number): Promise<boolean> {
+  if (entityType === "support_request") {
+    const [row] = await db.select({ id: supportRequestsTable.id }).from(supportRequestsTable)
+      .where(and(eq(supportRequestsTable.id, entityId), eq(supportRequestsTable.circleId, circleId))).limit(1);
+    return !!row;
+  }
+  if (entityType === "service_post") {
+    const [row] = await db.select({ id: servicePostsTable.id }).from(servicePostsTable)
+      .where(and(eq(servicePostsTable.id, entityId), eq(servicePostsTable.circleId, circleId))).limit(1);
+    return !!row;
+  }
+  if (entityType === "repayment") {
+    const [row] = await db.select({ id: repaymentsTable.id }).from(repaymentsTable)
+      .where(eq(repaymentsTable.id, entityId)).limit(1);
+    return !!row;
+  }
+  return false;
+}
 
 const router = Router();
 const storage = new ObjectStorageService();
@@ -98,6 +117,12 @@ router.post(
     const member = await assertCircleMember(circleId, userId);
     if (!member) {
       res.status(404).json({ error: "Circle not found" });
+      return;
+    }
+
+    const entityExists = await assertAttachmentEntityInCircle(circleId, entityType, entityId);
+    if (!entityExists) {
+      res.status(404).json({ error: `${entityType.replace("_", " ")} not found in this circle` });
       return;
     }
 

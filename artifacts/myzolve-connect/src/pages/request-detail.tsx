@@ -7,7 +7,7 @@ import {
   useGetMe,
   getGetSupportRequestQueryKey
 } from "@workspace/api-client-react";
-import { ArrowLeft, HandHeart, CheckCircle2, Clock, RotateCcw } from "lucide-react";
+import { ArrowLeft, HandHeart, CheckCircle2, Clock, RotateCcw, MessageCircle, Send, Heart, ThumbsUp, Star, Smile } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,14 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { useComments, useCreateComment, useReactions, useToggleReaction } from "@/hooks/use-api";
+
+const REACTION_ICONS: Record<string, React.ReactNode> = {
+  heart: <Heart className="w-3.5 h-3.5" />,
+  support: <HandHeart className="w-3.5 h-3.5" />,
+  thank_you: <Star className="w-3.5 h-3.5" />,
+  got_it: <Smile className="w-3.5 h-3.5" />,
+};
 
 export default function RequestDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -39,6 +47,7 @@ export default function RequestDetailPage() {
 
   const [offerOpen, setOfferOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
+  const [commentBody, setCommentBody] = useState("");
 
   const [offerForm, setOfferForm] = useState<{
     amount: string;
@@ -54,6 +63,13 @@ export default function RequestDetailPage() {
     amount: "",
     note: "",
   });
+
+  const circleId = requestData?.circleId ?? 0;
+
+  const { data: comments } = useComments(circleId, "support_request", requestId);
+  const { data: reactions } = useReactions(circleId, "support_request", requestId);
+  const createComment = useCreateComment(circleId, "support_request", requestId);
+  const toggleReaction = useToggleReaction(circleId, "support_request", requestId);
 
   if (isLoading) return <div className="p-8 animate-pulse flex flex-col gap-4"><div className="h-8 bg-muted w-1/3 rounded"></div><div className="h-64 bg-muted rounded-3xl"></div></div>;
   if (!requestData) return <div>Request not found</div>;
@@ -127,6 +143,26 @@ export default function RequestDetailPage() {
     );
   };
 
+  const handlePostComment = () => {
+    if (!commentBody.trim()) return;
+    createComment.mutate(
+      { body: commentBody.trim() },
+      {
+        onSuccess: () => {
+          setCommentBody("");
+          toast({ title: "Comment added" });
+        },
+        onError: () => {
+          toast({ title: "Could not post comment.", variant: "destructive" });
+        },
+      }
+    );
+  };
+
+  const handleReaction = (reactionType: string) => {
+    toggleReaction.mutate(reactionType);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "fully_funded": return "bg-secondary/10 text-secondary";
@@ -189,6 +225,27 @@ export default function RequestDetailPage() {
             )}
           </div>
 
+          {/* Reactions */}
+          {circleId > 0 && (
+            <div className="flex gap-2 flex-wrap">
+              {(["heart", "support", "thank_you", "got_it"] as const).map((type) => {
+                const count = reactions?.counts?.[type] ?? 0;
+                const mine = reactions?.myReactions?.includes(type);
+                return (
+                  <button
+                    key={type}
+                    onClick={() => handleReaction(type)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${mine ? "bg-primary/10 border-primary/20 text-primary" : "bg-muted/50 border-border text-muted-foreground hover:bg-muted"}`}
+                  >
+                    {REACTION_ICONS[type]}
+                    <span className="capitalize">{type.replace("_", " ")}</span>
+                    {count > 0 && <span className="ml-0.5 text-xs opacity-70">{count}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
             {!isCreator && request.status !== "completed" && request.status !== "fully_funded" && (
@@ -237,6 +294,61 @@ export default function RequestDetailPage() {
               </Card>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Comments Section */}
+      {circleId > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-xl font-semibold flex items-center gap-2">
+            <MessageCircle className="w-5 h-5 text-muted-foreground" />
+            Kind Words {comments && comments.length > 0 && <span className="text-sm font-normal text-muted-foreground">({comments.length})</span>}
+          </h3>
+
+          {/* Comment Input */}
+          <div className="flex gap-3 items-start">
+            <div className="flex-1">
+              <Textarea
+                placeholder="Leave a warm message or word of encouragement..."
+                value={commentBody}
+                onChange={(e) => setCommentBody(e.target.value)}
+                className="rounded-2xl resize-none min-h-[80px]"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handlePostComment();
+                }}
+              />
+            </div>
+            <Button
+              size="icon"
+              className="rounded-full mt-1 shrink-0"
+              onClick={handlePostComment}
+              disabled={!commentBody.trim() || createComment.isPending}
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Comment List */}
+          {comments && comments.length > 0 ? (
+            <div className="space-y-3">
+              {comments.map((comment) => (
+                <Card key={comment.id} className="rounded-2xl border-border/50 shadow-none">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">
+                        {(comment.authorName ?? "?")[0].toUpperCase()}
+                      </div>
+                      <span className="font-medium text-sm">{comment.authorName}</span>
+                      <span className="text-xs text-muted-foreground ml-auto">{format(new Date(comment.createdAt), "MMM d")}</span>
+                    </div>
+                    <p className="text-sm text-foreground/90 leading-relaxed">{comment.body}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground py-2">Be the first to leave a kind word.</p>
+          )}
         </div>
       )}
 

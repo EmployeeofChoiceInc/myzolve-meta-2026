@@ -6,11 +6,14 @@ import {
   useDeleteCircle,
   getGetCircleQueryKey,
   getListCirclesQueryKey,
+  useListCircleConnections,
+  useCreateCircleConnection,
 } from "@workspace/api-client-react";
-import { Heart, HandHeart, Sparkles, BookOpen, Users, Settings, Trash2 } from "lucide-react";
+import { Heart, HandHeart, Sparkles, BookOpen, Users, Settings, Trash2, UserPlus, Link2, AlertTriangle, ClipboardList, Shield, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -21,10 +24,30 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import {
+  usePlaceholderMembers,
+  useCreatePlaceholderMember,
+  useDisputes,
+  useResolveDispute,
+  useAuditLogs,
+} from "@/hooks/use-api";
 
 const circleSettingsSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   description: z.string().max(1000).optional(),
+});
+
+const placeholderSchema = z.object({
+  displayName: z.string().min(1, "Name is required").max(100),
+  relationship: z.string().max(100).optional(),
+  email: z.string().email().optional().or(z.literal("")),
+  notes: z.string().max(500).optional(),
+});
+
+const connectionSchema = z.object({
+  receiverCircleId: z.coerce.number().int().positive("Enter a valid circle ID"),
+  message: z.string().max(500).optional(),
 });
 
 export default function CircleDetailPage() {
@@ -35,6 +58,9 @@ export default function CircleDetailPage() {
   const queryClient = useQueryClient();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [placeholderOpen, setPlaceholderOpen] = useState(false);
+  const [connectionOpen, setConnectionOpen] = useState(false);
+  const [adminExpanded, setAdminExpanded] = useState(false);
   const initialized = useRef(false);
   
   const { data: circle, isLoading: circleLoading } = useGetCircle(circleId, { 
@@ -45,12 +71,32 @@ export default function CircleDetailPage() {
     query: { enabled: !!circleId, queryKey: ["circle-stats", circleId] as const }
   });
 
+  const { data: placeholders } = usePlaceholderMembers(circleId);
+  const { data: disputes } = useDisputes(circleId);
+  const { data: auditLogs } = useAuditLogs(circleId);
+  const { data: connections } = useListCircleConnections(circleId, {
+    query: { enabled: !!circleId, queryKey: ["circle-connections", circleId] as const }
+  });
+
   const updateCircle = useUpdateCircle();
   const deleteCircle = useDeleteCircle();
+  const createPlaceholder = useCreatePlaceholderMember(circleId);
+  const resolveDispute = useResolveDispute(circleId);
+  const createConnection = useCreateCircleConnection();
 
   const form = useForm<z.infer<typeof circleSettingsSchema>>({
     resolver: zodResolver(circleSettingsSchema),
     defaultValues: { name: "", description: "" },
+  });
+
+  const placeholderForm = useForm<z.infer<typeof placeholderSchema>>({
+    resolver: zodResolver(placeholderSchema),
+    defaultValues: { displayName: "", relationship: "", email: "", notes: "" },
+  });
+
+  const connectionForm = useForm<z.infer<typeof connectionSchema>>({
+    resolver: zodResolver(connectionSchema),
+    defaultValues: { receiverCircleId: 0, message: "" },
   });
 
   useEffect(() => {
@@ -96,6 +142,54 @@ export default function CircleDetailPage() {
     );
   }
 
+  function onSubmitPlaceholder(values: z.infer<typeof placeholderSchema>) {
+    createPlaceholder.mutate(
+      {
+        displayName: values.displayName,
+        relationship: values.relationship || undefined,
+        email: values.email || undefined,
+        notes: values.notes || undefined,
+      },
+      {
+        onSuccess: () => {
+          toast({ title: "Placeholder member added" });
+          setPlaceholderOpen(false);
+          placeholderForm.reset();
+        },
+        onError: () => {
+          toast({ title: "Could not add placeholder member", variant: "destructive" });
+        },
+      }
+    );
+  }
+
+  function onSubmitConnection(values: z.infer<typeof connectionSchema>) {
+    createConnection.mutate(
+      { circleId, data: { receiverCircleId: values.receiverCircleId, message: values.message || undefined } },
+      {
+        onSuccess: () => {
+          toast({ title: "Connection request sent" });
+          setConnectionOpen(false);
+          connectionForm.reset();
+          queryClient.invalidateQueries({ queryKey: ["circle-connections", circleId] });
+        },
+        onError: () => {
+          toast({ title: "Could not send connection request", variant: "destructive" });
+        },
+      }
+    );
+  }
+
+  function handleResolveDispute(disputeId: number) {
+    resolveDispute.mutate(
+      { disputeId, resolution: "resolved", resolutionNote: "Resolved by circle admin" },
+      {
+        onSuccess: () => toast({ title: "Dispute resolved" }),
+        onError: () => toast({ title: "Could not resolve dispute", variant: "destructive" }),
+      }
+    );
+  }
+
   const CIRCLE_TYPE_LABELS: Record<string, string> = {
     family: "Family",
     chosen_family: "Chosen Family",
@@ -123,6 +217,8 @@ export default function CircleDetailPage() {
 
   const isAdmin = circle.myRole === 'owner' || circle.myRole === 'admin';
   const isOwner = circle.myRole === 'owner';
+
+  const openDisputes = disputes?.filter((d) => d.status === "open") ?? [];
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -255,6 +351,265 @@ export default function CircleDetailPage() {
         </Link>
       </div>
 
+      {/* Placeholder Members */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Placeholder Members</h2>
+            <p className="text-sm text-muted-foreground">People you support who haven't joined yet</p>
+          </div>
+          <Button variant="outline" className="rounded-full gap-2" onClick={() => setPlaceholderOpen(true)}>
+            <UserPlus className="w-4 h-4" /> Add Placeholder
+          </Button>
+        </div>
+        {placeholders && placeholders.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {placeholders.map((p) => (
+              <Card key={p.id} className="rounded-2xl border-border/50 shadow-none">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
+                    {p.displayName[0].toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{p.displayName}</p>
+                    {p.relationship && <p className="text-xs text-muted-foreground">{p.relationship}</p>}
+                  </div>
+                  <Badge variant="outline" className="rounded-full text-xs capitalize shrink-0">
+                    {p.status}
+                  </Badge>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card className="rounded-2xl border-border/50 shadow-none border-dashed">
+            <CardContent className="p-6 text-center text-muted-foreground text-sm">
+              No placeholder members yet. Add someone who needs support but hasn't joined.
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Cross-circle Connections */}
+      {isAdmin && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold">Circle Connections</h2>
+              <p className="text-sm text-muted-foreground">Trusted connections to other circles</p>
+            </div>
+            <Button variant="outline" className="rounded-full gap-2" onClick={() => setConnectionOpen(true)}>
+              <Link2 className="w-4 h-4" /> Connect Circle
+            </Button>
+          </div>
+          {connections && connections.length > 0 ? (
+            <div className="space-y-3">
+              {connections.map((conn) => (
+                <Card key={conn.id} className="rounded-2xl border-border/50 shadow-none">
+                  <CardContent className="p-4 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-secondary/10 text-secondary flex items-center justify-center">
+                        <Link2 className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">
+                          {conn.initiatorCircleId === circleId ? `→ Circle #${conn.receiverCircleId}` : `← Circle #${conn.initiatorCircleId}`}
+                        </p>
+                        <p className="text-xs text-muted-foreground capitalize">{conn.permissionScope?.replace("_", " ")}</p>
+                      </div>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={`rounded-full text-xs capitalize ${conn.status === "approved" ? "border-secondary/30 text-secondary bg-secondary/10" : conn.status === "declined" ? "text-destructive border-destructive/30" : "bg-muted"}`}
+                    >
+                      {conn.status}
+                    </Badge>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="rounded-2xl border-border/50 shadow-none border-dashed">
+              <CardContent className="p-6 text-center text-muted-foreground text-sm">
+                No circle connections yet. Connect with a trusted circle to share services and referrals.
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* Admin Section: Disputes + Audit Log */}
+      {isAdmin && (
+        <div className="border border-border/50 rounded-3xl overflow-hidden">
+          <button
+            className="w-full flex items-center justify-between p-6 text-left bg-muted/30 hover:bg-muted/50 transition-colors"
+            onClick={() => setAdminExpanded(!adminExpanded)}
+          >
+            <div className="flex items-center gap-3">
+              <Shield className="w-5 h-5 text-muted-foreground" />
+              <div>
+                <p className="font-semibold">Circle Administration</p>
+                <p className="text-sm text-muted-foreground">
+                  {openDisputes.length > 0 ? `${openDisputes.length} open dispute${openDisputes.length > 1 ? "s" : ""}` : "Disputes and audit log"}
+                </p>
+              </div>
+              {openDisputes.length > 0 && (
+                <Badge variant="destructive" className="rounded-full ml-2">{openDisputes.length}</Badge>
+              )}
+            </div>
+            {adminExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+          </button>
+
+          {adminExpanded && (
+            <div className="p-6 space-y-8 border-t border-border/50">
+              {/* Disputes */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <AlertTriangle className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-medium">Disputes</h3>
+                </div>
+                {disputes && disputes.length > 0 ? (
+                  <div className="space-y-2">
+                    {disputes.slice(0, 10).map((d) => (
+                      <div key={d.id} className="flex items-start justify-between gap-3 p-3 bg-muted/30 rounded-2xl">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{d.reason}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {d.targetEntityType.replace("_", " ")} #{d.targetEntityId} · {format(new Date(d.createdAt), "MMM d")}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge
+                            variant="outline"
+                            className={`rounded-full text-xs capitalize ${d.status === "open" ? "border-destructive/30 text-destructive bg-destructive/5" : "bg-muted"}`}
+                          >
+                            {d.status}
+                          </Badge>
+                          {d.status === "open" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="rounded-full text-xs h-7 px-3"
+                              onClick={() => handleResolveDispute(d.id)}
+                              disabled={resolveDispute.isPending}
+                            >
+                              Resolve
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground py-2">No disputes. The circle is in harmony.</p>
+                )}
+              </div>
+
+              {/* Audit Log */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <ClipboardList className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-medium">Recent Activity Log</h3>
+                </div>
+                {auditLogs && auditLogs.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {auditLogs.slice(0, 15).map((log) => (
+                      <div key={log.id} className="flex items-center gap-3 py-2 px-3 bg-muted/20 rounded-xl text-sm">
+                        <span className="font-mono text-xs text-muted-foreground shrink-0">{format(new Date(log.createdAt), "MMM d HH:mm")}</span>
+                        <span className="font-medium text-foreground/80 truncate">{log.action.replace(/_/g, " ")}</span>
+                        {log.targetEntityType && (
+                          <span className="text-muted-foreground text-xs shrink-0 ml-auto">{log.targetEntityType} #{log.targetEntityId}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground py-2">No activity recorded yet.</p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Placeholder Member Dialog */}
+      <Dialog open={placeholderOpen} onOpenChange={setPlaceholderOpen}>
+        <DialogContent className="sm:max-w-[420px] rounded-3xl">
+          <DialogHeader>
+            <DialogTitle>Add Placeholder Member</DialogTitle>
+            <DialogDescription>Add someone you support who hasn't joined the app yet.</DialogDescription>
+          </DialogHeader>
+          <Form {...placeholderForm}>
+            <form onSubmit={placeholderForm.handleSubmit(onSubmitPlaceholder)} className="space-y-4 pt-2">
+              <FormField control={placeholderForm.control} name="displayName" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Name <span className="text-destructive">*</span></FormLabel>
+                  <FormControl><Input placeholder="Grandma Rosa" {...field} className="rounded-xl" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={placeholderForm.control} name="relationship" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Relationship <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                  <FormControl><Input placeholder="Grandmother, neighbor, friend..." {...field} className="rounded-xl" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={placeholderForm.control} name="email" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                  <FormControl><Input type="email" placeholder="so we can invite them later" {...field} className="rounded-xl" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <div className="flex gap-3 pt-2">
+                <Button type="button" variant="outline" className="rounded-full flex-1" onClick={() => setPlaceholderOpen(false)}>Cancel</Button>
+                <Button type="submit" className="rounded-full flex-1" disabled={createPlaceholder.isPending}>
+                  {createPlaceholder.isPending ? "Adding..." : "Add Member"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Circle Connection Dialog */}
+      {isAdmin && (
+        <Dialog open={connectionOpen} onOpenChange={setConnectionOpen}>
+          <DialogContent className="sm:max-w-[420px] rounded-3xl">
+            <DialogHeader>
+              <DialogTitle>Connect with Another Circle</DialogTitle>
+              <DialogDescription>Send a connection request to a trusted circle to share services and referrals.</DialogDescription>
+            </DialogHeader>
+            <Form {...connectionForm}>
+              <form onSubmit={connectionForm.handleSubmit(onSubmitConnection)} className="space-y-4 pt-2">
+                <FormField control={connectionForm.control} name="receiverCircleId" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Circle ID <span className="text-destructive">*</span></FormLabel>
+                    <FormControl><Input type="number" placeholder="Circle ID to connect with" {...field} className="rounded-xl" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={connectionForm.control} name="message" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Message <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                    <FormControl><Textarea placeholder="Why you'd like to connect..." {...field} className="rounded-xl resize-none" rows={2} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <div className="flex gap-3 pt-2">
+                  <Button type="button" variant="outline" className="rounded-full flex-1" onClick={() => setConnectionOpen(false)}>Cancel</Button>
+                  <Button type="submit" className="rounded-full flex-1" disabled={createConnection.isPending}>
+                    {createConnection.isPending ? "Sending..." : "Send Request"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Settings Dialog */}
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent className="sm:max-w-[480px] rounded-3xl">
           <DialogHeader>

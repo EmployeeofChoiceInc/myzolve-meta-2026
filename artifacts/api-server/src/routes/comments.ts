@@ -8,6 +8,7 @@ import {
   reactionsTable,
   gratitudeNotesTable,
   usersTable,
+  circleMembersTable,
   supportRequestsTable,
   servicePostsTable,
 } from "@workspace/db";
@@ -415,6 +416,19 @@ router.post(
       reactionType,
     });
 
+    if (entity.ownerId && entity.ownerId !== userId) {
+      const reactorName = req.dbUser!.displayName;
+      await createNotification({
+        userId: entity.ownerId,
+        circleId,
+        notificationType: "reaction_received",
+        title: "Someone reacted to your post",
+        body: `${reactorName} reacted with ${reactionType.replace("_", " ")} on your post.`,
+        targetEntityType: entityType,
+        targetEntityId: entityId,
+      });
+    }
+
     res.status(201).json({ toggled: true, reactionType });
   },
 );
@@ -468,6 +482,22 @@ router.post(
     const member = await assertCircleMember(circleId, userId);
     if (!member) {
       res.status(404).json({ error: "Circle not found" });
+      return;
+    }
+
+    const circleMembers = await db
+      .select({ userId: circleMembersTable.userId })
+      .from(circleMembersTable)
+      .where(
+        and(
+          eq(circleMembersTable.circleId, circleId),
+          eq(circleMembersTable.status, "active"),
+        ),
+      );
+    const memberUserIds = new Set(circleMembers.map((m) => m.userId));
+    const invalidRecipients = recipientUserIds.filter((id: number) => !memberUserIds.has(id));
+    if (invalidRecipients.length > 0) {
+      res.status(400).json({ error: "All recipients must be active members of this circle" });
       return;
     }
 
