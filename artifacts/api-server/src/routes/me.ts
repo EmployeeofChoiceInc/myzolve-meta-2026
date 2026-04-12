@@ -1,10 +1,19 @@
 import { Router } from "express";
+import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
+import { validateBody } from "../middlewares/validate";
 import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 const router = Router();
+
+const updateProfileSchema = z.object({
+  displayName: z.string().min(1).max(100).optional(),
+  firstName: z.string().min(1).max(100).optional(),
+  lastName: z.string().min(1).max(100).optional(),
+  timezone: z.string().max(100).optional(),
+});
 
 router.get("/me", requireAuth, async (req, res) => {
   const user = req.dbUser!;
@@ -20,7 +29,7 @@ router.get("/me", requireAuth, async (req, res) => {
   });
 });
 
-router.patch("/me", requireAuth, async (req, res) => {
+router.patch("/me", requireAuth, validateBody(updateProfileSchema), async (req, res) => {
   const user = req.dbUser!;
   const { displayName, firstName, lastName, timezone } = req.body;
 

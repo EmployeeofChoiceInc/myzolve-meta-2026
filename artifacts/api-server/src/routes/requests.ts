@@ -29,7 +29,7 @@ const createRequestSchema = z.object({
   visibilityScope: z.enum(["specific_person", "selected_members", "whole_circle", "admins_only", "private_draft"]).optional().default("whole_circle"),
   repaymentExpected: z.boolean().optional().default(false),
   repaymentStyle: z.enum(["one_time", "installments", "flexible", "no_repayment", "gift", "discuss_later"]).optional().default("discuss_later"),
-  urgencyLevel: z.enum(["low", "normal", "high", "critical"]).optional().default("normal"),
+  urgencyLevel: z.enum(["low", "normal", "important", "urgent", "emergency"]).optional().default("normal"),
   category: z.string().max(100).optional().default("other"),
   privacyLevel: z.enum(["standard", "sensitive", "very_sensitive"]).optional().default("standard"),
   dueDate: z.string().datetime().optional(),
@@ -426,7 +426,7 @@ router.get("/requests/:requestId/contributions", requireAuth, async (req, res) =
   res.json(rows.map((r) => contributionToApi(r.c, r.u.displayName)));
 });
 
-router.post("/requests/:requestId/contributions", requireAuth, async (req, res) => {
+router.post("/requests/:requestId/contributions", requireAuth, validateBody(createContributionSchema), async (req, res) => {
   const userId = req.dbUser!.id;
   const requestId = parseInt(String(req.params.requestId));
 

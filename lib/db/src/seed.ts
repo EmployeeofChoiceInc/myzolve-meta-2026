@@ -91,7 +91,7 @@ async function seed() {
       visibilityScope: "whole_circle",
       repaymentExpected: true,
       repaymentStyle: "flexible",
-      urgencyLevel: "high",
+      urgencyLevel: "urgent",
       category: "Transportation",
       privacyLevel: "standard",
       status: "partially_funded",

@@ -23,6 +23,10 @@ const createInvitationSchema = z.object({
   expiresInDays: z.number().int().min(1).max(365).optional().default(7),
 });
 
+const updateMemberSchema = z.object({
+  role: z.enum(["member", "admin"]),
+});
+
 function memberToApi(
   member: CircleMember,
   user: { displayName: string; email: string } | null,
@@ -86,6 +90,7 @@ router.get("/circles/:circleId/members", requireAuth, async (req, res) => {
 router.patch(
   "/circles/:circleId/members/:memberId",
   requireAuth,
+  validateBody(updateMemberSchema),
   async (req, res) => {
     const userId = req.dbUser!.id;
     const circleId = parseInt(String(req.params.circleId));
