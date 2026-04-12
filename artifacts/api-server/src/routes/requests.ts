@@ -830,7 +830,7 @@ router.post("/repayments", requireAuth, validateBody(createRepaymentSchema), asy
   });
 });
 
-router.get("/circles/:circleId/repayments", requireAuth, async (req, res) => {
+router.get("/circles/:circleId/repayments", requireAuth, validateParams(circleIdParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const circleId = parseInt(String(req.params.circleId));
 

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../middlewares/requireAuth";
+import { validateParams, circleIdParam } from "../middlewares/validate";
 import { db } from "@workspace/db";
 import {
   activityFeedItemsTable,
@@ -31,7 +32,7 @@ async function assertCircleMember(circleId: number, userId: number) {
     .then((r) => r[0] ?? null);
 }
 
-router.get("/circles/:circleId/activity", requireAuth, async (req, res) => {
+router.get("/circles/:circleId/activity", requireAuth, validateParams(circleIdParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const circleId = parseInt(String(req.params.circleId));
   const limit = parseInt(String(req.query.limit ?? "20"));
@@ -96,7 +97,7 @@ router.get("/circles/:circleId/activity", requireAuth, async (req, res) => {
   );
 });
 
-router.get("/circles/:circleId/ledger", requireAuth, async (req, res) => {
+router.get("/circles/:circleId/ledger", requireAuth, validateParams(circleIdParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const circleId = parseInt(String(req.params.circleId));
   const limit = parseInt(String(req.query.limit ?? "50"));
@@ -253,7 +254,7 @@ router.get(
   },
 );
 
-router.get("/circles/:circleId/dashboard", requireAuth, async (req, res) => {
+router.get("/circles/:circleId/dashboard", requireAuth, validateParams(circleIdParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const circleId = parseInt(String(req.params.circleId));
 

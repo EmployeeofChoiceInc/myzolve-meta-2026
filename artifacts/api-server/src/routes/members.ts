@@ -171,6 +171,7 @@ router.patch(
 router.delete(
   "/circles/:circleId/members/:memberId",
   requireAuth,
+  validateParams(circleAndMemberIdParam),
   async (req, res) => {
     const userId = req.dbUser!.id;
     const circleId = parseInt(String(req.params.circleId));
@@ -276,7 +277,7 @@ router.get("/circles/:circleId/invitations", requireAuth, validateParams(circleI
   res.json(invitations);
 });
 
-router.post("/circles/:circleId/invitations", requireAuth, validateBody(createInvitationSchema), async (req, res) => {
+router.post("/circles/:circleId/invitations", requireAuth, validateParams(circleIdParam), validateBody(createInvitationSchema), async (req, res) => {
   const userId = req.dbUser!.id;
   const circleId = parseInt(String(req.params.circleId));
 

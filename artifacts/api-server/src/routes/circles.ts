@@ -240,7 +240,7 @@ router.patch("/circles/:circleId", requireAuth, validateParams(circleIdParam), v
   res.json(circleToApi(updated, Number(memberCount.cnt), role));
 });
 
-router.delete("/circles/:circleId", requireAuth, async (req, res) => {
+router.delete("/circles/:circleId", requireAuth, validateParams(circleIdParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const circleId = parseInt(String(req.params.circleId));
 
@@ -264,7 +264,7 @@ router.delete("/circles/:circleId", requireAuth, async (req, res) => {
   res.status(204).end();
 });
 
-router.get("/circles/:circleId/stats", requireAuth, async (req, res) => {
+router.get("/circles/:circleId/stats", requireAuth, validateParams(circleIdParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const circleId = parseInt(String(req.params.circleId));
 
