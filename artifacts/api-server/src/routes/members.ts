@@ -558,16 +558,44 @@ router.post(
       return;
     }
 
-    await db
-      .update(circleMembersTable)
-      .set({ role: "owner" })
-      .where(eq(circleMembersTable.id, newOwnerMember.id));
+    const demoted = await db.transaction(async (tx) => {
+      await tx
+        .update(circlesTable)
+        .set({ ownerId: newOwnerUserId })
+        .where(eq(circlesTable.id, circleId));
 
-    const [demoted] = await db
-      .update(circleMembersTable)
-      .set({ role: "admin" })
-      .where(eq(circleMembersTable.id, currentOwner.id))
-      .returning();
+      await tx
+        .update(circleMembersTable)
+        .set({ role: "owner" })
+        .where(eq(circleMembersTable.id, newOwnerMember.id));
+
+      const [demotedMember] = await tx
+        .update(circleMembersTable)
+        .set({ role: "admin" })
+        .where(eq(circleMembersTable.id, currentOwner.id))
+        .returning();
+
+      return demotedMember;
+    });
+
+    await createAuditLog({
+      circleId,
+      actorUserId: userId,
+      action: "ownership_transferred",
+      targetEntityType: "user",
+      targetEntityId: newOwnerUserId,
+      metadata: { previousOwnerId: userId, newOwnerId: newOwnerUserId },
+    });
+
+    await createNotification({
+      userId: newOwnerUserId,
+      circleId,
+      notificationType: "system",
+      title: "You are now the circle owner",
+      body: `${req.dbUser!.displayName} transferred ownership of the circle to you.`,
+      targetEntityType: "circle",
+      targetEntityId: circleId,
+    });
 
     const ownerUser = await db
       .select({ displayName: usersTable.displayName, email: usersTable.email })

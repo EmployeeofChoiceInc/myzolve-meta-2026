@@ -236,4 +236,89 @@ router.post(
   },
 );
 
+router.get(
+  "/connections/token/:token",
+  requireAuth,
+  async (req, res) => {
+    const token = String(req.params.token);
+
+    const connection = await db
+      .select()
+      .from(circleConnectionsTable)
+      .where(eq(circleConnectionsTable.token, token))
+      .limit(1)
+      .then((r) => r[0] ?? null);
+
+    if (!connection) {
+      res.status(404).json({ error: "Connection invite not found" });
+      return;
+    }
+
+    res.json(connectionToApi(connection));
+  },
+);
+
+router.post(
+  "/connections/token/:token/respond",
+  requireAuth,
+  validateBody(respondConnectionSchema),
+  async (req, res) => {
+    const userId = req.dbUser!.id;
+    const token = String(req.params.token);
+    const { action } = req.body;
+
+    const connection = await db
+      .select()
+      .from(circleConnectionsTable)
+      .where(eq(circleConnectionsTable.token, token))
+      .limit(1)
+      .then((r) => r[0] ?? null);
+
+    if (!connection) {
+      res.status(404).json({ error: "Connection invite not found" });
+      return;
+    }
+
+    if (connection.status !== "pending") {
+      res.status(409).json({ error: "Connection request is no longer pending" });
+      return;
+    }
+
+    const member = await db
+      .select()
+      .from(circleMembersTable)
+      .where(
+        and(
+          eq(circleMembersTable.circleId, connection.receiverCircleId),
+          eq(circleMembersTable.userId, userId),
+          eq(circleMembersTable.status, "active"),
+        ),
+      )
+      .limit(1)
+      .then((r) => r[0] ?? null);
+
+    if (!member || !["owner", "admin"].includes(member.role)) {
+      res.status(403).json({ error: "Only the receiver circle owner or admin can respond to this invite" });
+      return;
+    }
+
+    const newStatus = action === "approve" ? "approved" : "declined";
+    const [updated] = await db
+      .update(circleConnectionsTable)
+      .set({ status: newStatus, respondedByUserId: userId, respondedAt: new Date() })
+      .where(eq(circleConnectionsTable.token, token))
+      .returning();
+
+    await createAuditLog({
+      circleId: connection.receiverCircleId,
+      actorUserId: userId,
+      action: `circle_connection_${newStatus}`,
+      targetEntityType: "circle_connection",
+      targetEntityId: connection.id,
+    });
+
+    res.json(connectionToApi(updated));
+  },
+);
+
 export default router;

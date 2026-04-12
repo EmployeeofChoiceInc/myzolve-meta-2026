@@ -389,6 +389,48 @@ export const RespondCircleConnectionResponse = zod.object({
 });
 
 /**
+ * @summary Look up a cross-circle connection invite by its share token
+ */
+export const GetConnectionByTokenParams = zod.object({
+  token: zod.coerce.string(),
+});
+
+export const GetConnectionByTokenResponse = zod.object({
+  id: zod.number(),
+  initiatorCircleId: zod.number(),
+  receiverCircleId: zod.number(),
+  permissionScope: zod.enum(["service_only", "referral", "support_sharing"]),
+  status: zod.enum(["pending", "approved", "declined"]),
+  message: zod.string().nullish(),
+  token: zod.string(),
+  respondedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Approve or decline a connection invite by share token (receiver owner/admin)
+ */
+export const RespondConnectionByTokenParams = zod.object({
+  token: zod.coerce.string(),
+});
+
+export const RespondConnectionByTokenBody = zod.object({
+  action: zod.enum(["approve", "decline"]),
+});
+
+export const RespondConnectionByTokenResponse = zod.object({
+  id: zod.number(),
+  initiatorCircleId: zod.number(),
+  receiverCircleId: zod.number(),
+  permissionScope: zod.enum(["service_only", "referral", "support_sharing"]),
+  status: zod.enum(["pending", "approved", "declined"]),
+  message: zod.string().nullish(),
+  token: zod.string(),
+  respondedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
  * @summary Transfer circle ownership to another member (current owner only)
  */
 export const TransferCircleOwnershipParams = zod.object({

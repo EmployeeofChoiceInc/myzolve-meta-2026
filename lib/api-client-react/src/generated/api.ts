@@ -1807,6 +1807,191 @@ export const useRespondCircleConnection = <
 };
 
 /**
+ * @summary Look up a cross-circle connection invite by its share token
+ */
+export const getGetConnectionByTokenUrl = (token: string) => {
+  return `/api/connections/token/${token}`;
+};
+
+export const getConnectionByToken = async (
+  token: string,
+  options?: RequestInit,
+): Promise<CircleConnection> => {
+  return customFetch<CircleConnection>(getGetConnectionByTokenUrl(token), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetConnectionByTokenQueryKey = (token: string) => {
+  return [`/api/connections/token/${token}`] as const;
+};
+
+export const getGetConnectionByTokenQueryOptions = <
+  TData = Awaited<ReturnType<typeof getConnectionByToken>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  token: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getConnectionByToken>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetConnectionByTokenQueryKey(token);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getConnectionByToken>>
+  > = ({ signal }) =>
+    getConnectionByToken(token, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!token,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getConnectionByToken>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetConnectionByTokenQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getConnectionByToken>>
+>;
+export type GetConnectionByTokenQueryError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Look up a cross-circle connection invite by its share token
+ */
+
+export function useGetConnectionByToken<
+  TData = Awaited<ReturnType<typeof getConnectionByToken>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  token: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getConnectionByToken>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetConnectionByTokenQueryOptions(token, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Approve or decline a connection invite by share token (receiver owner/admin)
+ */
+export const getRespondConnectionByTokenUrl = (token: string) => {
+  return `/api/connections/token/${token}/respond`;
+};
+
+export const respondConnectionByToken = async (
+  token: string,
+  respondConnectionBody: RespondConnectionBody,
+  options?: RequestInit,
+): Promise<CircleConnection> => {
+  return customFetch<CircleConnection>(getRespondConnectionByTokenUrl(token), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(respondConnectionBody),
+  });
+};
+
+export const getRespondConnectionByTokenMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ErrorResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof respondConnectionByToken>>,
+    TError,
+    { token: string; data: BodyType<RespondConnectionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof respondConnectionByToken>>,
+  TError,
+  { token: string; data: BodyType<RespondConnectionBody> },
+  TContext
+> => {
+  const mutationKey = ["respondConnectionByToken"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof respondConnectionByToken>>,
+    { token: string; data: BodyType<RespondConnectionBody> }
+  > = (props) => {
+    const { token, data } = props ?? {};
+
+    return respondConnectionByToken(token, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RespondConnectionByTokenMutationResult = NonNullable<
+  Awaited<ReturnType<typeof respondConnectionByToken>>
+>;
+export type RespondConnectionByTokenMutationBody =
+  BodyType<RespondConnectionBody>;
+export type RespondConnectionByTokenMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ErrorResponse
+>;
+
+/**
+ * @summary Approve or decline a connection invite by share token (receiver owner/admin)
+ */
+export const useRespondConnectionByToken = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ErrorResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof respondConnectionByToken>>,
+    TError,
+    { token: string; data: BodyType<RespondConnectionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof respondConnectionByToken>>,
+  TError,
+  { token: string; data: BodyType<RespondConnectionBody> },
+  TContext
+> => {
+  return useMutation(getRespondConnectionByTokenMutationOptions(options));
+};
+
+/**
  * @summary Transfer circle ownership to another member (current owner only)
  */
 export const getTransferCircleOwnershipUrl = (circleId: number) => {
