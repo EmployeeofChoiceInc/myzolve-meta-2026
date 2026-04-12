@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
-import { validateBody } from "../middlewares/validate";
+import { validateBody, validateParams, serviceIdParam, circleIdParam } from "../middlewares/validate";
 import { db } from "@workspace/db";
 import {
   servicePostsTable,
@@ -88,7 +88,7 @@ function serviceToApi(post: ServicePost, createdByName: string) {
   };
 }
 
-router.get("/circles/:circleId/services", requireAuth, async (req, res) => {
+router.get("/circles/:circleId/services", requireAuth, validateParams(circleIdParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const circleId = parseInt(String(req.params.circleId));
   const { serviceType, category, status } = req.query;
@@ -99,13 +99,21 @@ router.get("/circles/:circleId/services", requireAuth, async (req, res) => {
     return;
   }
 
+  const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+
   const rows = await db
     .select({ post: servicePostsTable, user: usersTable })
     .from(servicePostsTable)
     .innerJoin(usersTable, eq(servicePostsTable.createdByUserId, usersTable.id))
     .where(eq(servicePostsTable.circleId, circleId));
 
-  let filtered = rows;
+  let filtered = rows.filter((r) => {
+    const scope = r.post.visibilityScope;
+    if (scope === "admins_only") return isAdminOrOwner || r.post.createdByUserId === userId;
+    if (scope === "selected_members") return isAdminOrOwner || r.post.createdByUserId === userId;
+    return true;
+  });
+
   if (serviceType) {
     filtered = filtered.filter((r) => r.post.serviceType === serviceType);
   }
@@ -178,7 +186,7 @@ router.post("/circles/:circleId/services", requireAuth, validateBody(createServi
   res.status(201).json(serviceToApi(post, userName));
 });
 
-router.get("/services/:serviceId", requireAuth, async (req, res) => {
+router.get("/services/:serviceId", requireAuth, validateParams(serviceIdParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const serviceId = parseInt(String(req.params.serviceId));
 
@@ -196,6 +204,16 @@ router.get("/services/:serviceId", requireAuth, async (req, res) => {
 
   const member = await assertCircleMember(row.post.circleId, userId);
   if (!member) {
+    res.status(404).json({ error: "Service post not found" });
+    return;
+  }
+
+  const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+  const scope = row.post.visibilityScope;
+  if (
+    (scope === "admins_only" && !isAdminOrOwner && row.post.createdByUserId !== userId) ||
+    (scope === "selected_members" && !isAdminOrOwner && row.post.createdByUserId !== userId)
+  ) {
     res.status(404).json({ error: "Service post not found" });
     return;
   }

@@ -18,6 +18,7 @@ import LedgerPage from "@/pages/ledger";
 import ActivityPage from "@/pages/activity";
 import MembersPage from "@/pages/members";
 import SettingsPage from "@/pages/settings";
+import InviteAcceptPage from "@/pages/invite-accept";
 
 const queryClient = new QueryClient();
 
@@ -132,6 +133,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/circles/:id/activity"><ProtectedRoute component={ActivityPage} /></Route>
           <Route path="/circles/:id/members"><ProtectedRoute component={MembersPage} /></Route>
           <Route path="/settings"><ProtectedRoute component={SettingsPage} /></Route>
+          <Route path="/invite/:token" component={InviteAcceptPage} />
           <Route component={NotFound} />
         </Switch>
       </QueryClientProvider>

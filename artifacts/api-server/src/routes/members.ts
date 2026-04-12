@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
-import { validateBody } from "../middlewares/validate";
+import { validateBody, validateParams, circleIdParam, memberIdParam, circleAndMemberIdParam } from "../middlewares/validate";
 import { db } from "@workspace/db";
 import {
   circleMembersTable,
@@ -44,7 +44,7 @@ function memberToApi(
   };
 }
 
-router.get("/circles/:circleId/members", requireAuth, async (req, res) => {
+router.get("/circles/:circleId/members", requireAuth, validateParams(circleIdParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const circleId = parseInt(String(req.params.circleId));
 
@@ -90,6 +90,7 @@ router.get("/circles/:circleId/members", requireAuth, async (req, res) => {
 router.patch(
   "/circles/:circleId/members/:memberId",
   requireAuth,
+  validateParams(circleAndMemberIdParam),
   validateBody(updateMemberSchema),
   async (req, res) => {
     const userId = req.dbUser!.id;

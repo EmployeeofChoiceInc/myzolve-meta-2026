@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
-import { validateBody } from "../middlewares/validate";
+import { validateBody, validateParams, circleIdParam, requestIdParam } from "../middlewares/validate";
 import { db } from "@workspace/db";
 import {
   supportRequestsTable,
@@ -139,7 +139,7 @@ function contributionToApi(c: Contribution, contributorName: string) {
   };
 }
 
-router.get("/circles/:circleId/requests", requireAuth, async (req, res) => {
+router.get("/circles/:circleId/requests", requireAuth, validateParams(circleIdParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const circleId = parseInt(String(req.params.circleId));
   const { status, urgency, category } = req.query;
@@ -183,7 +183,7 @@ router.get("/circles/:circleId/requests", requireAuth, async (req, res) => {
   );
 });
 
-router.post("/circles/:circleId/requests", requireAuth, validateBody(createRequestSchema), async (req, res) => {
+router.post("/circles/:circleId/requests", requireAuth, validateParams(circleIdParam), validateBody(createRequestSchema), async (req, res) => {
   const userId = req.dbUser!.id;
   const circleId = parseInt(String(req.params.circleId));
 
@@ -248,7 +248,7 @@ router.post("/circles/:circleId/requests", requireAuth, validateBody(createReque
   res.status(201).json(requestToApi(supportReq, userName));
 });
 
-router.get("/requests/:requestId", requireAuth, async (req, res) => {
+router.get("/requests/:requestId", requireAuth, validateParams(requestIdParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const requestId = parseInt(String(req.params.requestId));
 
@@ -316,7 +316,7 @@ router.get("/requests/:requestId", requireAuth, async (req, res) => {
   });
 });
 
-router.patch("/requests/:requestId", requireAuth, validateBody(updateRequestSchema), async (req, res) => {
+router.patch("/requests/:requestId", requireAuth, validateParams(requestIdParam), validateBody(updateRequestSchema), async (req, res) => {
   const userId = req.dbUser!.id;
   const requestId = parseInt(String(req.params.requestId));
 

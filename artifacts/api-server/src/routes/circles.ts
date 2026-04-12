@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
-import { validateBody } from "../middlewares/validate";
+import { validateBody, validateParams, circleIdParam } from "../middlewares/validate";
 import { db } from "@workspace/db";
 import {
   circlesTable,
@@ -133,7 +133,7 @@ router.post("/circles", requireAuth, validateBody(createCircleSchema), async (re
   res.status(201).json(circleToApi(circle, 1, "owner"));
 });
 
-router.get("/circles/:circleId", requireAuth, async (req, res) => {
+router.get("/circles/:circleId", requireAuth, validateParams(circleIdParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const circleId = parseInt(String(req.params.circleId));
 
@@ -176,7 +176,7 @@ router.get("/circles/:circleId", requireAuth, async (req, res) => {
   res.json(circleToApi(circle, Number(memberCount.cnt), role));
 });
 
-router.patch("/circles/:circleId", requireAuth, validateBody(updateCircleSchema), async (req, res) => {
+router.patch("/circles/:circleId", requireAuth, validateParams(circleIdParam), validateBody(updateCircleSchema), async (req, res) => {
   const userId = req.dbUser!.id;
   const circleId = parseInt(String(req.params.circleId));
 
