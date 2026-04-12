@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
 import { validateBody, validateParams, circleIdParam, validateQuery, paginationQuery } from "../middlewares/validate";
 import { db } from "@workspace/db";
-import { disputesTable, usersTable } from "@workspace/db";
+import { disputesTable, usersTable, supportContributionsTable, repaymentsTable, circleMembersTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { assertCircleMember, createAuditLog, createNotification, getUserName } from "../lib/helpers";
 
@@ -105,6 +105,18 @@ router.post(
       })
       .returning();
 
+    if (targetEntityType === "contribution") {
+      await db
+        .update(supportContributionsTable)
+        .set({ status: "disputed" })
+        .where(and(eq(supportContributionsTable.id, targetEntityId), eq(supportContributionsTable.circleId, circleId)));
+    } else if (targetEntityType === "repayment") {
+      await db
+        .update(repaymentsTable)
+        .set({ status: "disputed" })
+        .where(eq(repaymentsTable.id, targetEntityId));
+    }
+
     await createAuditLog({
       circleId,
       actorUserId: userId,
@@ -114,7 +126,30 @@ router.post(
       metadata: { reason: reason.slice(0, 200) },
     });
 
+    const admins = await db
+      .select({ userId: circleMembersTable.userId })
+      .from(circleMembersTable)
+      .where(
+        and(
+          eq(circleMembersTable.circleId, circleId),
+          eq(circleMembersTable.status, "active"),
+        ),
+      )
+      .then((rows) => rows.filter((r) => r.userId !== null && r.userId !== userId)) as { userId: number }[];
+
     const raisedByName = req.dbUser!.displayName;
+    for (const admin of admins) {
+      await createNotification({
+        userId: admin.userId,
+        circleId,
+        notificationType: "dispute_opened",
+        title: "A dispute has been raised",
+        body: `${raisedByName} raised a dispute: "${reason.slice(0, 100)}${reason.length > 100 ? "…" : ""}"`,
+        targetEntityType: "dispute",
+        targetEntityId: dispute.id,
+      });
+    }
+
     res.status(201).json(disputeToApi(dispute, raisedByName));
   },
 );
@@ -169,6 +204,18 @@ router.post(
       })
       .where(eq(disputesTable.id, disputeId))
       .returning();
+
+    if (dispute.targetEntityType === "contribution") {
+      await db
+        .update(supportContributionsTable)
+        .set({ status: "pledged" })
+        .where(and(eq(supportContributionsTable.id, dispute.targetEntityId), eq(supportContributionsTable.status, "disputed")));
+    } else if (dispute.targetEntityType === "repayment") {
+      await db
+        .update(repaymentsTable)
+        .set({ status: "pending_confirmation" })
+        .where(and(eq(repaymentsTable.id, dispute.targetEntityId), eq(repaymentsTable.status, "disputed")));
+    }
 
     await createAuditLog({
       circleId,

@@ -10,7 +10,7 @@ import {
   usersTable,
   circleMembersTable,
 } from "@workspace/db";
-import { eq, and, desc, isNull } from "drizzle-orm";
+import { eq, and, desc, isNull, count, inArray } from "drizzle-orm";
 import { assertCircleMember, createNotification } from "../lib/helpers";
 
 const router = Router();
@@ -95,7 +95,29 @@ router.get(
       .limit(limit)
       .offset(offset);
 
-    res.json(rows.map((r) => commentToApi(r.comment, r.author?.displayName ?? "Someone")));
+    const parentIds = rows.map((r) => r.comment.id);
+    const replyCounts: Record<number, number> = {};
+
+    if (parentIds.length > 0) {
+      const replyRows = await db
+        .select({ parentCommentId: commentsTable.parentCommentId, replyCount: count() })
+        .from(commentsTable)
+        .where(
+          and(
+            inArray(commentsTable.parentCommentId, parentIds),
+            eq(commentsTable.status, "active"),
+          ),
+        )
+        .groupBy(commentsTable.parentCommentId);
+
+      for (const r of replyRows) {
+        if (r.parentCommentId !== null) {
+          replyCounts[r.parentCommentId] = Number(r.replyCount);
+        }
+      }
+    }
+
+    res.json(rows.map((r) => commentToApi(r.comment, r.author?.displayName ?? "Someone", replyCounts[r.comment.id] ?? 0)));
   },
 );
 

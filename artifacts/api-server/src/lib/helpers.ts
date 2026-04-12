@@ -1,5 +1,5 @@
 import { db } from "@workspace/db";
-import { circleMembersTable, usersTable, notificationsTable, auditLogsTable } from "@workspace/db";
+import { circleMembersTable, usersTable, notificationsTable, auditLogsTable, notificationPreferencesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 
 export async function assertCircleMember(circleId: number, userId: number) {
@@ -36,6 +36,22 @@ export async function createNotification(params: {
   targetEntityType?: string;
   targetEntityId?: number;
 }) {
+  const pref = await db
+    .select({ enabled: notificationPreferencesTable.enabled })
+    .from(notificationPreferencesTable)
+    .where(
+      and(
+        eq(notificationPreferencesTable.userId, params.userId),
+        eq(notificationPreferencesTable.notificationType, params.notificationType),
+      ),
+    )
+    .limit(1)
+    .then((r) => r[0] ?? null);
+
+  if (pref && !pref.enabled) {
+    return;
+  }
+
   await db.insert(notificationsTable).values({
     userId: params.userId,
     circleId: params.circleId ?? null,

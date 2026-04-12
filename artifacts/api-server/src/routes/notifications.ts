@@ -4,7 +4,7 @@ import { requireAuth } from "../middlewares/requireAuth";
 import { validateBody, validateParams, validateQuery, paginationQuery } from "../middlewares/validate";
 import { db } from "@workspace/db";
 import { notificationsTable, notificationPreferencesTable } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, count } from "drizzle-orm";
 
 const router = Router();
 
@@ -46,7 +46,10 @@ router.get("/notifications", requireAuth, validateQuery(paginationQuery), async 
     .limit(limit)
     .offset(offset);
 
-  const unreadCount = rows.filter((n) => !n.isRead).length;
+  const [{ unreadCount }] = await db
+    .select({ unreadCount: count() })
+    .from(notificationsTable)
+    .where(and(eq(notificationsTable.userId, userId), eq(notificationsTable.isRead, false)));
 
   res.json({
     notifications: rows.map((n) => ({
