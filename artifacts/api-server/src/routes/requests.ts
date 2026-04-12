@@ -774,6 +774,19 @@ router.post("/contributions/:contributionId/forgive", requireAuth, validateParam
       description: `Support for "${request.title}" was forgiven as a gift`,
       date: new Date(),
     });
+
+    await createAuditLog({
+      actorUserId: userId,
+      circleId: request.circleId,
+      action: "contribution_forgiven",
+      targetEntityType: "support_request",
+      targetEntityId: request.id,
+      metadata: {
+        contributionId: contribution.id,
+        amount: contribution.amount,
+        requestTitle: request.title,
+      },
+    });
   }
 
   res.json(contributionToApi(updated, userName));
@@ -1065,6 +1078,24 @@ router.post("/repayments/:repaymentId/confirm", requireAuth, validateParams(repa
 
   const payerName = await getUserName(updated.payerUserId);
   const payeeName = updated.payeeUserId ? await getUserName(updated.payeeUserId) : null;
+
+  const repaymentRequest = await db
+    .select({ circleId: supportRequestsTable.circleId })
+    .from(supportRequestsTable)
+    .where(eq(supportRequestsTable.id, updated.requestId))
+    .limit(1)
+    .then((r) => r[0]);
+
+  if (repaymentRequest) {
+    await createAuditLog({
+      circleId: repaymentRequest.circleId,
+      actorUserId: userId,
+      action: "repayment_confirmed",
+      targetEntityType: "repayment",
+      targetEntityId: repaymentId,
+      metadata: { amount: updated.amount, requestId: updated.requestId, payerUserId: updated.payerUserId },
+    });
+  }
 
   res.json({
     id: updated.id,

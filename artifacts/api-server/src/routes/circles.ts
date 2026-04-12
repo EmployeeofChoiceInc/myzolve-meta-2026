@@ -9,6 +9,7 @@ import {
   type Circle,
 } from "@workspace/db";
 import { eq, and, count, sql } from "drizzle-orm";
+import { createAuditLog } from "../lib/helpers";
 import {
   supportRequestsTable,
   servicePostsTable,
@@ -237,6 +238,24 @@ router.patch("/circles/:circleId", requireAuth, validateParams(circleIdParam), v
     );
 
   const role = updated.ownerId === userId ? "owner" : membership.role;
+
+  const changedFields: Record<string, unknown> = {};
+  if (name !== undefined) changedFields.name = name;
+  if (description !== undefined) changedFields.description = description;
+  if (circleType !== undefined) changedFields.circleType = circleType;
+  if (privacyMode !== undefined) changedFields.privacyMode = privacyMode;
+  if (ledgerMode !== undefined) changedFields.ledgerMode = ledgerMode;
+  if (currency !== undefined) changedFields.currency = currency;
+
+  await createAuditLog({
+    actorUserId: userId,
+    circleId,
+    action: privacyMode !== undefined ? "circle_privacy_changed" : "circle_settings_updated",
+    targetEntityType: "circle",
+    targetEntityId: circleId,
+    metadata: changedFields,
+  });
+
   res.json(circleToApi(updated, Number(memberCount.cnt), role));
 });
 

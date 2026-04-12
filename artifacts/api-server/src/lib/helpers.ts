@@ -66,7 +66,7 @@ export async function createNotification(params: {
 
 export async function createAuditLog(params: {
   circleId?: number;
-  actorUserId: number;
+  actorUserId: number | null;
   action: string;
   targetEntityType?: string;
   targetEntityId?: number;
