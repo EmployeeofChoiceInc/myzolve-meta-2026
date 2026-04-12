@@ -757,6 +757,26 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /circles/{circleId}/services/summary:
+    get:
+      operationId: getServiceBoardSummary
+      tags: [services]
+      summary: Get service board summary for a circle
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      responses:
+        "200":
+          description: Service board summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceBoardSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /services/{serviceId}:
     get:
       operationId: getServicePost
@@ -1614,6 +1634,46 @@ components:
         - amount
 
     # ── Service Posts ──────────────────────────────────────────────────────────
+    ServiceBoardSummary:
+      type: object
+      properties:
+        circleId:
+          type: integer
+        totalServices:
+          type: integer
+        openServices:
+          type: integer
+        offers:
+          type: integer
+        requests:
+          type: integer
+        barterServices:
+          type: integer
+        matchedServices:
+          type: integer
+        completedServices:
+          type: integer
+        topCategories:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                type: string
+              count:
+                type: integer
+            required: [category, count]
+      required:
+        - circleId
+        - totalServices
+        - openServices
+        - offers
+        - requests
+        - barterServices
+        - matchedServices
+        - completedServices
+        - topCategories
+
     ServicePost:
       type: object
       properties:

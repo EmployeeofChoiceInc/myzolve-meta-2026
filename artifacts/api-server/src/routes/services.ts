@@ -127,7 +127,7 @@ router.get("/circles/:circleId/services", requireAuth, validateParams(circleIdPa
   res.json(filtered.map((r) => serviceToApi(r.post, r.user.displayName)));
 });
 
-router.post("/circles/:circleId/services", requireAuth, validateBody(createServiceSchema), async (req, res) => {
+router.post("/circles/:circleId/services", requireAuth, validateParams(circleIdParam), validateBody(createServiceSchema), async (req, res) => {
   const userId = req.dbUser!.id;
   const circleId = parseInt(String(req.params.circleId));
 
@@ -221,7 +221,7 @@ router.get("/services/:serviceId", requireAuth, validateParams(serviceIdParam), 
   res.json(serviceToApi(row.post, row.user.displayName));
 });
 
-router.patch("/services/:serviceId", requireAuth, validateBody(updateServiceSchema), async (req, res) => {
+router.patch("/services/:serviceId", requireAuth, validateParams(serviceIdParam), validateBody(updateServiceSchema), async (req, res) => {
   const userId = req.dbUser!.id;
   const serviceId = parseInt(String(req.params.serviceId));
 
@@ -264,7 +264,7 @@ router.patch("/services/:serviceId", requireAuth, validateBody(updateServiceSche
   res.json(serviceToApi(updated, userName));
 });
 
-router.post("/services/:serviceId/match", requireAuth, validateBody(createMatchSchema), async (req, res) => {
+router.post("/services/:serviceId/match", requireAuth, validateParams(serviceIdParam), validateBody(createMatchSchema), async (req, res) => {
   const userId = req.dbUser!.id;
   const serviceId = parseInt(String(req.params.serviceId));
 
@@ -371,7 +371,7 @@ router.get("/circles/:circleId/services/summary", requireAuth, validateParams(ci
   });
 });
 
-router.post("/services/:serviceId/complete", requireAuth, async (req, res) => {
+router.post("/services/:serviceId/complete", requireAuth, validateParams(serviceIdParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const serviceId = parseInt(String(req.params.serviceId));
 

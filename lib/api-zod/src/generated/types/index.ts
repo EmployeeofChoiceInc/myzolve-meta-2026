@@ -65,6 +65,8 @@ export * from "./repaymentPlanFrequency";
 export * from "./repaymentPlanStatus";
 export * from "./repaymentReminder";
 export * from "./repaymentStatus";
+export * from "./serviceBoardSummary";
+export * from "./serviceBoardSummaryTopCategoriesItem";
 export * from "./servicePost";
 export * from "./servicePostExchangePreference";
 export * from "./servicePostLocationMode";

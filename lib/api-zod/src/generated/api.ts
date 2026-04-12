@@ -1075,6 +1075,30 @@ export const CreateServicePostBody = zod.object({
 });
 
 /**
+ * @summary Get service board summary for a circle
+ */
+export const GetServiceBoardSummaryParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const GetServiceBoardSummaryResponse = zod.object({
+  circleId: zod.number(),
+  totalServices: zod.number(),
+  openServices: zod.number(),
+  offers: zod.number(),
+  requests: zod.number(),
+  barterServices: zod.number(),
+  matchedServices: zod.number(),
+  completedServices: zod.number(),
+  topCategories: zod.array(
+    zod.object({
+      category: zod.string(),
+      count: zod.number(),
+    }),
+  ),
+});
+
+/**
  * @summary Get a service post by ID
  */
 export const GetServicePostParams = zod.object({

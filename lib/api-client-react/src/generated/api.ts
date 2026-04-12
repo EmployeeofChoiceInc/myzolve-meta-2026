@@ -43,6 +43,7 @@ import type {
   NotFoundResponse,
   Repayment,
   RepaymentPlan,
+  ServiceBoardSummary,
   ServicePost,
   SupportRequest,
   SupportRequestDetail,
@@ -3020,6 +3021,100 @@ export const useCreateServicePost = <
 > => {
   return useMutation(getCreateServicePostMutationOptions(options));
 };
+
+/**
+ * @summary Get service board summary for a circle
+ */
+export const getGetServiceBoardSummaryUrl = (circleId: number) => {
+  return `/api/circles/${circleId}/services/summary`;
+};
+
+export const getServiceBoardSummary = async (
+  circleId: number,
+  options?: RequestInit,
+): Promise<ServiceBoardSummary> => {
+  return customFetch<ServiceBoardSummary>(
+    getGetServiceBoardSummaryUrl(circleId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetServiceBoardSummaryQueryKey = (circleId: number) => {
+  return [`/api/circles/${circleId}/services/summary`] as const;
+};
+
+export const getGetServiceBoardSummaryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getServiceBoardSummary>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  circleId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getServiceBoardSummary>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetServiceBoardSummaryQueryKey(circleId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getServiceBoardSummary>>
+  > = ({ signal }) =>
+    getServiceBoardSummary(circleId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!circleId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getServiceBoardSummary>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetServiceBoardSummaryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getServiceBoardSummary>>
+>;
+export type GetServiceBoardSummaryQueryError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Get service board summary for a circle
+ */
+
+export function useGetServiceBoardSummary<
+  TData = Awaited<ReturnType<typeof getServiceBoardSummary>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  circleId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getServiceBoardSummary>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetServiceBoardSummaryQueryOptions(circleId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Get a service post by ID

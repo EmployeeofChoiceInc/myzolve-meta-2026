@@ -651,6 +651,23 @@ export interface CreateRepaymentBody {
   paymentMethod?: string;
 }
 
+export type ServiceBoardSummaryTopCategoriesItem = {
+  category: string;
+  count: number;
+};
+
+export interface ServiceBoardSummary {
+  circleId: number;
+  totalServices: number;
+  openServices: number;
+  offers: number;
+  requests: number;
+  barterServices: number;
+  matchedServices: number;
+  completedServices: number;
+  topCategories: ServiceBoardSummaryTopCategoriesItem[];
+}
+
 export type ServicePostServiceType =
   (typeof ServicePostServiceType)[keyof typeof ServicePostServiceType];
 
