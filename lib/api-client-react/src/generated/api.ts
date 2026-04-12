@@ -18,41 +18,70 @@ import type {
 
 import type {
   ActivityItem,
+  Attachment,
+  AuditEntry,
   Circle,
   CircleInvitation,
   CircleMember,
   CircleStats,
+  Comment,
   Contribution,
+  CreateAttachmentBody,
   CreateCircleBody,
+  CreateCommentBody,
   CreateContributionBody,
+  CreateDisputeBody,
+  CreateGratitudeNoteBody,
   CreateInvitationBody,
+  CreatePlaceholderBody,
   CreateRepaymentBody,
   CreateRepaymentPlanBody,
   CreateServicePostBody,
   CreateSupportRequestBody,
   DashboardSummary,
+  Dispute,
   ForbiddenResponse,
   GetCircleActivityParams,
   GetCircleLedgerParams,
+  GetNotificationUnreadCount200,
+  GratitudeNote,
   HealthStatus,
   LedgerEntry,
   LedgerSummary,
+  ListAuditLogParams,
+  ListCommentsParams,
+  ListDisputesParams,
+  ListNotificationsParams,
   ListServicePostsParams,
   ListSupportRequestsParams,
+  MarkAllNotificationsRead200,
+  MarkNotificationRead200,
   MatchServiceBody,
   NotFoundResponse,
+  NotificationList,
+  NotificationPreference,
+  PlaceholderMember,
+  ReactionSummary,
+  ReactionToggleResult,
   Repayment,
   RepaymentPlan,
+  ResolveDisputeBody,
   ServiceBoardSummary,
   ServicePost,
   SupportRequest,
   SupportRequestDetail,
+  ToggleReactionBody,
   UnauthorizedResponse,
   UpdateCircleBody,
   UpdateCircleMemberBody,
+  UpdateCommentBody,
   UpdateMeBody,
+  UpdateNotificationPreferencesBody,
+  UpdatePlaceholderBody,
   UpdateServicePostBody,
   UpdateSupportRequestBody,
+  UploadUrlRequest,
+  UploadUrlResponse,
   UserProfile,
 } from "./api.schemas";
 
@@ -3785,6 +3814,2782 @@ export function useGetCircleLedgerSummary<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetCircleLedgerSummaryQueryOptions(circleId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List notifications for the current user
+ */
+export const getListNotificationsUrl = (params?: ListNotificationsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/notifications?${stringifiedParams}`
+    : `/api/notifications`;
+};
+
+export const listNotifications = async (
+  params?: ListNotificationsParams,
+  options?: RequestInit,
+): Promise<NotificationList> => {
+  return customFetch<NotificationList>(getListNotificationsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListNotificationsQueryKey = (
+  params?: ListNotificationsParams,
+) => {
+  return [`/api/notifications`, ...(params ? [params] : [])] as const;
+};
+
+export const getListNotificationsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listNotifications>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  params?: ListNotificationsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listNotifications>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListNotificationsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listNotifications>>
+  > = ({ signal }) => listNotifications(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listNotifications>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListNotificationsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listNotifications>>
+>;
+export type ListNotificationsQueryError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary List notifications for the current user
+ */
+
+export function useListNotifications<
+  TData = Awaited<ReturnType<typeof listNotifications>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  params?: ListNotificationsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listNotifications>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListNotificationsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get unread notification count
+ */
+export const getGetNotificationUnreadCountUrl = () => {
+  return `/api/notifications/unread-count`;
+};
+
+export const getNotificationUnreadCount = async (
+  options?: RequestInit,
+): Promise<GetNotificationUnreadCount200> => {
+  return customFetch<GetNotificationUnreadCount200>(
+    getGetNotificationUnreadCountUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetNotificationUnreadCountQueryKey = () => {
+  return [`/api/notifications/unread-count`] as const;
+};
+
+export const getGetNotificationUnreadCountQueryOptions = <
+  TData = Awaited<ReturnType<typeof getNotificationUnreadCount>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getNotificationUnreadCount>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetNotificationUnreadCountQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getNotificationUnreadCount>>
+  > = ({ signal }) => getNotificationUnreadCount({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getNotificationUnreadCount>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetNotificationUnreadCountQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getNotificationUnreadCount>>
+>;
+export type GetNotificationUnreadCountQueryError =
+  ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Get unread notification count
+ */
+
+export function useGetNotificationUnreadCount<
+  TData = Awaited<ReturnType<typeof getNotificationUnreadCount>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getNotificationUnreadCount>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetNotificationUnreadCountQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Mark all notifications as read
+ */
+export const getMarkAllNotificationsReadUrl = () => {
+  return `/api/notifications/read-all`;
+};
+
+export const markAllNotificationsRead = async (
+  options?: RequestInit,
+): Promise<MarkAllNotificationsRead200> => {
+  return customFetch<MarkAllNotificationsRead200>(
+    getMarkAllNotificationsReadUrl(),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getMarkAllNotificationsReadMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markAllNotificationsRead>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof markAllNotificationsRead>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["markAllNotificationsRead"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof markAllNotificationsRead>>,
+    void
+  > = () => {
+    return markAllNotificationsRead(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MarkAllNotificationsReadMutationResult = NonNullable<
+  Awaited<ReturnType<typeof markAllNotificationsRead>>
+>;
+
+export type MarkAllNotificationsReadMutationError =
+  ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Mark all notifications as read
+ */
+export const useMarkAllNotificationsRead = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markAllNotificationsRead>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof markAllNotificationsRead>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getMarkAllNotificationsReadMutationOptions(options));
+};
+
+/**
+ * @summary Mark a single notification as read
+ */
+export const getMarkNotificationReadUrl = (notificationId: number) => {
+  return `/api/notifications/${notificationId}/read`;
+};
+
+export const markNotificationRead = async (
+  notificationId: number,
+  options?: RequestInit,
+): Promise<MarkNotificationRead200> => {
+  return customFetch<MarkNotificationRead200>(
+    getMarkNotificationReadUrl(notificationId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getMarkNotificationReadMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markNotificationRead>>,
+    TError,
+    { notificationId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof markNotificationRead>>,
+  TError,
+  { notificationId: number },
+  TContext
+> => {
+  const mutationKey = ["markNotificationRead"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof markNotificationRead>>,
+    { notificationId: number }
+  > = (props) => {
+    const { notificationId } = props ?? {};
+
+    return markNotificationRead(notificationId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MarkNotificationReadMutationResult = NonNullable<
+  Awaited<ReturnType<typeof markNotificationRead>>
+>;
+
+export type MarkNotificationReadMutationError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Mark a single notification as read
+ */
+export const useMarkNotificationRead = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markNotificationRead>>,
+    TError,
+    { notificationId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof markNotificationRead>>,
+  TError,
+  { notificationId: number },
+  TContext
+> => {
+  return useMutation(getMarkNotificationReadMutationOptions(options));
+};
+
+/**
+ * @summary Get notification preferences for the current user
+ */
+export const getGetNotificationPreferencesUrl = () => {
+  return `/api/notifications/preferences`;
+};
+
+export const getNotificationPreferences = async (
+  options?: RequestInit,
+): Promise<NotificationPreference[]> => {
+  return customFetch<NotificationPreference[]>(
+    getGetNotificationPreferencesUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetNotificationPreferencesQueryKey = () => {
+  return [`/api/notifications/preferences`] as const;
+};
+
+export const getGetNotificationPreferencesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getNotificationPreferences>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getNotificationPreferences>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetNotificationPreferencesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getNotificationPreferences>>
+  > = ({ signal }) => getNotificationPreferences({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getNotificationPreferences>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetNotificationPreferencesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getNotificationPreferences>>
+>;
+export type GetNotificationPreferencesQueryError =
+  ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Get notification preferences for the current user
+ */
+
+export function useGetNotificationPreferences<
+  TData = Awaited<ReturnType<typeof getNotificationPreferences>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getNotificationPreferences>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetNotificationPreferencesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update notification preferences
+ */
+export const getUpdateNotificationPreferencesUrl = () => {
+  return `/api/notifications/preferences`;
+};
+
+export const updateNotificationPreferences = async (
+  updateNotificationPreferencesBody: UpdateNotificationPreferencesBody,
+  options?: RequestInit,
+): Promise<NotificationPreference[]> => {
+  return customFetch<NotificationPreference[]>(
+    getUpdateNotificationPreferencesUrl(),
+    {
+      ...options,
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(updateNotificationPreferencesBody),
+    },
+  );
+};
+
+export const getUpdateNotificationPreferencesMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateNotificationPreferences>>,
+    TError,
+    { data: BodyType<UpdateNotificationPreferencesBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateNotificationPreferences>>,
+  TError,
+  { data: BodyType<UpdateNotificationPreferencesBody> },
+  TContext
+> => {
+  const mutationKey = ["updateNotificationPreferences"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateNotificationPreferences>>,
+    { data: BodyType<UpdateNotificationPreferencesBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return updateNotificationPreferences(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateNotificationPreferencesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateNotificationPreferences>>
+>;
+export type UpdateNotificationPreferencesMutationBody =
+  BodyType<UpdateNotificationPreferencesBody>;
+export type UpdateNotificationPreferencesMutationError =
+  ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Update notification preferences
+ */
+export const useUpdateNotificationPreferences = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateNotificationPreferences>>,
+    TError,
+    { data: BodyType<UpdateNotificationPreferencesBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateNotificationPreferences>>,
+  TError,
+  { data: BodyType<UpdateNotificationPreferencesBody> },
+  TContext
+> => {
+  return useMutation(getUpdateNotificationPreferencesMutationOptions(options));
+};
+
+/**
+ * @summary List comments for an entity
+ */
+export const getListCommentsUrl = (
+  circleId: number,
+  entityType: "support_request" | "service_post",
+  entityId: number,
+  params?: ListCommentsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/circles/${circleId}/comments/${entityType}/${entityId}?${stringifiedParams}`
+    : `/api/circles/${circleId}/comments/${entityType}/${entityId}`;
+};
+
+export const listComments = async (
+  circleId: number,
+  entityType: "support_request" | "service_post",
+  entityId: number,
+  params?: ListCommentsParams,
+  options?: RequestInit,
+): Promise<Comment[]> => {
+  return customFetch<Comment[]>(
+    getListCommentsUrl(circleId, entityType, entityId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListCommentsQueryKey = (
+  circleId: number,
+  entityType: "support_request" | "service_post",
+  entityId: number,
+  params?: ListCommentsParams,
+) => {
+  return [
+    `/api/circles/${circleId}/comments/${entityType}/${entityId}`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getListCommentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listComments>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  circleId: number,
+  entityType: "support_request" | "service_post",
+  entityId: number,
+  params?: ListCommentsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listComments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getListCommentsQueryKey(circleId, entityType, entityId, params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listComments>>> = ({
+    signal,
+  }) =>
+    listComments(circleId, entityType, entityId, params, {
+      signal,
+      ...requestOptions,
+    });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(circleId && entityType && entityId),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listComments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCommentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listComments>>
+>;
+export type ListCommentsQueryError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary List comments for an entity
+ */
+
+export function useListComments<
+  TData = Awaited<ReturnType<typeof listComments>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  circleId: number,
+  entityType: "support_request" | "service_post",
+  entityId: number,
+  params?: ListCommentsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listComments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCommentsQueryOptions(
+    circleId,
+    entityType,
+    entityId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Post a comment on an entity
+ */
+export const getCreateCommentUrl = (
+  circleId: number,
+  entityType: "support_request" | "service_post",
+  entityId: number,
+) => {
+  return `/api/circles/${circleId}/comments/${entityType}/${entityId}`;
+};
+
+export const createComment = async (
+  circleId: number,
+  entityType: "support_request" | "service_post",
+  entityId: number,
+  createCommentBody: CreateCommentBody,
+  options?: RequestInit,
+): Promise<Comment> => {
+  return customFetch<Comment>(
+    getCreateCommentUrl(circleId, entityType, entityId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(createCommentBody),
+    },
+  );
+};
+
+export const getCreateCommentMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createComment>>,
+    TError,
+    {
+      circleId: number;
+      entityType: "support_request" | "service_post";
+      entityId: number;
+      data: BodyType<CreateCommentBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createComment>>,
+  TError,
+  {
+    circleId: number;
+    entityType: "support_request" | "service_post";
+    entityId: number;
+    data: BodyType<CreateCommentBody>;
+  },
+  TContext
+> => {
+  const mutationKey = ["createComment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createComment>>,
+    {
+      circleId: number;
+      entityType: "support_request" | "service_post";
+      entityId: number;
+      data: BodyType<CreateCommentBody>;
+    }
+  > = (props) => {
+    const { circleId, entityType, entityId, data } = props ?? {};
+
+    return createComment(circleId, entityType, entityId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateCommentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createComment>>
+>;
+export type CreateCommentMutationBody = BodyType<CreateCommentBody>;
+export type CreateCommentMutationError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Post a comment on an entity
+ */
+export const useCreateComment = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createComment>>,
+    TError,
+    {
+      circleId: number;
+      entityType: "support_request" | "service_post";
+      entityId: number;
+      data: BodyType<CreateCommentBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createComment>>,
+  TError,
+  {
+    circleId: number;
+    entityType: "support_request" | "service_post";
+    entityId: number;
+    data: BodyType<CreateCommentBody>;
+  },
+  TContext
+> => {
+  return useMutation(getCreateCommentMutationOptions(options));
+};
+
+/**
+ * @summary Edit a comment
+ */
+export const getUpdateCommentUrl = (circleId: number, commentId: number) => {
+  return `/api/circles/${circleId}/comments/${commentId}`;
+};
+
+export const updateComment = async (
+  circleId: number,
+  commentId: number,
+  updateCommentBody: UpdateCommentBody,
+  options?: RequestInit,
+): Promise<Comment> => {
+  return customFetch<Comment>(getUpdateCommentUrl(circleId, commentId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateCommentBody),
+  });
+};
+
+export const getUpdateCommentMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateComment>>,
+    TError,
+    { circleId: number; commentId: number; data: BodyType<UpdateCommentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateComment>>,
+  TError,
+  { circleId: number; commentId: number; data: BodyType<UpdateCommentBody> },
+  TContext
+> => {
+  const mutationKey = ["updateComment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateComment>>,
+    { circleId: number; commentId: number; data: BodyType<UpdateCommentBody> }
+  > = (props) => {
+    const { circleId, commentId, data } = props ?? {};
+
+    return updateComment(circleId, commentId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateCommentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateComment>>
+>;
+export type UpdateCommentMutationBody = BodyType<UpdateCommentBody>;
+export type UpdateCommentMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Edit a comment
+ */
+export const useUpdateComment = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateComment>>,
+    TError,
+    { circleId: number; commentId: number; data: BodyType<UpdateCommentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateComment>>,
+  TError,
+  { circleId: number; commentId: number; data: BodyType<UpdateCommentBody> },
+  TContext
+> => {
+  return useMutation(getUpdateCommentMutationOptions(options));
+};
+
+/**
+ * @summary Delete a comment
+ */
+export const getDeleteCommentUrl = (circleId: number, commentId: number) => {
+  return `/api/circles/${circleId}/comments/${commentId}`;
+};
+
+export const deleteComment = async (
+  circleId: number,
+  commentId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteCommentUrl(circleId, commentId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteCommentMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteComment>>,
+    TError,
+    { circleId: number; commentId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteComment>>,
+  TError,
+  { circleId: number; commentId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteComment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteComment>>,
+    { circleId: number; commentId: number }
+  > = (props) => {
+    const { circleId, commentId } = props ?? {};
+
+    return deleteComment(circleId, commentId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteCommentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteComment>>
+>;
+
+export type DeleteCommentMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Delete a comment
+ */
+export const useDeleteComment = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteComment>>,
+    TError,
+    { circleId: number; commentId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteComment>>,
+  TError,
+  { circleId: number; commentId: number },
+  TContext
+> => {
+  return useMutation(getDeleteCommentMutationOptions(options));
+};
+
+/**
+ * @summary Get reactions for an entity
+ */
+export const getGetReactionsUrl = (
+  circleId: number,
+  entityType: "support_request" | "service_post",
+  entityId: number,
+) => {
+  return `/api/circles/${circleId}/reactions/${entityType}/${entityId}`;
+};
+
+export const getReactions = async (
+  circleId: number,
+  entityType: "support_request" | "service_post",
+  entityId: number,
+  options?: RequestInit,
+): Promise<ReactionSummary> => {
+  return customFetch<ReactionSummary>(
+    getGetReactionsUrl(circleId, entityType, entityId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetReactionsQueryKey = (
+  circleId: number,
+  entityType: "support_request" | "service_post",
+  entityId: number,
+) => {
+  return [
+    `/api/circles/${circleId}/reactions/${entityType}/${entityId}`,
+  ] as const;
+};
+
+export const getGetReactionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getReactions>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  circleId: number,
+  entityType: "support_request" | "service_post",
+  entityId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getReactions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getGetReactionsQueryKey(circleId, entityType, entityId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getReactions>>> = ({
+    signal,
+  }) =>
+    getReactions(circleId, entityType, entityId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(circleId && entityType && entityId),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getReactions>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetReactionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getReactions>>
+>;
+export type GetReactionsQueryError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Get reactions for an entity
+ */
+
+export function useGetReactions<
+  TData = Awaited<ReturnType<typeof getReactions>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  circleId: number,
+  entityType: "support_request" | "service_post",
+  entityId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getReactions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetReactionsQueryOptions(
+    circleId,
+    entityType,
+    entityId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Toggle a reaction on an entity
+ */
+export const getToggleReactionUrl = (
+  circleId: number,
+  entityType: "support_request" | "service_post",
+  entityId: number,
+) => {
+  return `/api/circles/${circleId}/reactions/${entityType}/${entityId}`;
+};
+
+export const toggleReaction = async (
+  circleId: number,
+  entityType: "support_request" | "service_post",
+  entityId: number,
+  toggleReactionBody: ToggleReactionBody,
+  options?: RequestInit,
+): Promise<ReactionToggleResult> => {
+  return customFetch<ReactionToggleResult>(
+    getToggleReactionUrl(circleId, entityType, entityId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(toggleReactionBody),
+    },
+  );
+};
+
+export const getToggleReactionMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof toggleReaction>>,
+    TError,
+    {
+      circleId: number;
+      entityType: "support_request" | "service_post";
+      entityId: number;
+      data: BodyType<ToggleReactionBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof toggleReaction>>,
+  TError,
+  {
+    circleId: number;
+    entityType: "support_request" | "service_post";
+    entityId: number;
+    data: BodyType<ToggleReactionBody>;
+  },
+  TContext
+> => {
+  const mutationKey = ["toggleReaction"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof toggleReaction>>,
+    {
+      circleId: number;
+      entityType: "support_request" | "service_post";
+      entityId: number;
+      data: BodyType<ToggleReactionBody>;
+    }
+  > = (props) => {
+    const { circleId, entityType, entityId, data } = props ?? {};
+
+    return toggleReaction(circleId, entityType, entityId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ToggleReactionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof toggleReaction>>
+>;
+export type ToggleReactionMutationBody = BodyType<ToggleReactionBody>;
+export type ToggleReactionMutationError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Toggle a reaction on an entity
+ */
+export const useToggleReaction = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof toggleReaction>>,
+    TError,
+    {
+      circleId: number;
+      entityType: "support_request" | "service_post";
+      entityId: number;
+      data: BodyType<ToggleReactionBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof toggleReaction>>,
+  TError,
+  {
+    circleId: number;
+    entityType: "support_request" | "service_post";
+    entityId: number;
+    data: BodyType<ToggleReactionBody>;
+  },
+  TContext
+> => {
+  return useMutation(getToggleReactionMutationOptions(options));
+};
+
+/**
+ * @summary Send a gratitude note to circle members
+ */
+export const getSendGratitudeNoteUrl = (circleId: number) => {
+  return `/api/circles/${circleId}/gratitude`;
+};
+
+export const sendGratitudeNote = async (
+  circleId: number,
+  createGratitudeNoteBody: CreateGratitudeNoteBody,
+  options?: RequestInit,
+): Promise<GratitudeNote> => {
+  return customFetch<GratitudeNote>(getSendGratitudeNoteUrl(circleId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createGratitudeNoteBody),
+  });
+};
+
+export const getSendGratitudeNoteMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendGratitudeNote>>,
+    TError,
+    { circleId: number; data: BodyType<CreateGratitudeNoteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sendGratitudeNote>>,
+  TError,
+  { circleId: number; data: BodyType<CreateGratitudeNoteBody> },
+  TContext
+> => {
+  const mutationKey = ["sendGratitudeNote"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sendGratitudeNote>>,
+    { circleId: number; data: BodyType<CreateGratitudeNoteBody> }
+  > = (props) => {
+    const { circleId, data } = props ?? {};
+
+    return sendGratitudeNote(circleId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SendGratitudeNoteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof sendGratitudeNote>>
+>;
+export type SendGratitudeNoteMutationBody = BodyType<CreateGratitudeNoteBody>;
+export type SendGratitudeNoteMutationError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Send a gratitude note to circle members
+ */
+export const useSendGratitudeNote = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendGratitudeNote>>,
+    TError,
+    { circleId: number; data: BodyType<CreateGratitudeNoteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof sendGratitudeNote>>,
+  TError,
+  { circleId: number; data: BodyType<CreateGratitudeNoteBody> },
+  TContext
+> => {
+  return useMutation(getSendGratitudeNoteMutationOptions(options));
+};
+
+/**
+ * @summary List disputes in a circle
+ */
+export const getListDisputesUrl = (
+  circleId: number,
+  params?: ListDisputesParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/circles/${circleId}/disputes?${stringifiedParams}`
+    : `/api/circles/${circleId}/disputes`;
+};
+
+export const listDisputes = async (
+  circleId: number,
+  params?: ListDisputesParams,
+  options?: RequestInit,
+): Promise<Dispute[]> => {
+  return customFetch<Dispute[]>(getListDisputesUrl(circleId, params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListDisputesQueryKey = (
+  circleId: number,
+  params?: ListDisputesParams,
+) => {
+  return [
+    `/api/circles/${circleId}/disputes`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getListDisputesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listDisputes>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  circleId: number,
+  params?: ListDisputesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listDisputes>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListDisputesQueryKey(circleId, params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listDisputes>>> = ({
+    signal,
+  }) => listDisputes(circleId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!circleId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listDisputes>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListDisputesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listDisputes>>
+>;
+export type ListDisputesQueryError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary List disputes in a circle
+ */
+
+export function useListDisputes<
+  TData = Awaited<ReturnType<typeof listDisputes>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  circleId: number,
+  params?: ListDisputesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listDisputes>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListDisputesQueryOptions(circleId, params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Raise a dispute about a contribution or repayment
+ */
+export const getCreateDisputeUrl = (circleId: number) => {
+  return `/api/circles/${circleId}/disputes`;
+};
+
+export const createDispute = async (
+  circleId: number,
+  createDisputeBody: CreateDisputeBody,
+  options?: RequestInit,
+): Promise<Dispute> => {
+  return customFetch<Dispute>(getCreateDisputeUrl(circleId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createDisputeBody),
+  });
+};
+
+export const getCreateDisputeMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createDispute>>,
+    TError,
+    { circleId: number; data: BodyType<CreateDisputeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createDispute>>,
+  TError,
+  { circleId: number; data: BodyType<CreateDisputeBody> },
+  TContext
+> => {
+  const mutationKey = ["createDispute"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createDispute>>,
+    { circleId: number; data: BodyType<CreateDisputeBody> }
+  > = (props) => {
+    const { circleId, data } = props ?? {};
+
+    return createDispute(circleId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateDisputeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createDispute>>
+>;
+export type CreateDisputeMutationBody = BodyType<CreateDisputeBody>;
+export type CreateDisputeMutationError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Raise a dispute about a contribution or repayment
+ */
+export const useCreateDispute = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createDispute>>,
+    TError,
+    { circleId: number; data: BodyType<CreateDisputeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createDispute>>,
+  TError,
+  { circleId: number; data: BodyType<CreateDisputeBody> },
+  TContext
+> => {
+  return useMutation(getCreateDisputeMutationOptions(options));
+};
+
+/**
+ * @summary Resolve or dismiss a dispute (admin only)
+ */
+export const getResolveDisputeUrl = (circleId: number, disputeId: number) => {
+  return `/api/circles/${circleId}/disputes/${disputeId}/resolve`;
+};
+
+export const resolveDispute = async (
+  circleId: number,
+  disputeId: number,
+  resolveDisputeBody: ResolveDisputeBody,
+  options?: RequestInit,
+): Promise<Dispute> => {
+  return customFetch<Dispute>(getResolveDisputeUrl(circleId, disputeId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(resolveDisputeBody),
+  });
+};
+
+export const getResolveDisputeMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resolveDispute>>,
+    TError,
+    { circleId: number; disputeId: number; data: BodyType<ResolveDisputeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof resolveDispute>>,
+  TError,
+  { circleId: number; disputeId: number; data: BodyType<ResolveDisputeBody> },
+  TContext
+> => {
+  const mutationKey = ["resolveDispute"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof resolveDispute>>,
+    { circleId: number; disputeId: number; data: BodyType<ResolveDisputeBody> }
+  > = (props) => {
+    const { circleId, disputeId, data } = props ?? {};
+
+    return resolveDispute(circleId, disputeId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ResolveDisputeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof resolveDispute>>
+>;
+export type ResolveDisputeMutationBody = BodyType<ResolveDisputeBody>;
+export type ResolveDisputeMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Resolve or dismiss a dispute (admin only)
+ */
+export const useResolveDispute = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resolveDispute>>,
+    TError,
+    { circleId: number; disputeId: number; data: BodyType<ResolveDisputeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof resolveDispute>>,
+  TError,
+  { circleId: number; disputeId: number; data: BodyType<ResolveDisputeBody> },
+  TContext
+> => {
+  return useMutation(getResolveDisputeMutationOptions(options));
+};
+
+/**
+ * @summary List placeholder members for a circle
+ */
+export const getListPlaceholderMembersUrl = (circleId: number) => {
+  return `/api/circles/${circleId}/placeholder-members`;
+};
+
+export const listPlaceholderMembers = async (
+  circleId: number,
+  options?: RequestInit,
+): Promise<PlaceholderMember[]> => {
+  return customFetch<PlaceholderMember[]>(
+    getListPlaceholderMembersUrl(circleId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListPlaceholderMembersQueryKey = (circleId: number) => {
+  return [`/api/circles/${circleId}/placeholder-members`] as const;
+};
+
+export const getListPlaceholderMembersQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPlaceholderMembers>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  circleId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPlaceholderMembers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListPlaceholderMembersQueryKey(circleId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPlaceholderMembers>>
+  > = ({ signal }) =>
+    listPlaceholderMembers(circleId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!circleId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPlaceholderMembers>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPlaceholderMembersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPlaceholderMembers>>
+>;
+export type ListPlaceholderMembersQueryError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary List placeholder members for a circle
+ */
+
+export function useListPlaceholderMembers<
+  TData = Awaited<ReturnType<typeof listPlaceholderMembers>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  circleId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPlaceholderMembers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPlaceholderMembersQueryOptions(circleId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Add a placeholder member to a circle (admin only)
+ */
+export const getCreatePlaceholderMemberUrl = (circleId: number) => {
+  return `/api/circles/${circleId}/placeholder-members`;
+};
+
+export const createPlaceholderMember = async (
+  circleId: number,
+  createPlaceholderBody: CreatePlaceholderBody,
+  options?: RequestInit,
+): Promise<PlaceholderMember> => {
+  return customFetch<PlaceholderMember>(
+    getCreatePlaceholderMemberUrl(circleId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(createPlaceholderBody),
+    },
+  );
+};
+
+export const getCreatePlaceholderMemberMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPlaceholderMember>>,
+    TError,
+    { circleId: number; data: BodyType<CreatePlaceholderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createPlaceholderMember>>,
+  TError,
+  { circleId: number; data: BodyType<CreatePlaceholderBody> },
+  TContext
+> => {
+  const mutationKey = ["createPlaceholderMember"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createPlaceholderMember>>,
+    { circleId: number; data: BodyType<CreatePlaceholderBody> }
+  > = (props) => {
+    const { circleId, data } = props ?? {};
+
+    return createPlaceholderMember(circleId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreatePlaceholderMemberMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createPlaceholderMember>>
+>;
+export type CreatePlaceholderMemberMutationBody =
+  BodyType<CreatePlaceholderBody>;
+export type CreatePlaceholderMemberMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Add a placeholder member to a circle (admin only)
+ */
+export const useCreatePlaceholderMember = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPlaceholderMember>>,
+    TError,
+    { circleId: number; data: BodyType<CreatePlaceholderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createPlaceholderMember>>,
+  TError,
+  { circleId: number; data: BodyType<CreatePlaceholderBody> },
+  TContext
+> => {
+  return useMutation(getCreatePlaceholderMemberMutationOptions(options));
+};
+
+/**
+ * @summary Update a placeholder member (admin only)
+ */
+export const getUpdatePlaceholderMemberUrl = (
+  circleId: number,
+  placeholderId: number,
+) => {
+  return `/api/circles/${circleId}/placeholder-members/${placeholderId}`;
+};
+
+export const updatePlaceholderMember = async (
+  circleId: number,
+  placeholderId: number,
+  updatePlaceholderBody: UpdatePlaceholderBody,
+  options?: RequestInit,
+): Promise<PlaceholderMember> => {
+  return customFetch<PlaceholderMember>(
+    getUpdatePlaceholderMemberUrl(circleId, placeholderId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(updatePlaceholderBody),
+    },
+  );
+};
+
+export const getUpdatePlaceholderMemberMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePlaceholderMember>>,
+    TError,
+    {
+      circleId: number;
+      placeholderId: number;
+      data: BodyType<UpdatePlaceholderBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updatePlaceholderMember>>,
+  TError,
+  {
+    circleId: number;
+    placeholderId: number;
+    data: BodyType<UpdatePlaceholderBody>;
+  },
+  TContext
+> => {
+  const mutationKey = ["updatePlaceholderMember"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updatePlaceholderMember>>,
+    {
+      circleId: number;
+      placeholderId: number;
+      data: BodyType<UpdatePlaceholderBody>;
+    }
+  > = (props) => {
+    const { circleId, placeholderId, data } = props ?? {};
+
+    return updatePlaceholderMember(
+      circleId,
+      placeholderId,
+      data,
+      requestOptions,
+    );
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdatePlaceholderMemberMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updatePlaceholderMember>>
+>;
+export type UpdatePlaceholderMemberMutationBody =
+  BodyType<UpdatePlaceholderBody>;
+export type UpdatePlaceholderMemberMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Update a placeholder member (admin only)
+ */
+export const useUpdatePlaceholderMember = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePlaceholderMember>>,
+    TError,
+    {
+      circleId: number;
+      placeholderId: number;
+      data: BodyType<UpdatePlaceholderBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updatePlaceholderMember>>,
+  TError,
+  {
+    circleId: number;
+    placeholderId: number;
+    data: BodyType<UpdatePlaceholderBody>;
+  },
+  TContext
+> => {
+  return useMutation(getUpdatePlaceholderMemberMutationOptions(options));
+};
+
+/**
+ * @summary Remove a placeholder member (admin only)
+ */
+export const getDeletePlaceholderMemberUrl = (
+  circleId: number,
+  placeholderId: number,
+) => {
+  return `/api/circles/${circleId}/placeholder-members/${placeholderId}`;
+};
+
+export const deletePlaceholderMember = async (
+  circleId: number,
+  placeholderId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(
+    getDeletePlaceholderMemberUrl(circleId, placeholderId),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
+};
+
+export const getDeletePlaceholderMemberMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePlaceholderMember>>,
+    TError,
+    { circleId: number; placeholderId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deletePlaceholderMember>>,
+  TError,
+  { circleId: number; placeholderId: number },
+  TContext
+> => {
+  const mutationKey = ["deletePlaceholderMember"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deletePlaceholderMember>>,
+    { circleId: number; placeholderId: number }
+  > = (props) => {
+    const { circleId, placeholderId } = props ?? {};
+
+    return deletePlaceholderMember(circleId, placeholderId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeletePlaceholderMemberMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deletePlaceholderMember>>
+>;
+
+export type DeletePlaceholderMemberMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Remove a placeholder member (admin only)
+ */
+export const useDeletePlaceholderMember = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePlaceholderMember>>,
+    TError,
+    { circleId: number; placeholderId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deletePlaceholderMember>>,
+  TError,
+  { circleId: number; placeholderId: number },
+  TContext
+> => {
+  return useMutation(getDeletePlaceholderMemberMutationOptions(options));
+};
+
+/**
+ * @summary Claim a placeholder member profile as your own
+ */
+export const getClaimPlaceholderMemberUrl = (
+  circleId: number,
+  placeholderId: number,
+) => {
+  return `/api/circles/${circleId}/placeholder-members/${placeholderId}/claim`;
+};
+
+export const claimPlaceholderMember = async (
+  circleId: number,
+  placeholderId: number,
+  options?: RequestInit,
+): Promise<PlaceholderMember> => {
+  return customFetch<PlaceholderMember>(
+    getClaimPlaceholderMemberUrl(circleId, placeholderId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getClaimPlaceholderMemberMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof claimPlaceholderMember>>,
+    TError,
+    { circleId: number; placeholderId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof claimPlaceholderMember>>,
+  TError,
+  { circleId: number; placeholderId: number },
+  TContext
+> => {
+  const mutationKey = ["claimPlaceholderMember"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof claimPlaceholderMember>>,
+    { circleId: number; placeholderId: number }
+  > = (props) => {
+    const { circleId, placeholderId } = props ?? {};
+
+    return claimPlaceholderMember(circleId, placeholderId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ClaimPlaceholderMemberMutationResult = NonNullable<
+  Awaited<ReturnType<typeof claimPlaceholderMember>>
+>;
+
+export type ClaimPlaceholderMemberMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | void
+>;
+
+/**
+ * @summary Claim a placeholder member profile as your own
+ */
+export const useClaimPlaceholderMember = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof claimPlaceholderMember>>,
+    TError,
+    { circleId: number; placeholderId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof claimPlaceholderMember>>,
+  TError,
+  { circleId: number; placeholderId: number },
+  TContext
+> => {
+  return useMutation(getClaimPlaceholderMemberMutationOptions(options));
+};
+
+/**
+ * @summary List audit log entries for a circle (admin only)
+ */
+export const getListAuditLogUrl = (
+  circleId: number,
+  params?: ListAuditLogParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/circles/${circleId}/audit?${stringifiedParams}`
+    : `/api/circles/${circleId}/audit`;
+};
+
+export const listAuditLog = async (
+  circleId: number,
+  params?: ListAuditLogParams,
+  options?: RequestInit,
+): Promise<AuditEntry[]> => {
+  return customFetch<AuditEntry[]>(getListAuditLogUrl(circleId, params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAuditLogQueryKey = (
+  circleId: number,
+  params?: ListAuditLogParams,
+) => {
+  return [
+    `/api/circles/${circleId}/audit`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getListAuditLogQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAuditLog>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(
+  circleId: number,
+  params?: ListAuditLogParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAuditLog>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListAuditLogQueryKey(circleId, params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listAuditLog>>> = ({
+    signal,
+  }) => listAuditLog(circleId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!circleId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAuditLog>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAuditLogQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAuditLog>>
+>;
+export type ListAuditLogQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary List audit log entries for a circle (admin only)
+ */
+
+export function useListAuditLog<
+  TData = Awaited<ReturnType<typeof listAuditLog>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(
+  circleId: number,
+  params?: ListAuditLogParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAuditLog>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAuditLogQueryOptions(circleId, params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List attachments for an entity
+ */
+export const getListAttachmentsUrl = (
+  circleId: number,
+  entityType: "support_request" | "service_post" | "repayment",
+  entityId: number,
+) => {
+  return `/api/circles/${circleId}/attachments/${entityType}/${entityId}`;
+};
+
+export const listAttachments = async (
+  circleId: number,
+  entityType: "support_request" | "service_post" | "repayment",
+  entityId: number,
+  options?: RequestInit,
+): Promise<Attachment[]> => {
+  return customFetch<Attachment[]>(
+    getListAttachmentsUrl(circleId, entityType, entityId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListAttachmentsQueryKey = (
+  circleId: number,
+  entityType: "support_request" | "service_post" | "repayment",
+  entityId: number,
+) => {
+  return [
+    `/api/circles/${circleId}/attachments/${entityType}/${entityId}`,
+  ] as const;
+};
+
+export const getListAttachmentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAttachments>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  circleId: number,
+  entityType: "support_request" | "service_post" | "repayment",
+  entityId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAttachments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getListAttachmentsQueryKey(circleId, entityType, entityId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listAttachments>>> = ({
+    signal,
+  }) =>
+    listAttachments(circleId, entityType, entityId, {
+      signal,
+      ...requestOptions,
+    });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(circleId && entityType && entityId),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAttachments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAttachmentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAttachments>>
+>;
+export type ListAttachmentsQueryError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary List attachments for an entity
+ */
+
+export function useListAttachments<
+  TData = Awaited<ReturnType<typeof listAttachments>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  circleId: number,
+  entityType: "support_request" | "service_post" | "repayment",
+  entityId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAttachments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAttachmentsQueryOptions(
+    circleId,
+    entityType,
+    entityId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Record an uploaded file attachment for an entity
+ */
+export const getCreateAttachmentUrl = (
+  circleId: number,
+  entityType: "support_request" | "service_post" | "repayment",
+  entityId: number,
+) => {
+  return `/api/circles/${circleId}/attachments/${entityType}/${entityId}`;
+};
+
+export const createAttachment = async (
+  circleId: number,
+  entityType: "support_request" | "service_post" | "repayment",
+  entityId: number,
+  createAttachmentBody: CreateAttachmentBody,
+  options?: RequestInit,
+): Promise<Attachment> => {
+  return customFetch<Attachment>(
+    getCreateAttachmentUrl(circleId, entityType, entityId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(createAttachmentBody),
+    },
+  );
+};
+
+export const getCreateAttachmentMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAttachment>>,
+    TError,
+    {
+      circleId: number;
+      entityType: "support_request" | "service_post" | "repayment";
+      entityId: number;
+      data: BodyType<CreateAttachmentBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createAttachment>>,
+  TError,
+  {
+    circleId: number;
+    entityType: "support_request" | "service_post" | "repayment";
+    entityId: number;
+    data: BodyType<CreateAttachmentBody>;
+  },
+  TContext
+> => {
+  const mutationKey = ["createAttachment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createAttachment>>,
+    {
+      circleId: number;
+      entityType: "support_request" | "service_post" | "repayment";
+      entityId: number;
+      data: BodyType<CreateAttachmentBody>;
+    }
+  > = (props) => {
+    const { circleId, entityType, entityId, data } = props ?? {};
+
+    return createAttachment(
+      circleId,
+      entityType,
+      entityId,
+      data,
+      requestOptions,
+    );
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateAttachmentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createAttachment>>
+>;
+export type CreateAttachmentMutationBody = BodyType<CreateAttachmentBody>;
+export type CreateAttachmentMutationError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Record an uploaded file attachment for an entity
+ */
+export const useCreateAttachment = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAttachment>>,
+    TError,
+    {
+      circleId: number;
+      entityType: "support_request" | "service_post" | "repayment";
+      entityId: number;
+      data: BodyType<CreateAttachmentBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createAttachment>>,
+  TError,
+  {
+    circleId: number;
+    entityType: "support_request" | "service_post" | "repayment";
+    entityId: number;
+    data: BodyType<CreateAttachmentBody>;
+  },
+  TContext
+> => {
+  return useMutation(getCreateAttachmentMutationOptions(options));
+};
+
+/**
+ * @summary Delete an attachment
+ */
+export const getDeleteAttachmentUrl = (
+  circleId: number,
+  attachmentId: number,
+) => {
+  return `/api/circles/${circleId}/attachments/${attachmentId}`;
+};
+
+export const deleteAttachment = async (
+  circleId: number,
+  attachmentId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteAttachmentUrl(circleId, attachmentId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteAttachmentMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAttachment>>,
+    TError,
+    { circleId: number; attachmentId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAttachment>>,
+  TError,
+  { circleId: number; attachmentId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteAttachment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAttachment>>,
+    { circleId: number; attachmentId: number }
+  > = (props) => {
+    const { circleId, attachmentId } = props ?? {};
+
+    return deleteAttachment(circleId, attachmentId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAttachmentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAttachment>>
+>;
+
+export type DeleteAttachmentMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Delete an attachment
+ */
+export const useDeleteAttachment = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAttachment>>,
+    TError,
+    { circleId: number; attachmentId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAttachment>>,
+  TError,
+  { circleId: number; attachmentId: number },
+  TContext
+> => {
+  return useMutation(getDeleteAttachmentMutationOptions(options));
+};
+
+/**
+ * Returns a presigned GCS URL for direct upload. Send JSON metadata here,
+then upload the file directly to the returned presigned URL.
+
+ * @summary Request a presigned URL for file upload
+ */
+export const getRequestUploadUrlUrl = () => {
+  return `/api/storage/uploads/request-url`;
+};
+
+export const requestUploadUrl = async (
+  uploadUrlRequest: UploadUrlRequest,
+  options?: RequestInit,
+): Promise<UploadUrlResponse> => {
+  return customFetch<UploadUrlResponse>(getRequestUploadUrlUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(uploadUrlRequest),
+  });
+};
+
+export const getRequestUploadUrlMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestUploadUrl>>,
+    TError,
+    { data: BodyType<UploadUrlRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestUploadUrl>>,
+  TError,
+  { data: BodyType<UploadUrlRequest> },
+  TContext
+> => {
+  const mutationKey = ["requestUploadUrl"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestUploadUrl>>,
+    { data: BodyType<UploadUrlRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return requestUploadUrl(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestUploadUrlMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestUploadUrl>>
+>;
+export type RequestUploadUrlMutationBody = BodyType<UploadUrlRequest>;
+export type RequestUploadUrlMutationError = ErrorType<void>;
+
+/**
+ * @summary Request a presigned URL for file upload
+ */
+export const useRequestUploadUrl = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestUploadUrl>>,
+    TError,
+    { data: BodyType<UploadUrlRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof requestUploadUrl>>,
+  TError,
+  { data: BodyType<UploadUrlRequest> },
+  TContext
+> => {
+  return useMutation(getRequestUploadUrlMutationOptions(options));
+};
+
+/**
+ * @summary Serve a public asset
+ */
+export const getGetPublicObjectUrl = (filePath: string) => {
+  return `/api/storage/public-objects/${filePath}`;
+};
+
+export const getPublicObject = async (
+  filePath: string,
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(getGetPublicObjectUrl(filePath), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPublicObjectQueryKey = (filePath: string) => {
+  return [`/api/storage/public-objects/${filePath}`] as const;
+};
+
+export const getGetPublicObjectQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPublicObject>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  filePath: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublicObject>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPublicObjectQueryKey(filePath);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicObject>>> = ({
+    signal,
+  }) => getPublicObject(filePath, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!filePath,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPublicObject>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPublicObjectQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPublicObject>>
+>;
+export type GetPublicObjectQueryError = ErrorType<NotFoundResponse>;
+
+/**
+ * @summary Serve a public asset
+ */
+
+export function useGetPublicObject<
+  TData = Awaited<ReturnType<typeof getPublicObject>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  filePath: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublicObject>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPublicObjectQueryOptions(filePath, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Serve a private object entity
+ */
+export const getGetStorageObjectUrl = (objectPath: string) => {
+  return `/api/storage/objects/${objectPath}`;
+};
+
+export const getStorageObject = async (
+  objectPath: string,
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(getGetStorageObjectUrl(objectPath), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetStorageObjectQueryKey = (objectPath: string) => {
+  return [`/api/storage/objects/${objectPath}`] as const;
+};
+
+export const getGetStorageObjectQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStorageObject>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  objectPath: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStorageObject>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetStorageObjectQueryKey(objectPath);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getStorageObject>>
+  > = ({ signal }) =>
+    getStorageObject(objectPath, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!objectPath,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStorageObject>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStorageObjectQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStorageObject>>
+>;
+export type GetStorageObjectQueryError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Serve a private object entity
+ */
+
+export function useGetStorageObject<
+  TData = Awaited<ReturnType<typeof getStorageObject>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  objectPath: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStorageObject>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStorageObjectQueryOptions(objectPath, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

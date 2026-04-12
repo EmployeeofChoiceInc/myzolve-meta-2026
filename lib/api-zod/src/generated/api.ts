@@ -1332,6 +1332,563 @@ export const GetCircleLedgerSummaryResponse = zod.object({
 });
 
 /**
+ * @summary List notifications for the current user
+ */
+export const listNotificationsQueryLimitDefault = 30;
+export const listNotificationsQueryOffsetDefault = 0;
+
+export const ListNotificationsQueryParams = zod.object({
+  limit: zod.coerce.number().default(listNotificationsQueryLimitDefault),
+  offset: zod.coerce.number().default(listNotificationsQueryOffsetDefault),
+});
+
+export const ListNotificationsResponse = zod.object({
+  notifications: zod.array(
+    zod.object({
+      id: zod.number(),
+      circleId: zod.number().nullish(),
+      notificationType: zod.string(),
+      targetEntityType: zod.string().nullish(),
+      targetEntityId: zod.number().nullish(),
+      title: zod.string(),
+      body: zod.string(),
+      isRead: zod.boolean(),
+      readAt: zod.coerce.date().nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  unreadCount: zod.number(),
+});
+
+/**
+ * @summary Get unread notification count
+ */
+export const GetNotificationUnreadCountResponse = zod.object({
+  unreadCount: zod.number(),
+});
+
+/**
+ * @summary Mark all notifications as read
+ */
+export const MarkAllNotificationsReadResponse = zod.object({
+  success: zod.boolean(),
+});
+
+/**
+ * @summary Mark a single notification as read
+ */
+export const MarkNotificationReadParams = zod.object({
+  notificationId: zod.coerce.number(),
+});
+
+export const MarkNotificationReadResponse = zod.object({
+  id: zod.number(),
+  isRead: zod.boolean(),
+  readAt: zod.coerce.date().nullish(),
+});
+
+/**
+ * @summary Get notification preferences for the current user
+ */
+export const GetNotificationPreferencesResponseItem = zod.object({
+  notificationType: zod.string(),
+  enabled: zod.boolean(),
+});
+export const GetNotificationPreferencesResponse = zod.array(
+  GetNotificationPreferencesResponseItem,
+);
+
+/**
+ * @summary Update notification preferences
+ */
+export const UpdateNotificationPreferencesBody = zod.object({
+  preferences: zod.array(
+    zod.object({
+      notificationType: zod.enum([
+        "new_request",
+        "support_received",
+        "repayment_due",
+        "repayment_received",
+        "service_match",
+        "new_comment",
+        "reaction_received",
+        "gratitude_received",
+        "dispute_opened",
+        "dispute_resolved",
+        "member_joined",
+        "circle_update",
+      ]),
+      enabled: zod.boolean(),
+    }),
+  ),
+});
+
+export const UpdateNotificationPreferencesResponseItem = zod.object({
+  notificationType: zod.string(),
+  enabled: zod.boolean(),
+});
+export const UpdateNotificationPreferencesResponse = zod.array(
+  UpdateNotificationPreferencesResponseItem,
+);
+
+/**
+ * @summary List comments for an entity
+ */
+export const ListCommentsParams = zod.object({
+  circleId: zod.coerce.number(),
+  entityType: zod.enum(["support_request", "service_post"]),
+  entityId: zod.coerce.number(),
+});
+
+export const listCommentsQueryLimitDefault = 20;
+export const listCommentsQueryOffsetDefault = 0;
+
+export const ListCommentsQueryParams = zod.object({
+  limit: zod.coerce.number().default(listCommentsQueryLimitDefault),
+  offset: zod.coerce.number().default(listCommentsQueryOffsetDefault),
+});
+
+export const ListCommentsResponseItem = zod.object({
+  id: zod.number(),
+  circleId: zod.number(),
+  authorUserId: zod.number(),
+  authorName: zod.string(),
+  targetEntityType: zod.string(),
+  targetEntityId: zod.number(),
+  parentCommentId: zod.number().nullish(),
+  body: zod.string(),
+  status: zod.string(),
+  replyCount: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListCommentsResponse = zod.array(ListCommentsResponseItem);
+
+/**
+ * @summary Post a comment on an entity
+ */
+export const CreateCommentParams = zod.object({
+  circleId: zod.coerce.number(),
+  entityType: zod.enum(["support_request", "service_post"]),
+  entityId: zod.coerce.number(),
+});
+
+export const createCommentBodyBodyMax = 2000;
+
+export const CreateCommentBody = zod.object({
+  body: zod.string().min(1).max(createCommentBodyBodyMax),
+  parentCommentId: zod.number().optional(),
+});
+
+/**
+ * @summary Edit a comment
+ */
+export const UpdateCommentParams = zod.object({
+  circleId: zod.coerce.number(),
+  commentId: zod.coerce.number(),
+});
+
+export const updateCommentBodyBodyMax = 2000;
+
+export const UpdateCommentBody = zod.object({
+  body: zod.string().min(1).max(updateCommentBodyBodyMax),
+});
+
+export const UpdateCommentResponse = zod.object({
+  id: zod.number(),
+  circleId: zod.number(),
+  authorUserId: zod.number(),
+  authorName: zod.string(),
+  targetEntityType: zod.string(),
+  targetEntityId: zod.number(),
+  parentCommentId: zod.number().nullish(),
+  body: zod.string(),
+  status: zod.string(),
+  replyCount: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a comment
+ */
+export const DeleteCommentParams = zod.object({
+  circleId: zod.coerce.number(),
+  commentId: zod.coerce.number(),
+});
+
+/**
+ * @summary Get reactions for an entity
+ */
+export const GetReactionsParams = zod.object({
+  circleId: zod.coerce.number(),
+  entityType: zod.enum(["support_request", "service_post"]),
+  entityId: zod.coerce.number(),
+});
+
+export const GetReactionsResponse = zod.object({
+  counts: zod.record(zod.string(), zod.number()),
+  myReactions: zod.array(zod.string()),
+  total: zod.number(),
+});
+
+/**
+ * @summary Toggle a reaction on an entity
+ */
+export const ToggleReactionParams = zod.object({
+  circleId: zod.coerce.number(),
+  entityType: zod.enum(["support_request", "service_post"]),
+  entityId: zod.coerce.number(),
+});
+
+export const ToggleReactionBody = zod.object({
+  reactionType: zod.enum(["heart", "support", "thank_you", "got_it"]),
+});
+
+export const ToggleReactionResponse = zod.object({
+  toggled: zod.boolean(),
+  reactionType: zod.string(),
+});
+
+/**
+ * @summary Send a gratitude note to circle members
+ */
+export const SendGratitudeNoteParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const sendGratitudeNoteBodyMessageMax = 2000;
+
+export const SendGratitudeNoteBody = zod.object({
+  message: zod.string().min(1).max(sendGratitudeNoteBodyMessageMax),
+  targetEntityType: zod.enum(["support_request", "service_post"]),
+  targetEntityId: zod.number(),
+  recipientUserIds: zod.array(zod.number()).min(1),
+});
+
+/**
+ * @summary List disputes in a circle
+ */
+export const ListDisputesParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const listDisputesQueryLimitDefault = 20;
+export const listDisputesQueryOffsetDefault = 0;
+
+export const ListDisputesQueryParams = zod.object({
+  limit: zod.coerce.number().default(listDisputesQueryLimitDefault),
+  offset: zod.coerce.number().default(listDisputesQueryOffsetDefault),
+});
+
+export const ListDisputesResponseItem = zod.object({
+  id: zod.number(),
+  circleId: zod.number(),
+  raisedByUserId: zod.number(),
+  raisedByName: zod.string(),
+  targetEntityType: zod.enum(["contribution", "repayment"]),
+  targetEntityId: zod.number(),
+  reason: zod.string(),
+  status: zod.enum(["open", "resolved", "dismissed"]),
+  resolvedByUserId: zod.number().nullish(),
+  resolvedByName: zod.string().nullish(),
+  resolutionNote: zod.string().nullish(),
+  resolvedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListDisputesResponse = zod.array(ListDisputesResponseItem);
+
+/**
+ * @summary Raise a dispute about a contribution or repayment
+ */
+export const CreateDisputeParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const createDisputeBodyReasonMax = 2000;
+
+export const CreateDisputeBody = zod.object({
+  targetEntityType: zod.enum(["contribution", "repayment"]),
+  targetEntityId: zod.number(),
+  reason: zod.string().min(1).max(createDisputeBodyReasonMax),
+});
+
+/**
+ * @summary Resolve or dismiss a dispute (admin only)
+ */
+export const ResolveDisputeParams = zod.object({
+  circleId: zod.coerce.number(),
+  disputeId: zod.coerce.number(),
+});
+
+export const resolveDisputeBodyResolutionNoteMax = 2000;
+
+export const ResolveDisputeBody = zod.object({
+  resolution: zod.enum(["resolved", "dismissed"]),
+  resolutionNote: zod.string().min(1).max(resolveDisputeBodyResolutionNoteMax),
+});
+
+export const ResolveDisputeResponse = zod.object({
+  id: zod.number(),
+  circleId: zod.number(),
+  raisedByUserId: zod.number(),
+  raisedByName: zod.string(),
+  targetEntityType: zod.enum(["contribution", "repayment"]),
+  targetEntityId: zod.number(),
+  reason: zod.string(),
+  status: zod.enum(["open", "resolved", "dismissed"]),
+  resolvedByUserId: zod.number().nullish(),
+  resolvedByName: zod.string().nullish(),
+  resolutionNote: zod.string().nullish(),
+  resolvedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List placeholder members for a circle
+ */
+export const ListPlaceholderMembersParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const ListPlaceholderMembersResponseItem = zod.object({
+  id: zod.number(),
+  circleId: zod.number(),
+  addedByUserId: zod.number(),
+  displayName: zod.string(),
+  relationship: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  email: zod.string().nullish(),
+  status: zod.enum(["unlinked", "claimed"]),
+  claimedByUserId: zod.number().nullish(),
+  claimedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListPlaceholderMembersResponse = zod.array(
+  ListPlaceholderMembersResponseItem,
+);
+
+/**
+ * @summary Add a placeholder member to a circle (admin only)
+ */
+export const CreatePlaceholderMemberParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const createPlaceholderMemberBodyDisplayNameMax = 100;
+
+export const createPlaceholderMemberBodyRelationshipMax = 100;
+
+export const createPlaceholderMemberBodyNotesMax = 1000;
+
+export const CreatePlaceholderMemberBody = zod.object({
+  displayName: zod
+    .string()
+    .min(1)
+    .max(createPlaceholderMemberBodyDisplayNameMax),
+  relationship: zod
+    .string()
+    .max(createPlaceholderMemberBodyRelationshipMax)
+    .optional(),
+  notes: zod.string().max(createPlaceholderMemberBodyNotesMax).optional(),
+  email: zod.string().email().optional(),
+});
+
+/**
+ * @summary Update a placeholder member (admin only)
+ */
+export const UpdatePlaceholderMemberParams = zod.object({
+  circleId: zod.coerce.number(),
+  placeholderId: zod.coerce.number(),
+});
+
+export const updatePlaceholderMemberBodyDisplayNameMax = 100;
+
+export const updatePlaceholderMemberBodyRelationshipMax = 100;
+
+export const updatePlaceholderMemberBodyNotesMax = 1000;
+
+export const UpdatePlaceholderMemberBody = zod.object({
+  displayName: zod
+    .string()
+    .min(1)
+    .max(updatePlaceholderMemberBodyDisplayNameMax)
+    .optional(),
+  relationship: zod
+    .string()
+    .max(updatePlaceholderMemberBodyRelationshipMax)
+    .optional(),
+  notes: zod.string().max(updatePlaceholderMemberBodyNotesMax).optional(),
+  email: zod.string().email().optional(),
+});
+
+export const UpdatePlaceholderMemberResponse = zod.object({
+  id: zod.number(),
+  circleId: zod.number(),
+  addedByUserId: zod.number(),
+  displayName: zod.string(),
+  relationship: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  email: zod.string().nullish(),
+  status: zod.enum(["unlinked", "claimed"]),
+  claimedByUserId: zod.number().nullish(),
+  claimedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Remove a placeholder member (admin only)
+ */
+export const DeletePlaceholderMemberParams = zod.object({
+  circleId: zod.coerce.number(),
+  placeholderId: zod.coerce.number(),
+});
+
+/**
+ * @summary Claim a placeholder member profile as your own
+ */
+export const ClaimPlaceholderMemberParams = zod.object({
+  circleId: zod.coerce.number(),
+  placeholderId: zod.coerce.number(),
+});
+
+export const ClaimPlaceholderMemberResponse = zod.object({
+  id: zod.number(),
+  circleId: zod.number(),
+  addedByUserId: zod.number(),
+  displayName: zod.string(),
+  relationship: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  email: zod.string().nullish(),
+  status: zod.enum(["unlinked", "claimed"]),
+  claimedByUserId: zod.number().nullish(),
+  claimedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List audit log entries for a circle (admin only)
+ */
+export const ListAuditLogParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const listAuditLogQueryLimitDefault = 50;
+export const listAuditLogQueryOffsetDefault = 0;
+
+export const ListAuditLogQueryParams = zod.object({
+  limit: zod.coerce.number().default(listAuditLogQueryLimitDefault),
+  offset: zod.coerce.number().default(listAuditLogQueryOffsetDefault),
+});
+
+export const ListAuditLogResponseItem = zod.object({
+  id: zod.number(),
+  circleId: zod.number(),
+  actorUserId: zod.number().nullish(),
+  actorName: zod.string(),
+  action: zod.string(),
+  targetEntityType: zod.string().nullish(),
+  targetEntityId: zod.number().nullish(),
+  metadata: zod.object({}).passthrough().optional(),
+  createdAt: zod.coerce.date(),
+});
+export const ListAuditLogResponse = zod.array(ListAuditLogResponseItem);
+
+/**
+ * @summary List attachments for an entity
+ */
+export const ListAttachmentsParams = zod.object({
+  circleId: zod.coerce.number(),
+  entityType: zod.enum(["support_request", "service_post", "repayment"]),
+  entityId: zod.coerce.number(),
+});
+
+export const ListAttachmentsResponseItem = zod.object({
+  id: zod.number(),
+  circleId: zod.number(),
+  uploadedByUserId: zod.number(),
+  targetEntityType: zod.string(),
+  targetEntityId: zod.number(),
+  fileName: zod.string(),
+  fileSize: zod.number().nullish(),
+  mimeType: zod.string().nullish(),
+  storageKey: zod.string(),
+  downloadUrl: zod.string(),
+  status: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+export const ListAttachmentsResponse = zod.array(ListAttachmentsResponseItem);
+
+/**
+ * @summary Record an uploaded file attachment for an entity
+ */
+export const CreateAttachmentParams = zod.object({
+  circleId: zod.coerce.number(),
+  entityType: zod.enum(["support_request", "service_post", "repayment"]),
+  entityId: zod.coerce.number(),
+});
+
+export const createAttachmentBodyFileNameMax = 500;
+
+export const createAttachmentBodyMimeTypeMax = 200;
+
+export const createAttachmentBodyStorageKeyMax = 2000;
+
+export const CreateAttachmentBody = zod.object({
+  fileName: zod.string().min(1).max(createAttachmentBodyFileNameMax),
+  fileSize: zod.number().min(1).optional(),
+  mimeType: zod.string().max(createAttachmentBodyMimeTypeMax).optional(),
+  storageKey: zod.string().min(1).max(createAttachmentBodyStorageKeyMax),
+});
+
+/**
+ * @summary Delete an attachment
+ */
+export const DeleteAttachmentParams = zod.object({
+  circleId: zod.coerce.number(),
+  attachmentId: zod.coerce.number(),
+});
+
+/**
+ * Returns a presigned GCS URL for direct upload. Send JSON metadata here,
+then upload the file directly to the returned presigned URL.
+
+ * @summary Request a presigned URL for file upload
+ */
+
+export const RequestUploadUrlBody = zod.object({
+  name: zod.string().min(1),
+  size: zod.number().min(1),
+  contentType: zod.string().min(1),
+});
+
+export const RequestUploadUrlResponse = zod.object({
+  uploadURL: zod.string().url(),
+  objectPath: zod.string(),
+  metadata: zod
+    .object({
+      name: zod.string().min(1),
+      size: zod.number().min(1),
+      contentType: zod.string().min(1),
+    })
+    .optional(),
+});
+
+/**
+ * @summary Serve a public asset
+ */
+export const GetPublicObjectParams = zod.object({
+  filePath: zod.coerce.string(),
+});
+
+/**
+ * @summary Serve a private object entity
+ */
+export const GetStorageObjectParams = zod.object({
+  objectPath: zod.coerce.string(),
+});
+
+/**
  * @summary Get dashboard summary for a circle
  */
 export const GetCircleDashboardParams = zod.object({

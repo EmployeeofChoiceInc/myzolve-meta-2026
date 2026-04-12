@@ -935,6 +935,320 @@ export interface DashboardSummary {
   circleHealth: DashboardSummaryCircleHealth;
 }
 
+export interface Notification {
+  id: number;
+  /** @nullable */
+  circleId?: number | null;
+  notificationType: string;
+  /** @nullable */
+  targetEntityType?: string | null;
+  /** @nullable */
+  targetEntityId?: number | null;
+  title: string;
+  body: string;
+  isRead: boolean;
+  /** @nullable */
+  readAt?: string | null;
+  createdAt: string;
+}
+
+export interface NotificationList {
+  notifications: Notification[];
+  unreadCount: number;
+}
+
+export interface NotificationPreference {
+  notificationType: string;
+  enabled: boolean;
+}
+
+export type UpdateNotificationPreferencesBodyPreferencesItemNotificationType =
+  (typeof UpdateNotificationPreferencesBodyPreferencesItemNotificationType)[keyof typeof UpdateNotificationPreferencesBodyPreferencesItemNotificationType];
+
+export const UpdateNotificationPreferencesBodyPreferencesItemNotificationType =
+  {
+    new_request: "new_request",
+    support_received: "support_received",
+    repayment_due: "repayment_due",
+    repayment_received: "repayment_received",
+    service_match: "service_match",
+    new_comment: "new_comment",
+    reaction_received: "reaction_received",
+    gratitude_received: "gratitude_received",
+    dispute_opened: "dispute_opened",
+    dispute_resolved: "dispute_resolved",
+    member_joined: "member_joined",
+    circle_update: "circle_update",
+  } as const;
+
+export type UpdateNotificationPreferencesBodyPreferencesItem = {
+  notificationType: UpdateNotificationPreferencesBodyPreferencesItemNotificationType;
+  enabled: boolean;
+};
+
+export interface UpdateNotificationPreferencesBody {
+  preferences: UpdateNotificationPreferencesBodyPreferencesItem[];
+}
+
+export interface Comment {
+  id: number;
+  circleId: number;
+  authorUserId: number;
+  authorName: string;
+  targetEntityType: string;
+  targetEntityId: number;
+  /** @nullable */
+  parentCommentId?: number | null;
+  body: string;
+  status: string;
+  replyCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateCommentBody {
+  /**
+   * @minLength 1
+   * @maxLength 2000
+   */
+  body: string;
+  parentCommentId?: number;
+}
+
+export type ReactionSummaryCounts = { [key: string]: number };
+
+export interface ReactionSummary {
+  counts: ReactionSummaryCounts;
+  myReactions: string[];
+  total: number;
+}
+
+export interface ReactionToggleResult {
+  toggled: boolean;
+  reactionType: string;
+}
+
+export interface GratitudeNote {
+  id: number;
+  circleId: number;
+  senderUserId: number;
+  targetEntityType: string;
+  targetEntityId: number;
+  recipientUserIds: number[];
+  message: string;
+  createdAt: string;
+}
+
+export type CreateGratitudeNoteBodyTargetEntityType =
+  (typeof CreateGratitudeNoteBodyTargetEntityType)[keyof typeof CreateGratitudeNoteBodyTargetEntityType];
+
+export const CreateGratitudeNoteBodyTargetEntityType = {
+  support_request: "support_request",
+  service_post: "service_post",
+} as const;
+
+export interface CreateGratitudeNoteBody {
+  /**
+   * @minLength 1
+   * @maxLength 2000
+   */
+  message: string;
+  targetEntityType: CreateGratitudeNoteBodyTargetEntityType;
+  targetEntityId: number;
+  /** @minItems 1 */
+  recipientUserIds: number[];
+}
+
+export type DisputeTargetEntityType =
+  (typeof DisputeTargetEntityType)[keyof typeof DisputeTargetEntityType];
+
+export const DisputeTargetEntityType = {
+  contribution: "contribution",
+  repayment: "repayment",
+} as const;
+
+export type DisputeStatus = (typeof DisputeStatus)[keyof typeof DisputeStatus];
+
+export const DisputeStatus = {
+  open: "open",
+  resolved: "resolved",
+  dismissed: "dismissed",
+} as const;
+
+export interface Dispute {
+  id: number;
+  circleId: number;
+  raisedByUserId: number;
+  raisedByName: string;
+  targetEntityType: DisputeTargetEntityType;
+  targetEntityId: number;
+  reason: string;
+  status: DisputeStatus;
+  /** @nullable */
+  resolvedByUserId?: number | null;
+  /** @nullable */
+  resolvedByName?: string | null;
+  /** @nullable */
+  resolutionNote?: string | null;
+  /** @nullable */
+  resolvedAt?: string | null;
+  createdAt: string;
+}
+
+export type CreateDisputeBodyTargetEntityType =
+  (typeof CreateDisputeBodyTargetEntityType)[keyof typeof CreateDisputeBodyTargetEntityType];
+
+export const CreateDisputeBodyTargetEntityType = {
+  contribution: "contribution",
+  repayment: "repayment",
+} as const;
+
+export interface CreateDisputeBody {
+  targetEntityType: CreateDisputeBodyTargetEntityType;
+  targetEntityId: number;
+  /**
+   * @minLength 1
+   * @maxLength 2000
+   */
+  reason: string;
+}
+
+export type ResolveDisputeBodyResolution =
+  (typeof ResolveDisputeBodyResolution)[keyof typeof ResolveDisputeBodyResolution];
+
+export const ResolveDisputeBodyResolution = {
+  resolved: "resolved",
+  dismissed: "dismissed",
+} as const;
+
+export interface ResolveDisputeBody {
+  resolution: ResolveDisputeBodyResolution;
+  /**
+   * @minLength 1
+   * @maxLength 2000
+   */
+  resolutionNote: string;
+}
+
+export type PlaceholderMemberStatus =
+  (typeof PlaceholderMemberStatus)[keyof typeof PlaceholderMemberStatus];
+
+export const PlaceholderMemberStatus = {
+  unlinked: "unlinked",
+  claimed: "claimed",
+} as const;
+
+export interface PlaceholderMember {
+  id: number;
+  circleId: number;
+  addedByUserId: number;
+  displayName: string;
+  /** @nullable */
+  relationship?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  email?: string | null;
+  status: PlaceholderMemberStatus;
+  /** @nullable */
+  claimedByUserId?: number | null;
+  /** @nullable */
+  claimedAt?: string | null;
+  createdAt: string;
+}
+
+export interface CreatePlaceholderBody {
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  displayName: string;
+  /** @maxLength 100 */
+  relationship?: string;
+  /** @maxLength 1000 */
+  notes?: string;
+  email?: string;
+}
+
+export interface UpdatePlaceholderBody {
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  displayName?: string;
+  /** @maxLength 100 */
+  relationship?: string;
+  /** @maxLength 1000 */
+  notes?: string;
+  email?: string;
+}
+
+export type AuditEntryMetadata = { [key: string]: unknown };
+
+export interface AuditEntry {
+  id: number;
+  circleId: number;
+  /** @nullable */
+  actorUserId?: number | null;
+  actorName: string;
+  action: string;
+  /** @nullable */
+  targetEntityType?: string | null;
+  /** @nullable */
+  targetEntityId?: number | null;
+  metadata?: AuditEntryMetadata;
+  createdAt: string;
+}
+
+export interface Attachment {
+  id: number;
+  circleId: number;
+  uploadedByUserId: number;
+  targetEntityType: string;
+  targetEntityId: number;
+  fileName: string;
+  /** @nullable */
+  fileSize?: number | null;
+  /** @nullable */
+  mimeType?: string | null;
+  storageKey: string;
+  downloadUrl: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface CreateAttachmentBody {
+  /**
+   * @minLength 1
+   * @maxLength 500
+   */
+  fileName: string;
+  /** @minimum 1 */
+  fileSize?: number;
+  /** @maxLength 200 */
+  mimeType?: string;
+  /**
+   * @minLength 1
+   * @maxLength 2000
+   */
+  storageKey: string;
+}
+
+export interface UploadUrlRequest {
+  /** @minLength 1 */
+  name: string;
+  /** @minimum 1 */
+  size: number;
+  /** @minLength 1 */
+  contentType: string;
+}
+
+export interface UploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
+  metadata?: UploadUrlRequest;
+}
+
 /**
  * Unauthorized
  */
@@ -968,6 +1282,63 @@ export type GetCircleActivityParams = {
 };
 
 export type GetCircleLedgerParams = {
+  limit?: number;
+  offset?: number;
+};
+
+export type ListNotificationsParams = {
+  limit?: number;
+  offset?: number;
+};
+
+export type GetNotificationUnreadCount200 = {
+  unreadCount: number;
+};
+
+export type MarkAllNotificationsRead200 = {
+  success: boolean;
+};
+
+export type MarkNotificationRead200 = {
+  id: number;
+  isRead: boolean;
+  /** @nullable */
+  readAt?: string | null;
+};
+
+export type ListCommentsParams = {
+  limit?: number;
+  offset?: number;
+};
+
+export type UpdateCommentBody = {
+  /**
+   * @minLength 1
+   * @maxLength 2000
+   */
+  body: string;
+};
+
+export type ToggleReactionBodyReactionType =
+  (typeof ToggleReactionBodyReactionType)[keyof typeof ToggleReactionBodyReactionType];
+
+export const ToggleReactionBodyReactionType = {
+  heart: "heart",
+  support: "support",
+  thank_you: "thank_you",
+  got_it: "got_it",
+} as const;
+
+export type ToggleReactionBody = {
+  reactionType: ToggleReactionBodyReactionType;
+};
+
+export type ListDisputesParams = {
+  limit?: number;
+  offset?: number;
+};
+
+export type ListAuditLogParams = {
   limit?: number;
   offset?: number;
 };

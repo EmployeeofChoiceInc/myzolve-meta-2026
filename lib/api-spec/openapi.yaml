@@ -32,6 +32,20 @@ tags:
     description: Soft ledger
   - name: dashboard
     description: Dashboard summaries
+  - name: notifications
+    description: In-app notifications and preferences
+  - name: comments
+    description: Comments and gratitude notes
+  - name: reactions
+    description: Emoji reactions
+  - name: disputes
+    description: Dispute management
+  - name: audit
+    description: Audit log
+  - name: attachments
+    description: File attachments
+  - name: storage
+    description: Object storage upload and serving
 
 paths:
   /healthz:
@@ -944,6 +958,720 @@ paths:
                 $ref: "#/components/schemas/LedgerSummary"
         "401":
           $ref: "#/components/responses/Unauthorized"
+
+  # ── Notifications ────────────────────────────────────────────────────────────
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      summary: List notifications for the current user
+      security: [{ clerk: [] }]
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 30 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        "200":
+          description: Notifications list with unread count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /notifications/unread-count:
+    get:
+      operationId: getNotificationUnreadCount
+      tags: [notifications]
+      summary: Get unread notification count
+      security: [{ clerk: [] }]
+      responses:
+        "200":
+          description: Unread notification count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  unreadCount: { type: integer }
+                required: [unreadCount]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /notifications/read-all:
+    post:
+      operationId: markAllNotificationsRead
+      tags: [notifications]
+      summary: Mark all notifications as read
+      security: [{ clerk: [] }]
+      responses:
+        "200":
+          description: All notifications marked as read
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                required: [success]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /notifications/{notificationId}/read:
+    post:
+      operationId: markNotificationRead
+      tags: [notifications]
+      summary: Mark a single notification as read
+      security: [{ clerk: [] }]
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Notification marked as read
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: integer }
+                  isRead: { type: boolean }
+                  readAt: { type: ["string", "null"], format: date-time }
+                required: [id, isRead]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /notifications/preferences:
+    get:
+      operationId: getNotificationPreferences
+      tags: [notifications]
+      summary: Get notification preferences for the current user
+      security: [{ clerk: [] }]
+      responses:
+        "200":
+          description: Notification preferences
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NotificationPreference"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      operationId: updateNotificationPreferences
+      tags: [notifications]
+      summary: Update notification preferences
+      security: [{ clerk: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateNotificationPreferencesBody"
+      responses:
+        "200":
+          description: Updated preferences
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NotificationPreference"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── Comments ────────────────────────────────────────────────────────────────
+  /circles/{circleId}/comments/{entityType}/{entityId}:
+    get:
+      operationId: listComments
+      tags: [comments]
+      summary: List comments for an entity
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - name: entityType
+          in: path
+          required: true
+          schema: { type: string, enum: [support_request, service_post] }
+        - name: entityId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        "200":
+          description: List of comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Comment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createComment
+      tags: [comments]
+      summary: Post a comment on an entity
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - name: entityType
+          in: path
+          required: true
+          schema: { type: string, enum: [support_request, service_post] }
+        - name: entityId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCommentBody"
+      responses:
+        "201":
+          description: Comment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /circles/{circleId}/comments/{commentId}:
+    patch:
+      operationId: updateComment
+      tags: [comments]
+      summary: Edit a comment
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - name: commentId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                body: { type: string, minLength: 1, maxLength: 2000 }
+              required: [body]
+      responses:
+        "200":
+          description: Updated comment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    delete:
+      operationId: deleteComment
+      tags: [comments]
+      summary: Delete a comment
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - name: commentId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Comment deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ── Reactions ────────────────────────────────────────────────────────────────
+  /circles/{circleId}/reactions/{entityType}/{entityId}:
+    get:
+      operationId: getReactions
+      tags: [reactions]
+      summary: Get reactions for an entity
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - name: entityType
+          in: path
+          required: true
+          schema: { type: string, enum: [support_request, service_post] }
+        - name: entityId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Reaction counts and current user reactions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReactionSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: toggleReaction
+      tags: [reactions]
+      summary: Toggle a reaction on an entity
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - name: entityType
+          in: path
+          required: true
+          schema: { type: string, enum: [support_request, service_post] }
+        - name: entityId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reactionType:
+                  type: string
+                  enum: [heart, support, thank_you, got_it]
+              required: [reactionType]
+      responses:
+        "200":
+          description: Reaction removed (toggled off)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReactionToggleResult"
+        "201":
+          description: Reaction added (toggled on)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReactionToggleResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── Gratitude ────────────────────────────────────────────────────────────────
+  /circles/{circleId}/gratitude:
+    post:
+      operationId: sendGratitudeNote
+      tags: [comments]
+      summary: Send a gratitude note to circle members
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGratitudeNoteBody"
+      responses:
+        "201":
+          description: Gratitude note sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GratitudeNote"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── Disputes ────────────────────────────────────────────────────────────────
+  /circles/{circleId}/disputes:
+    get:
+      operationId: listDisputes
+      tags: [disputes]
+      summary: List disputes in a circle
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        "200":
+          description: List of disputes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Dispute"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createDispute
+      tags: [disputes]
+      summary: Raise a dispute about a contribution or repayment
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDisputeBody"
+      responses:
+        "201":
+          description: Dispute raised
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dispute"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /circles/{circleId}/disputes/{disputeId}/resolve:
+    post:
+      operationId: resolveDispute
+      tags: [disputes]
+      summary: Resolve or dismiss a dispute (admin only)
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - name: disputeId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResolveDisputeBody"
+      responses:
+        "200":
+          description: Dispute resolved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dispute"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ── Placeholder Members ───────────────────────────────────────────────────────
+  /circles/{circleId}/placeholder-members:
+    get:
+      operationId: listPlaceholderMembers
+      tags: [members]
+      summary: List placeholder members for a circle
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      responses:
+        "200":
+          description: List of placeholder members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlaceholderMember"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createPlaceholderMember
+      tags: [members]
+      summary: Add a placeholder member to a circle (admin only)
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePlaceholderBody"
+      responses:
+        "201":
+          description: Placeholder member created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlaceholderMember"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /circles/{circleId}/placeholder-members/{placeholderId}:
+    patch:
+      operationId: updatePlaceholderMember
+      tags: [members]
+      summary: Update a placeholder member (admin only)
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - name: placeholderId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePlaceholderBody"
+      responses:
+        "200":
+          description: Updated placeholder member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlaceholderMember"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    delete:
+      operationId: deletePlaceholderMember
+      tags: [members]
+      summary: Remove a placeholder member (admin only)
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - name: placeholderId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Placeholder member removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /circles/{circleId}/placeholder-members/{placeholderId}/claim:
+    post:
+      operationId: claimPlaceholderMember
+      tags: [members]
+      summary: Claim a placeholder member profile as your own
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - name: placeholderId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Placeholder claimed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlaceholderMember"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Placeholder already claimed
+
+  # ── Audit Log ────────────────────────────────────────────────────────────────
+  /circles/{circleId}/audit:
+    get:
+      operationId: listAuditLog
+      tags: [audit]
+      summary: List audit log entries for a circle (admin only)
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        "200":
+          description: Audit log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditEntry"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ── Attachments ───────────────────────────────────────────────────────────────
+  /circles/{circleId}/attachments/{entityType}/{entityId}:
+    get:
+      operationId: listAttachments
+      tags: [attachments]
+      summary: List attachments for an entity
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - name: entityType
+          in: path
+          required: true
+          schema: { type: string, enum: [support_request, service_post, repayment] }
+        - name: entityId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: List of attachments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Attachment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createAttachment
+      tags: [attachments]
+      summary: Record an uploaded file attachment for an entity
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - name: entityType
+          in: path
+          required: true
+          schema: { type: string, enum: [support_request, service_post, repayment] }
+        - name: entityId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAttachmentBody"
+      responses:
+        "201":
+          description: Attachment recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Attachment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /circles/{circleId}/attachments/{attachmentId}:
+    delete:
+      operationId: deleteAttachment
+      tags: [attachments]
+      summary: Delete an attachment
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - name: attachmentId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Attachment deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ── Object Storage ───────────────────────────────────────────────────────────
+  /storage/uploads/request-url:
+    post:
+      operationId: requestUploadUrl
+      tags: [storage]
+      summary: Request a presigned URL for file upload
+      security: [{ clerk: [] }]
+      description: |
+        Returns a presigned GCS URL for direct upload. Send JSON metadata here,
+        then upload the file directly to the returned presigned URL.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadUrlRequest"
+      responses:
+        "200":
+          description: Presigned upload URL generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadUrlResponse"
+        "400":
+          description: Missing or invalid required fields
+        "500":
+          description: Failed to generate upload URL
+
+  /storage/public-objects/{filePath}:
+    get:
+      operationId: getPublicObject
+      tags: [storage]
+      summary: Serve a public asset
+      parameters:
+        - name: filePath
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Object content
+          content:
+            "*/*":
+              schema: { type: string, format: binary }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /storage/objects/{objectPath}:
+    get:
+      operationId: getStorageObject
+      tags: [storage]
+      summary: Serve a private object entity
+      security: [{ clerk: [] }]
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Object content
+          content:
+            "*/*":
+              schema: { type: string, format: binary }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   # ── Dashboard Summary ──────────────────────────────────────────────────────
   /circles/{circleId}/dashboard:
@@ -1964,3 +2692,502 @@ components:
         - amountOwed
         - currency
         - counterpartyName
+
+    # ── Notifications ─────────────────────────────────────────────────────────
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+        circleId:
+          type: ["integer", "null"]
+        notificationType:
+          type: string
+        targetEntityType:
+          type: ["string", "null"]
+        targetEntityId:
+          type: ["integer", "null"]
+        title:
+          type: string
+        body:
+          type: string
+        isRead:
+          type: boolean
+        readAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - notificationType
+        - title
+        - body
+        - isRead
+        - createdAt
+
+    NotificationList:
+      type: object
+      properties:
+        notifications:
+          type: array
+          items:
+            $ref: "#/components/schemas/Notification"
+        unreadCount:
+          type: integer
+      required:
+        - notifications
+        - unreadCount
+
+    NotificationPreference:
+      type: object
+      properties:
+        notificationType:
+          type: string
+        enabled:
+          type: boolean
+      required:
+        - notificationType
+        - enabled
+
+    UpdateNotificationPreferencesBody:
+      type: object
+      properties:
+        preferences:
+          type: array
+          items:
+            type: object
+            properties:
+              notificationType:
+                type: string
+                enum:
+                  - new_request
+                  - support_received
+                  - repayment_due
+                  - repayment_received
+                  - service_match
+                  - new_comment
+                  - reaction_received
+                  - gratitude_received
+                  - dispute_opened
+                  - dispute_resolved
+                  - member_joined
+                  - circle_update
+              enabled:
+                type: boolean
+            required: [notificationType, enabled]
+      required:
+        - preferences
+
+    # ── Comments ──────────────────────────────────────────────────────────────
+    Comment:
+      type: object
+      properties:
+        id:
+          type: integer
+        circleId:
+          type: integer
+        authorUserId:
+          type: integer
+        authorName:
+          type: string
+        targetEntityType:
+          type: string
+        targetEntityId:
+          type: integer
+        parentCommentId:
+          type: ["integer", "null"]
+        body:
+          type: string
+        status:
+          type: string
+        replyCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - circleId
+        - authorUserId
+        - authorName
+        - targetEntityType
+        - targetEntityId
+        - body
+        - status
+        - replyCount
+        - createdAt
+        - updatedAt
+
+    CreateCommentBody:
+      type: object
+      properties:
+        body:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        parentCommentId:
+          type: integer
+      required:
+        - body
+
+    ReactionSummary:
+      type: object
+      properties:
+        counts:
+          type: object
+          additionalProperties:
+            type: integer
+        myReactions:
+          type: array
+          items:
+            type: string
+        total:
+          type: integer
+      required:
+        - counts
+        - myReactions
+        - total
+
+    ReactionToggleResult:
+      type: object
+      properties:
+        toggled:
+          type: boolean
+        reactionType:
+          type: string
+      required:
+        - toggled
+        - reactionType
+
+    GratitudeNote:
+      type: object
+      properties:
+        id:
+          type: integer
+        circleId:
+          type: integer
+        senderUserId:
+          type: integer
+        targetEntityType:
+          type: string
+        targetEntityId:
+          type: integer
+        recipientUserIds:
+          type: array
+          items:
+            type: integer
+        message:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - circleId
+        - senderUserId
+        - targetEntityType
+        - targetEntityId
+        - recipientUserIds
+        - message
+        - createdAt
+
+    CreateGratitudeNoteBody:
+      type: object
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        targetEntityType:
+          type: string
+          enum: [support_request, service_post]
+        targetEntityId:
+          type: integer
+        recipientUserIds:
+          type: array
+          items:
+            type: integer
+          minItems: 1
+      required:
+        - message
+        - targetEntityType
+        - targetEntityId
+        - recipientUserIds
+
+    # ── Disputes ──────────────────────────────────────────────────────────────
+    Dispute:
+      type: object
+      properties:
+        id:
+          type: integer
+        circleId:
+          type: integer
+        raisedByUserId:
+          type: integer
+        raisedByName:
+          type: string
+        targetEntityType:
+          type: string
+          enum: [contribution, repayment]
+        targetEntityId:
+          type: integer
+        reason:
+          type: string
+        status:
+          type: string
+          enum: [open, resolved, dismissed]
+        resolvedByUserId:
+          type: ["integer", "null"]
+        resolvedByName:
+          type: ["string", "null"]
+        resolutionNote:
+          type: ["string", "null"]
+        resolvedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - circleId
+        - raisedByUserId
+        - raisedByName
+        - targetEntityType
+        - targetEntityId
+        - reason
+        - status
+        - createdAt
+
+    CreateDisputeBody:
+      type: object
+      properties:
+        targetEntityType:
+          type: string
+          enum: [contribution, repayment]
+        targetEntityId:
+          type: integer
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+      required:
+        - targetEntityType
+        - targetEntityId
+        - reason
+
+    ResolveDisputeBody:
+      type: object
+      properties:
+        resolution:
+          type: string
+          enum: [resolved, dismissed]
+        resolutionNote:
+          type: string
+          minLength: 1
+          maxLength: 2000
+      required:
+        - resolution
+        - resolutionNote
+
+    # ── Placeholder Members ────────────────────────────────────────────────────
+    PlaceholderMember:
+      type: object
+      properties:
+        id:
+          type: integer
+        circleId:
+          type: integer
+        addedByUserId:
+          type: integer
+        displayName:
+          type: string
+        relationship:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [unlinked, claimed]
+        claimedByUserId:
+          type: ["integer", "null"]
+        claimedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - circleId
+        - addedByUserId
+        - displayName
+        - status
+        - createdAt
+
+    CreatePlaceholderBody:
+      type: object
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        relationship:
+          type: string
+          maxLength: 100
+        notes:
+          type: string
+          maxLength: 1000
+        email:
+          type: string
+          format: email
+      required:
+        - displayName
+
+    UpdatePlaceholderBody:
+      type: object
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        relationship:
+          type: string
+          maxLength: 100
+        notes:
+          type: string
+          maxLength: 1000
+        email:
+          type: string
+          format: email
+
+    # ── Audit Log ─────────────────────────────────────────────────────────────
+    AuditEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        circleId:
+          type: integer
+        actorUserId:
+          type: ["integer", "null"]
+        actorName:
+          type: string
+        action:
+          type: string
+        targetEntityType:
+          type: ["string", "null"]
+        targetEntityId:
+          type: ["integer", "null"]
+        metadata:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - circleId
+        - actorName
+        - action
+        - createdAt
+
+    # ── Attachments ───────────────────────────────────────────────────────────
+    Attachment:
+      type: object
+      properties:
+        id:
+          type: integer
+        circleId:
+          type: integer
+        uploadedByUserId:
+          type: integer
+        targetEntityType:
+          type: string
+        targetEntityId:
+          type: integer
+        fileName:
+          type: string
+        fileSize:
+          type: ["integer", "null"]
+        mimeType:
+          type: ["string", "null"]
+        storageKey:
+          type: string
+        downloadUrl:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - circleId
+        - uploadedByUserId
+        - targetEntityType
+        - targetEntityId
+        - fileName
+        - storageKey
+        - downloadUrl
+        - status
+        - createdAt
+
+    CreateAttachmentBody:
+      type: object
+      properties:
+        fileName:
+          type: string
+          minLength: 1
+          maxLength: 500
+        fileSize:
+          type: integer
+          minimum: 1
+        mimeType:
+          type: string
+          maxLength: 200
+        storageKey:
+          type: string
+          minLength: 1
+          maxLength: 2000
+      required:
+        - fileName
+        - storageKey
+
+    # ── Storage ───────────────────────────────────────────────────────────────
+    UploadUrlRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        size:
+          type: integer
+          minimum: 1
+        contentType:
+          type: string
+          minLength: 1
+      required:
+        - name
+        - size
+        - contentType
+
+    UploadUrlResponse:
+      type: object
+      properties:
+        uploadURL:
+          type: string
+          format: uri
+        objectPath:
+          type: string
+        metadata:
+          $ref: "#/components/schemas/UploadUrlRequest"
+      required:
+        - uploadURL
+        - objectPath

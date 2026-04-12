@@ -12,6 +12,7 @@ import {
   type ServicePost,
 } from "@workspace/db";
 import { eq, and, count, sql } from "drizzle-orm";
+import { createNotification } from "../lib/helpers";
 
 const router = Router();
 
@@ -322,6 +323,18 @@ router.post("/services/:serviceId/match", requireAuth, validateParams(serviceIdP
     targetEntityId: serviceId,
     summaryText: `${userName} responded to "${existing.title}" by ${creatorName}`,
   });
+
+  if (existing.createdByUserId !== userId) {
+    await createNotification({
+      userId: existing.createdByUserId,
+      circleId: existing.circleId,
+      notificationType: "service_match",
+      title: "Someone responded to your service post",
+      body: `${userName} expressed interest in your post: "${existing.title}"`,
+      targetEntityType: "service_post",
+      targetEntityId: serviceId,
+    });
+  }
 
   res.json(serviceToApi(updated, creatorName));
 });

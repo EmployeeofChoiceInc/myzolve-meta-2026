@@ -425,6 +425,34 @@ router.post("/invitations/:token/accept", requireAuth, validateParams(invitation
     return inserted;
   });
 
+  const joinerName = user.displayName;
+  const circleMembers = await db
+    .select({ userId: circleMembersTable.userId })
+    .from(circleMembersTable)
+    .where(and(eq(circleMembersTable.circleId, invitation.circleId), eq(circleMembersTable.status, "active")))
+    .then((rows) => rows.filter((r) => r.userId !== null && r.userId !== userId)) as { userId: number }[];
+
+  for (const cm of circleMembers) {
+    await createNotification({
+      userId: cm.userId,
+      circleId: invitation.circleId,
+      notificationType: "member_joined",
+      title: "A new member joined your circle",
+      body: `${joinerName} has joined your circle.`,
+      targetEntityType: "circle",
+      targetEntityId: invitation.circleId,
+    });
+  }
+
+  await createAuditLog({
+    circleId: invitation.circleId,
+    actorUserId: userId,
+    action: "member_joined",
+    targetEntityType: "circle",
+    targetEntityId: invitation.circleId,
+    metadata: { role: invitation.role },
+  });
+
   res.json(memberToApi(member, { displayName: user.displayName, email: user.email }));
 });
 

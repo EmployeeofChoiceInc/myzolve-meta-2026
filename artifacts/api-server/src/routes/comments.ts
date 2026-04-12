@@ -9,9 +9,11 @@ import {
   gratitudeNotesTable,
   usersTable,
   circleMembersTable,
+  supportRequestsTable,
+  servicePostsTable,
 } from "@workspace/db";
 import { eq, and, desc, isNull, count, inArray } from "drizzle-orm";
-import { assertCircleMember, createNotification } from "../lib/helpers";
+import { assertCircleMember, createNotification, getUserName } from "../lib/helpers";
 
 const router = Router();
 
@@ -151,6 +153,36 @@ router.post(
       .returning();
 
     const authorName = req.dbUser!.displayName;
+
+    let entityOwnerId: number | null = null;
+    if (entityType === "support_request") {
+      const req2 = await db.select({ createdByUserId: supportRequestsTable.createdByUserId })
+        .from(supportRequestsTable)
+        .where(eq(supportRequestsTable.id, entityId))
+        .limit(1)
+        .then((r) => r[0] ?? null);
+      entityOwnerId = req2?.createdByUserId ?? null;
+    } else if (entityType === "service_post") {
+      const post = await db.select({ createdByUserId: servicePostsTable.createdByUserId })
+        .from(servicePostsTable)
+        .where(eq(servicePostsTable.id, entityId))
+        .limit(1)
+        .then((r) => r[0] ?? null);
+      entityOwnerId = post?.createdByUserId ?? null;
+    }
+
+    if (entityOwnerId && entityOwnerId !== userId) {
+      await createNotification({
+        userId: entityOwnerId,
+        circleId,
+        notificationType: "new_comment",
+        title: "New comment on your post",
+        body: `${authorName}: "${body.slice(0, 120)}${body.length > 120 ? "…" : ""}"`,
+        targetEntityType: entityType,
+        targetEntityId: entityId,
+      });
+    }
+
     res.status(201).json(commentToApi(comment, authorName));
   },
 );

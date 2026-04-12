@@ -12,6 +12,8 @@ import disputesRouter from "./disputes";
 import placeholdersRouter from "./placeholders";
 import connectionsRouter from "./connections";
 import auditRouter from "./audit";
+import attachmentsRouter from "./attachments";
+import storageRouter from "./storage";
 
 const router: IRouter = Router();
 
@@ -28,5 +30,7 @@ router.use(disputesRouter);
 router.use(placeholdersRouter);
 router.use(connectionsRouter);
 router.use(auditRouter);
+router.use(attachmentsRouter);
+router.use(storageRouter);
 
 export default router;
