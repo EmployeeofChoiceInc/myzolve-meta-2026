@@ -269,7 +269,7 @@ export function useAuditLogs(circleId: number) {
   return useQuery({
     queryKey: ["audit-logs", circleId],
     queryFn: () =>
-      customFetch<AuditLog[]>(`/api/circles/${circleId}/audit-logs?limit=50&offset=0`),
+      customFetch<AuditLog[]>(`/api/circles/${circleId}/audit?limit=50&offset=0`),
     enabled: !!circleId,
   });
 }

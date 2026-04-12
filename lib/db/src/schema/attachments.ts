@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -17,11 +17,14 @@ export const attachmentsTable = pgTable("attachments", {
   fileName: text("file_name").notNull(),
   fileSize: integer("file_size"),
   mimeType: text("mime_type"),
-  storageKey: text("storage_key").notNull(),
+  storageKey: text("storage_key").notNull().unique(),
   status: text("status").notNull().default("active"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
-});
+},
+(table) => [
+  uniqueIndex("attachments_storage_key_uniq").on(table.storageKey),
+]);
 
 export const insertAttachmentSchema = createInsertSchema(attachmentsTable).omit({ id: true, createdAt: true, deletedAt: true });
 export type InsertAttachment = z.infer<typeof insertAttachmentSchema>;
