@@ -1,19 +1,105 @@
 import { Link, useLocation } from "wouter";
-import { Heart, Home, Users, Bell, Settings, LogOut, Menu } from "lucide-react";
+import { Heart, Home, Users, Bell, Settings, LogOut, Menu, Check } from "lucide-react";
 import { useClerk, useUser } from "@clerk/react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { useUnreadCount } from "@/hooks/use-api";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useUnreadCount, useNotifications, useMarkNotificationRead } from "@/hooks/use-api";
+import { formatDistanceToNow } from "date-fns";
+
+const notificationTypeLabel: Record<string, string> = {
+  new_contribution: "Support received",
+  repayment_logged: "Return logged",
+  request_completed: "Request completed",
+  new_comment: "New comment",
+  reaction_received: "Reaction",
+  dispute_opened: "Dispute opened",
+  dispute_resolved: "Dispute resolved",
+  member_joined: "Member joined",
+  circle_invitation: "Circle invitation",
+  ownership_transferred: "Ownership transferred",
+};
+
+function NotificationDrawer() {
+  const { data: unreadData } = useUnreadCount();
+  const unreadCount = unreadData?.unreadCount ?? 0;
+  const { data: notifData } = useNotifications(20);
+  const notifications = notifData?.notifications ?? [];
+  const markRead = useMarkNotificationRead();
+
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" className="relative rounded-full text-muted-foreground hover:text-foreground">
+          <Bell className="w-5 h-5" />
+          {unreadCount > 0 && (
+            <Badge className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 text-[10px] flex items-center justify-center rounded-full bg-orange-500 border-card border-2">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </Badge>
+          )}
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="right" className="w-[340px] sm:w-[400px] p-0 flex flex-col">
+        <SheetHeader className="p-6 pb-4 border-b">
+          <SheetTitle className="flex items-center justify-between">
+            <span>Notifications</span>
+            {unreadCount > 0 && (
+              <Badge variant="secondary" className="rounded-full">{unreadCount} new</Badge>
+            )}
+          </SheetTitle>
+        </SheetHeader>
+        <ScrollArea className="flex-1">
+          {notifications.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center px-6">
+              <Bell className="w-10 h-10 text-muted-foreground/30 mb-3" />
+              <p className="text-muted-foreground text-sm">You're all caught up.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border/50">
+              {notifications.map((n) => (
+                <div
+                  key={n.id}
+                  className={`p-4 transition-colors ${!n.isRead ? "bg-primary/3" : "bg-background"}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${!n.isRead ? "bg-primary" : "bg-transparent"}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-muted-foreground mb-0.5">
+                        {notificationTypeLabel[n.notificationType] ?? n.notificationType}
+                      </p>
+                      <p className="text-sm font-medium leading-snug">{n.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{n.body}</p>
+                      <p className="text-[10px] text-muted-foreground/60 mt-1">
+                        {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                      </p>
+                    </div>
+                    {!n.isRead && (
+                      <button
+                        className="p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+                        onClick={() => markRead.mutate(n.id)}
+                        title="Mark as read"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+      </SheetContent>
+    </Sheet>
+  );
+}
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { signOut } = useClerk();
   const { user } = useUser();
-  const { data: unreadData } = useUnreadCount();
-  const unreadCount = unreadData?.unreadCount ?? 0;
 
   const navItems = [
     { icon: Home, label: "Home", href: "/dashboard" },
@@ -40,16 +126,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           MyZolve Connect
         </Link>
         <div className="flex items-center gap-2">
-          <Link href="/notifications">
-            <Button variant="ghost" size="icon" className="relative rounded-full">
-              <Bell className="w-5 h-5" />
-              {unreadCount > 0 && (
-                <Badge className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 text-[10px] flex items-center justify-center rounded-full bg-orange-500 border-card border-2">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </Badge>
-              )}
-            </Button>
-          </Link>
+          <NotificationDrawer />
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden">
@@ -81,16 +158,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Top bar for desktop with user menu */}
         <header className="hidden md:flex items-center justify-end p-6">
           <div className="flex items-center gap-4">
-            <Link href="/notifications">
-              <Button variant="ghost" size="icon" className="relative rounded-full text-muted-foreground hover:text-foreground">
-                <Bell className="w-5 h-5" />
-                {unreadCount > 0 && (
-                  <Badge className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 text-[10px] flex items-center justify-center rounded-full bg-orange-500 border-card border-2">
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </Badge>
-                )}
-              </Button>
-            </Link>
+            <NotificationDrawer />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">

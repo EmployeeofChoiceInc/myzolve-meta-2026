@@ -273,3 +273,61 @@ export function useAuditLogs(circleId: number) {
     enabled: !!circleId,
   });
 }
+
+export interface Attachment {
+  id: number;
+  circleId: number;
+  uploadedByUserId: number;
+  targetEntityType: string;
+  targetEntityId: number;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  storageKey: string;
+  downloadUrl: string;
+  status: string;
+  createdAt: string;
+}
+
+export function useAttachments(circleId: number, entityType: string, entityId: number) {
+  return useQuery({
+    queryKey: ["attachments", circleId, entityType, entityId],
+    queryFn: () =>
+      customFetch<Attachment[]>(`/api/circles/${circleId}/attachments/${entityType}/${entityId}`),
+    enabled: !!circleId && !!entityId,
+  });
+}
+
+export function useRequestUploadUrl() {
+  return useMutation({
+    mutationFn: (data: { name: string; size: number; contentType: string; circleId: number }) =>
+      customFetch<{ uploadURL: string; objectPath: string }>("/api/storage/uploads/request-url", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+  });
+}
+
+export function useCreateAttachment(circleId: number, entityType: string, entityId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { fileName: string; fileSize: number; mimeType: string; storageKey: string }) =>
+      customFetch<Attachment>(`/api/circles/${circleId}/attachments/${entityType}/${entityId}`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["attachments", circleId, entityType, entityId] });
+    },
+  });
+}
+
+export function useCreateGratitudeNote(circleId: number) {
+  return useMutation({
+    mutationFn: (data: { message: string; targetEntityType: string; targetEntityId: number; recipientUserIds: number[] }) =>
+      customFetch(`/api/circles/${circleId}/gratitude`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+  });
+}

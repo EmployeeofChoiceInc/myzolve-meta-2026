@@ -1,6 +1,6 @@
 import { useParams, Link } from "wouter";
 import { useListSupportRequests, useCreateSupportRequest, getListSupportRequestsQueryKey } from "@workspace/api-client-react";
-import { HandHeart, Plus, ArrowLeft } from "lucide-react";
+import { HandHeart, Plus, ArrowLeft, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -105,6 +105,38 @@ export default function RequestsPage() {
           <Plus className="mr-2 w-4 h-4" /> New Request
         </Button>
       </div>
+
+      {/* Emergency / Urgent banner */}
+      {!isLoading && requests && requests.filter(r => r.urgencyLevel === "emergency" || r.urgencyLevel === "urgent").length > 0 && (
+        <div className="rounded-2xl border-2 border-destructive/30 bg-destructive/5 p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
+              <Zap className="w-5 h-5 text-destructive" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-destructive text-sm mb-1">Urgent support needed</p>
+              <p className="text-sm text-muted-foreground">
+                {requests.filter(r => r.urgencyLevel === "emergency").length > 0
+                  ? "There are emergency requests in your circle that need immediate attention."
+                  : "Someone in your circle has marked a request as urgent."}
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {requests
+              .filter(r => r.urgencyLevel === "emergency" || r.urgencyLevel === "urgent")
+              .slice(0, 3)
+              .map(r => (
+                <Link key={r.id} href={`/requests/${r.id}`}>
+                  <Button size="sm" variant="destructive" className="rounded-full h-8 text-xs gap-1.5">
+                    <HandHeart className="w-3.5 h-3.5" />
+                    Help: {r.title.length > 28 ? r.title.slice(0, 28) + "…" : r.title}
+                  </Button>
+                </Link>
+              ))}
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

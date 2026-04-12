@@ -4,7 +4,7 @@ import { requireAuth } from "../middlewares/requireAuth";
 import { validateBody, validateParams, circleIdParam } from "../middlewares/validate";
 import { db } from "@workspace/db";
 import { attachmentsTable, supportRequestsTable, servicePostsTable, repaymentsTable } from "@workspace/db";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, inArray } from "drizzle-orm";
 import { assertCircleMember, createAuditLog } from "../lib/helpers";
 import { ObjectStorageService } from "../lib/objectStorage";
 
@@ -20,8 +20,12 @@ async function assertAttachmentEntityInCircle(circleId: number, entityType: stri
     return !!row;
   }
   if (entityType === "repayment") {
-    const [row] = await db.select({ id: repaymentsTable.id }).from(repaymentsTable)
-      .where(eq(repaymentsTable.id, entityId)).limit(1);
+    const [row] = await db
+      .select({ id: repaymentsTable.id })
+      .from(repaymentsTable)
+      .innerJoin(supportRequestsTable, eq(supportRequestsTable.id, repaymentsTable.requestId))
+      .where(and(eq(repaymentsTable.id, entityId), eq(supportRequestsTable.circleId, circleId)))
+      .limit(1);
     return !!row;
   }
   return false;

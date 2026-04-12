@@ -7,21 +7,30 @@ import {
   useGetMe,
   getGetSupportRequestQueryKey
 } from "@workspace/api-client-react";
-import { ArrowLeft, HandHeart, CheckCircle2, Clock, RotateCcw, MessageCircle, Send, Heart, ThumbsUp, Star, Smile } from "lucide-react";
+import { ArrowLeft, HandHeart, CheckCircle2, Clock, RotateCcw, MessageCircle, Send, Heart, Star, Smile, Paperclip, Upload, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { useComments, useCreateComment, useReactions, useToggleReaction } from "@/hooks/use-api";
+import {
+  useComments,
+  useCreateComment,
+  useReactions,
+  useToggleReaction,
+  useAttachments,
+  useRequestUploadUrl,
+  useCreateAttachment,
+  useCreateGratitudeNote,
+} from "@/hooks/use-api";
 
 const REACTION_ICONS: Record<string, React.ReactNode> = {
   heart: <Heart className="w-3.5 h-3.5" />,
@@ -35,6 +44,7 @@ export default function RequestDetailPage() {
   const requestId = parseInt(id!);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: me } = useGetMe();
   const { data: requestData, isLoading } = useGetSupportRequest(requestId, {
@@ -48,6 +58,9 @@ export default function RequestDetailPage() {
   const [offerOpen, setOfferOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
   const [commentBody, setCommentBody] = useState("");
+  const [gratitudeOpen, setGratitudeOpen] = useState(false);
+  const [gratitudeMessage, setGratitudeMessage] = useState("");
+  const [uploadingFile, setUploadingFile] = useState(false);
 
   const [offerForm, setOfferForm] = useState<{
     amount: string;
@@ -68,8 +81,12 @@ export default function RequestDetailPage() {
 
   const { data: comments } = useComments(circleId, "support_request", requestId);
   const { data: reactions } = useReactions(circleId, "support_request", requestId);
+  const { data: attachments } = useAttachments(circleId, "support_request", requestId);
   const createComment = useCreateComment(circleId, "support_request", requestId);
   const toggleReaction = useToggleReaction(circleId, "support_request", requestId);
+  const requestUploadUrl = useRequestUploadUrl();
+  const createAttachment = useCreateAttachment(circleId, "support_request", requestId);
+  const createGratitude = useCreateGratitudeNote(circleId);
 
   if (isLoading) return <div className="p-8 animate-pulse flex flex-col gap-4"><div className="h-8 bg-muted w-1/3 rounded"></div><div className="h-64 bg-muted rounded-3xl"></div></div>;
   if (!requestData) return <div>Request not found</div>;
@@ -79,13 +96,46 @@ export default function RequestDetailPage() {
 
   const isCreator = me?.id === request.createdByUserId;
 
+  const contributorIds = (contributions ?? [])
+    .map((c) => (c as unknown as { contributorUserId?: number }).contributorUserId)
+    .filter((id): id is number => typeof id === "number" && id !== me?.id);
+
   const handleConfirmReceipt = () => {
     confirmReceipt.mutate({ requestId }, {
       onSuccess: () => {
         toast({ title: "Receipt confirmed", description: "The support has been marked as received." });
         queryClient.invalidateQueries({ queryKey: getGetSupportRequestQueryKey(requestId) });
+        if (contributorIds.length > 0) {
+          setGratitudeMessage("");
+          setGratitudeOpen(true);
+        }
       }
     });
+  };
+
+  const handleSendGratitude = () => {
+    if (!gratitudeMessage.trim() || contributorIds.length === 0) {
+      setGratitudeOpen(false);
+      return;
+    }
+    createGratitude.mutate(
+      {
+        message: gratitudeMessage.trim(),
+        targetEntityType: "support_request",
+        targetEntityId: requestId,
+        recipientUserIds: contributorIds,
+      },
+      {
+        onSuccess: () => {
+          toast({ title: "Gratitude sent", description: "Your thank-you was shared with everyone who helped." });
+          setGratitudeOpen(false);
+          setGratitudeMessage("");
+        },
+        onError: () => {
+          setGratitudeOpen(false);
+        },
+      }
+    );
   };
 
   const handleOfferSupport = () => {
@@ -159,8 +209,39 @@ export default function RequestDetailPage() {
     );
   };
 
-  const handleReaction = (reactionType: string) => {
-    toggleReaction.mutate(reactionType);
+  const handleFileUpload = async (file: File) => {
+    if (!circleId) return;
+    setUploadingFile(true);
+    try {
+      const { uploadURL, objectPath } = await requestUploadUrl.mutateAsync({
+        name: file.name,
+        size: file.size,
+        contentType: file.type,
+        circleId,
+      });
+      await fetch(uploadURL, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      await createAttachment.mutateAsync({
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type,
+        storageKey: objectPath,
+      });
+      toast({ title: "File attached", description: `${file.name} has been attached to this request.` });
+    } catch {
+      toast({ title: "Upload failed. Please try again.", variant: "destructive" });
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const getStatusColor = (status: string) => {
@@ -234,7 +315,7 @@ export default function RequestDetailPage() {
                 return (
                   <button
                     key={type}
-                    onClick={() => handleReaction(type)}
+                    onClick={() => toggleReaction.mutate(type)}
                     className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${mine ? "bg-primary/10 border-primary/20 text-primary" : "bg-muted/50 border-border text-muted-foreground hover:bg-muted"}`}
                   >
                     {REACTION_ICONS[type]}
@@ -297,6 +378,61 @@ export default function RequestDetailPage() {
         </div>
       )}
 
+      {/* Attachments */}
+      {circleId > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-semibold flex items-center gap-2">
+              <Paperclip className="w-5 h-5 text-muted-foreground" />
+              Files {attachments && attachments.length > 0 && <span className="text-sm font-normal text-muted-foreground">({attachments.length})</span>}
+            </h3>
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept="image/*,.pdf,.doc,.docx,.txt"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFileUpload(file);
+                e.target.value = "";
+              }}
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-full gap-2"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingFile}
+            >
+              <Upload className="w-3.5 h-3.5" />
+              {uploadingFile ? "Uploading..." : "Attach File"}
+            </Button>
+          </div>
+          {attachments && attachments.length > 0 ? (
+            <div className="space-y-2">
+              {attachments.map((att) => (
+                <div key={att.id} className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl border border-border/50">
+                  <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{att.fileName}</p>
+                    <p className="text-xs text-muted-foreground">{formatFileSize(att.fileSize)}</p>
+                  </div>
+                  <a
+                    href={att.downloadUrl}
+                    download={att.fileName}
+                    className="text-xs text-primary hover:underline shrink-0"
+                  >
+                    Download
+                  </a>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No files attached yet. You can attach receipts, photos, or documents.</p>
+          )}
+        </div>
+      )}
+
       {/* Comments Section */}
       {circleId > 0 && (
         <div className="space-y-4">
@@ -305,7 +441,6 @@ export default function RequestDetailPage() {
             Kind Words {comments && comments.length > 0 && <span className="text-sm font-normal text-muted-foreground">({comments.length})</span>}
           </h3>
 
-          {/* Comment Input */}
           <div className="flex gap-3 items-start">
             <div className="flex-1">
               <Textarea
@@ -328,7 +463,6 @@ export default function RequestDetailPage() {
             </Button>
           </div>
 
-          {/* Comment List */}
           {comments && comments.length > 0 ? (
             <div className="space-y-3">
               {comments.map((comment) => (
@@ -351,6 +485,40 @@ export default function RequestDetailPage() {
           )}
         </div>
       )}
+
+      {/* Gratitude Prompt Dialog */}
+      <Dialog open={gratitudeOpen} onOpenChange={setGratitudeOpen}>
+        <DialogContent className="sm:max-w-md rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Share your gratitude</DialogTitle>
+            <DialogDescription>
+              Your circle showed up for you. Take a moment to thank everyone who contributed.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-3 space-y-3">
+            <Textarea
+              placeholder="Thank you so much for your support. It means the world to me..."
+              value={gratitudeMessage}
+              onChange={(e) => setGratitudeMessage(e.target.value)}
+              className="rounded-2xl resize-none min-h-[100px]"
+              autoFocus
+            />
+            <p className="text-xs text-muted-foreground">This will be shared with everyone who offered support.</p>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => setGratitudeOpen(false)} className="rounded-full text-muted-foreground">
+              Skip for now
+            </Button>
+            <Button
+              onClick={handleSendGratitude}
+              disabled={createGratitude.isPending || !gratitudeMessage.trim()}
+              className="rounded-full"
+            >
+              {createGratitude.isPending ? "Sending..." : "Send thanks"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Offer Support Dialog */}
       <Dialog open={offerOpen} onOpenChange={setOfferOpen}>
