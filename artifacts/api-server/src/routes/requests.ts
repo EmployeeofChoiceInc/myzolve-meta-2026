@@ -236,11 +236,6 @@ router.post("/circles/:circleId/requests", requireAuth, validateParams(circleIdP
     dueDate,
   } = req.body;
 
-  if (!title || amountRequested === undefined) {
-    res.status(400).json({ error: "title and amountRequested are required" });
-    return;
-  }
-
   const [supportReq] = await db
     .insert(supportRequestsTable)
     .values({
@@ -491,11 +486,6 @@ router.post("/requests/:requestId/contributions", requireAuth, validateParams(re
     paymentMethod,
   } = req.body;
 
-  if (!amount) {
-    res.status(400).json({ error: "amount is required" });
-    return;
-  }
-
   const [contribution] = await db
     .insert(supportContributionsTable)
     .values({
@@ -744,11 +734,6 @@ router.post("/repayments", requireAuth, validateBody(createRepaymentSchema), asy
     note,
     paymentMethod,
   } = req.body;
-
-  if (!requestId || !amount) {
-    res.status(400).json({ error: "requestId and amount are required" });
-    return;
-  }
 
   const existing = await db
     .select()

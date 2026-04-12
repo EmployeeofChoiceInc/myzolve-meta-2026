@@ -278,7 +278,9 @@ router.get("/circles/:circleId/dashboard", requireAuth, validateParams(circleIdP
     return;
   }
 
-  const openRequests = await db
+  const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+
+  const allOpenRequests = await db
     .select()
     .from(supportRequestsTable)
     .where(
@@ -288,6 +290,16 @@ router.get("/circles/:circleId/dashboard", requireAuth, validateParams(circleIdP
       ),
     );
 
+  const openRequests = isAdminOrOwner
+    ? allOpenRequests
+    : allOpenRequests.filter((r) => {
+        const scope = r.visibilityScope;
+        if (scope === "private_draft" || scope === "admins_only") {
+          return r.createdByUserId === userId;
+        }
+        return true;
+      });
+
   const urgentCount = openRequests.filter((r) =>
     ["urgent", "emergency"].includes(r.urgencyLevel),
   ).length;
@@ -296,28 +308,48 @@ router.get("/circles/:circleId/dashboard", requireAuth, validateParams(circleIdP
     (r) => r.createdByUserId === userId,
   ).length;
 
+  const restrictedRequestIds = new Set(
+    isAdminOrOwner
+      ? []
+      : allOpenRequests
+          .filter(
+            (r) =>
+              (r.visibilityScope === "private_draft" || r.visibilityScope === "admins_only") &&
+              r.createdByUserId !== userId,
+          )
+          .map((r) => r.id),
+  );
+
   const recentActivityRows = await db
     .select({ item: activityFeedItemsTable, actor: usersTable })
     .from(activityFeedItemsTable)
     .leftJoin(usersTable, eq(activityFeedItemsTable.actorUserId, usersTable.id))
     .where(eq(activityFeedItemsTable.circleId, circleId))
     .orderBy(desc(activityFeedItemsTable.createdAt))
-    .limit(5);
+    .limit(20);
 
-  const recentActivity = recentActivityRows.map((i) => ({
-    id: i.item.id,
-    circleId: i.item.circleId,
-    actorUserId: i.item.actorUserId,
-    actorName: i.actor?.displayName ?? "Someone",
-    activityType: i.item.activityType,
-    targetEntityType: i.item.targetEntityType,
-    targetEntityId: i.item.targetEntityId,
-    summaryText: i.item.summaryText,
-    createdAt: i.item.createdAt,
-  }));
+  const recentActivity = recentActivityRows
+    .filter((i) => {
+      if (i.item.targetEntityType === "support_request" && i.item.targetEntityId !== null) {
+        return !restrictedRequestIds.has(i.item.targetEntityId);
+      }
+      return true;
+    })
+    .slice(0, 5)
+    .map((i) => ({
+      id: i.item.id,
+      circleId: i.item.circleId,
+      actorUserId: i.item.actorUserId,
+      actorName: i.actor?.displayName ?? "Someone",
+      activityType: i.item.activityType,
+      targetEntityType: i.item.targetEntityType,
+      targetEntityId: i.item.targetEntityId,
+      summaryText: i.item.summaryText,
+      createdAt: i.item.createdAt,
+    }));
 
-  const [activeServicesRow] = await db
-    .select({ cnt: sql<number>`count(*)` })
+  const allOpenServices = await db
+    .select()
     .from(servicePostsTable)
     .where(
       and(
@@ -325,6 +357,17 @@ router.get("/circles/:circleId/dashboard", requireAuth, validateParams(circleIdP
         eq(servicePostsTable.status, "open"),
       ),
     );
+
+  const visibleServiceCount = isAdminOrOwner
+    ? allOpenServices.length
+    : allOpenServices.filter((s) => {
+        if (s.visibilityScope === "admins_only") {
+          return s.createdByUserId === userId;
+        }
+        return true;
+      }).length;
+
+  const [activeServicesRow] = [{ cnt: visibleServiceCount }];
 
   const myContributions = await db
     .select()
