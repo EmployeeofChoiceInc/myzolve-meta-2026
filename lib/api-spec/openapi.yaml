@@ -3,13 +3,36 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: MyZolve Connect API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: me
+    description: Current user operations
+  - name: circles
+    description: Circle management
+  - name: members
+    description: Circle membership
+  - name: invitations
+    description: Circle invitations
+  - name: requests
+    description: Support requests
+  - name: contributions
+    description: Contributions to requests
+  - name: repayments
+    description: Repayment tracking
+  - name: services
+    description: Service exchange board
+  - name: activity
+    description: Activity feed
+  - name: ledger
+    description: Soft ledger
+  - name: dashboard
+    description: Dashboard summaries
+
 paths:
   /healthz:
     get:
@@ -24,7 +47,958 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ── Me ──────────────────────────────────────────────────────────────────────
+  /me:
+    get:
+      operationId: getMe
+      tags: [me]
+      summary: Get current user profile
+      security: [{ clerk: [] }]
+      responses:
+        "200":
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      operationId: updateMe
+      tags: [me]
+      summary: Update current user profile
+      security: [{ clerk: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMeBody"
+      responses:
+        "200":
+          description: Updated user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── Circles ──────────────────────────────────────────────────────────────────
+  /circles:
+    get:
+      operationId: listCircles
+      tags: [circles]
+      summary: List circles the current user belongs to
+      security: [{ clerk: [] }]
+      responses:
+        "200":
+          description: List of circles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Circle"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createCircle
+      tags: [circles]
+      summary: Create a new circle
+      security: [{ clerk: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCircleBody"
+      responses:
+        "201":
+          description: Circle created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Circle"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /circles/{circleId}:
+    get:
+      operationId: getCircle
+      tags: [circles]
+      summary: Get a circle by ID
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      responses:
+        "200":
+          description: Circle details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Circle"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateCircle
+      tags: [circles]
+      summary: Update a circle
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCircleBody"
+      responses:
+        "200":
+          description: Updated circle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Circle"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteCircle
+      tags: [circles]
+      summary: Delete a circle (owner only)
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      responses:
+        "204":
+          description: Circle deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /circles/{circleId}/stats:
+    get:
+      operationId: getCircleStats
+      tags: [circles, dashboard]
+      summary: Get circle overview statistics
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      responses:
+        "200":
+          description: Circle statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CircleStats"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Members ───────────────────────────────────────────────────────────────
+  /circles/{circleId}/members:
+    get:
+      operationId: listCircleMembers
+      tags: [members]
+      summary: List members of a circle
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      responses:
+        "200":
+          description: List of members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CircleMember"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /circles/{circleId}/members/{memberId}:
+    patch:
+      operationId: updateCircleMember
+      tags: [members]
+      summary: Update a circle member's role or status
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - $ref: "#/components/parameters/memberId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCircleMemberBody"
+      responses:
+        "200":
+          description: Updated member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CircleMember"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: removeCircleMember
+      tags: [members]
+      summary: Remove a member from a circle
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - $ref: "#/components/parameters/memberId"
+      responses:
+        "204":
+          description: Member removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Invitations ────────────────────────────────────────────────────────────
+  /circles/{circleId}/invitations:
+    get:
+      operationId: listCircleInvitations
+      tags: [invitations]
+      summary: List pending invitations for a circle
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      responses:
+        "200":
+          description: List of invitations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CircleInvitation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createCircleInvitation
+      tags: [invitations]
+      summary: Invite someone to a circle
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInvitationBody"
+      responses:
+        "201":
+          description: Invitation created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CircleInvitation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /invitations/{token}/accept:
+    post:
+      operationId: acceptInvitation
+      tags: [invitations]
+      summary: Accept a circle invitation by token
+      security: [{ clerk: [] }]
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Invitation accepted, joined circle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CircleMember"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /invitations/{invitationId}:
+    delete:
+      operationId: revokeInvitation
+      tags: [invitations]
+      summary: Revoke a pending invitation
+      security: [{ clerk: [] }]
+      parameters:
+        - name: invitationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Invitation revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ── Support Requests ───────────────────────────────────────────────────────
+  /circles/{circleId}/requests:
+    get:
+      operationId: listSupportRequests
+      tags: [requests]
+      summary: List support requests in a circle
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: urgency
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of support requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SupportRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createSupportRequest
+      tags: [requests]
+      summary: Create a support request
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSupportRequestBody"
+      responses:
+        "201":
+          description: Support request created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /requests/{requestId}:
+    get:
+      operationId: getSupportRequest
+      tags: [requests]
+      summary: Get a support request by ID
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+      responses:
+        "200":
+          description: Support request detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportRequestDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateSupportRequest
+      tags: [requests]
+      summary: Update a support request
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSupportRequestBody"
+      responses:
+        "200":
+          description: Updated support request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /requests/{requestId}/cancel:
+    post:
+      operationId: cancelSupportRequest
+      tags: [requests]
+      summary: Cancel a support request
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+      responses:
+        "200":
+          description: Cancelled request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /requests/{requestId}/complete:
+    post:
+      operationId: completeSupportRequest
+      tags: [requests]
+      summary: Mark a support request as completed
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+      responses:
+        "200":
+          description: Completed request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ── Contributions ──────────────────────────────────────────────────────────
+  /requests/{requestId}/contributions:
+    get:
+      operationId: listContributions
+      tags: [contributions]
+      summary: List contributions for a support request
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+      responses:
+        "200":
+          description: List of contributions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Contribution"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createContribution
+      tags: [contributions]
+      summary: Contribute to a support request
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateContributionBody"
+      responses:
+        "201":
+          description: Contribution created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contribution"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /requests/{requestId}/confirm-receipt:
+    post:
+      operationId: confirmReceipt
+      tags: [contributions]
+      summary: Confirm receipt of support
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+      responses:
+        "200":
+          description: Receipt confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /contributions/{contributionId}/forgive:
+    post:
+      operationId: forgiveContribution
+      tags: [contributions]
+      summary: Forgive a loan contribution (convert to gift)
+      security: [{ clerk: [] }]
+      parameters:
+        - name: contributionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Contribution forgiven
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contribution"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ── Repayment Plans ────────────────────────────────────────────────────────
+  /requests/{requestId}/repayment-plan:
+    get:
+      operationId: getRepaymentPlan
+      tags: [repayments]
+      summary: Get repayment plan for a request
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+      responses:
+        "200":
+          description: Repayment plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RepaymentPlan"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: createRepaymentPlan
+      tags: [repayments]
+      summary: Create a repayment plan
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRepaymentPlanBody"
+      responses:
+        "201":
+          description: Repayment plan created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RepaymentPlan"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── Repayments ────────────────────────────────────────────────────────────
+  /repayments:
+    post:
+      operationId: createRepayment
+      tags: [repayments]
+      summary: Record a repayment
+      security: [{ clerk: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRepaymentBody"
+      responses:
+        "201":
+          description: Repayment recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Repayment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /circles/{circleId}/repayments:
+    get:
+      operationId: listRepayments
+      tags: [repayments]
+      summary: List repayments in a circle
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      responses:
+        "200":
+          description: List of repayments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Repayment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /repayments/{repaymentId}/confirm:
+    post:
+      operationId: confirmRepayment
+      tags: [repayments]
+      summary: Confirm a repayment was received
+      security: [{ clerk: [] }]
+      parameters:
+        - name: repaymentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Repayment confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Repayment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ── Service Posts ──────────────────────────────────────────────────────────
+  /circles/{circleId}/services:
+    get:
+      operationId: listServicePosts
+      tags: [services]
+      summary: List service posts in a circle
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - name: serviceType
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of service posts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ServicePost"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createServicePost
+      tags: [services]
+      summary: Create a service post
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateServicePostBody"
+      responses:
+        "201":
+          description: Service post created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServicePost"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /services/{serviceId}:
+    get:
+      operationId: getServicePost
+      tags: [services]
+      summary: Get a service post by ID
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/serviceId"
+      responses:
+        "200":
+          description: Service post detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServicePost"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateServicePost
+      tags: [services]
+      summary: Update a service post
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/serviceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateServicePostBody"
+      responses:
+        "200":
+          description: Updated service post
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServicePost"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /services/{serviceId}/match:
+    post:
+      operationId: matchServicePost
+      tags: [services]
+      summary: Express interest in a service post
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/serviceId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MatchServiceBody"
+      responses:
+        "200":
+          description: Service matched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServicePost"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /services/{serviceId}/complete:
+    post:
+      operationId: completeServicePost
+      tags: [services]
+      summary: Mark a service post as completed
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/serviceId"
+      responses:
+        "200":
+          description: Service completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServicePost"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ── Activity Feed ──────────────────────────────────────────────────────────
+  /circles/{circleId}/activity:
+    get:
+      operationId: getCircleActivity
+      tags: [activity]
+      summary: Get activity feed for a circle
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Activity feed items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── Ledger ────────────────────────────────────────────────────────────────
+  /circles/{circleId}/ledger:
+    get:
+      operationId: getCircleLedger
+      tags: [ledger]
+      summary: Get ledger entries for a circle
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Ledger entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LedgerEntry"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /circles/{circleId}/ledger/summary:
+    get:
+      operationId: getCircleLedgerSummary
+      tags: [ledger, dashboard]
+      summary: Get ledger summary for a circle
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      responses:
+        "200":
+          description: Ledger summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LedgerSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── Dashboard Summary ──────────────────────────────────────────────────────
+  /circles/{circleId}/dashboard:
+    get:
+      operationId: getCircleDashboard
+      tags: [dashboard]
+      summary: Get dashboard summary for a circle
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
 components:
+  securitySchemes:
+    clerk:
+      type: http
+      scheme: bearer
+
+  parameters:
+    circleId:
+      name: circleId
+      in: path
+      required: true
+      schema:
+        type: integer
+
+    memberId:
+      name: memberId
+      in: path
+      required: true
+      schema:
+        type: integer
+
+    requestId:
+      name: requestId
+      in: path
+      required: true
+      schema:
+        type: integer
+
+    serviceId:
+      name: serviceId
+      in: path
+      required: true
+      schema:
+        type: integer
+
+  responses:
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +1008,900 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    # ── User ─────────────────────────────────────────────────────────────────
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        clerkId:
+          type: string
+        displayName:
+          type: string
+        firstName:
+          type: ["string", "null"]
+        lastName:
+          type: ["string", "null"]
+        email:
+          type: string
+        timezone:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - clerkId
+        - displayName
+        - email
+        - createdAt
+
+    UpdateMeBody:
+      type: object
+      properties:
+        displayName:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        timezone:
+          type: string
+
+    # ── Circle ────────────────────────────────────────────────────────────────
+    Circle:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        circleType:
+          type: string
+          enum: [family, chosen_family, friends, caregiving_circle, neighborhood_circle, other]
+        description:
+          type: ["string", "null"]
+        photoUrl:
+          type: ["string", "null"]
+        currency:
+          type: string
+        privacyMode:
+          type: string
+          enum: [private, hidden, discoverable]
+        ledgerMode:
+          type: string
+          enum: [private, summary, full, admin_only]
+        ownerId:
+          type: integer
+        memberCount:
+          type: integer
+        myRole:
+          type: string
+          enum: [owner, admin, member, guest]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - circleType
+        - currency
+        - privacyMode
+        - ledgerMode
+        - ownerId
+        - memberCount
+        - myRole
+        - createdAt
+
+    CreateCircleBody:
+      type: object
+      properties:
+        name:
+          type: string
+        circleType:
+          type: string
+          enum: [family, chosen_family, friends, caregiving_circle, neighborhood_circle, other]
+        description:
+          type: string
+        currency:
+          type: string
+          default: USD
+        privacyMode:
+          type: string
+          enum: [private, hidden, discoverable]
+          default: private
+        ledgerMode:
+          type: string
+          enum: [private, summary, full, admin_only]
+          default: private
+      required:
+        - name
+        - circleType
+
+    UpdateCircleBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        circleType:
+          type: string
+          enum: [family, chosen_family, friends, caregiving_circle, neighborhood_circle, other]
+        privacyMode:
+          type: string
+          enum: [private, hidden, discoverable]
+        ledgerMode:
+          type: string
+          enum: [private, summary, full, admin_only]
+        currency:
+          type: string
+
+    CircleStats:
+      type: object
+      properties:
+        circleId:
+          type: integer
+        totalMembers:
+          type: integer
+        openRequests:
+          type: integer
+        completedRequests:
+          type: integer
+        totalSupportGiven:
+          type: number
+        totalSupportReceived:
+          type: number
+        activeServices:
+          type: integer
+        recentActivityCount:
+          type: integer
+      required:
+        - circleId
+        - totalMembers
+        - openRequests
+        - completedRequests
+        - totalSupportGiven
+        - totalSupportReceived
+        - activeServices
+        - recentActivityCount
+
+    # ── Members ───────────────────────────────────────────────────────────────
+    CircleMember:
+      type: object
+      properties:
+        id:
+          type: integer
+        circleId:
+          type: integer
+        userId:
+          type: ["integer", "null"]
+        displayName:
+          type: string
+        email:
+          type: ["string", "null"]
+        role:
+          type: string
+          enum: [owner, admin, member, guest]
+        status:
+          type: string
+          enum: [active, pending, removed]
+        joinedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - circleId
+        - displayName
+        - role
+        - status
+        - createdAt
+
+    UpdateCircleMemberBody:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [admin, member, guest]
+
+    # ── Invitations ────────────────────────────────────────────────────────────
+    CircleInvitation:
+      type: object
+      properties:
+        id:
+          type: integer
+        circleId:
+          type: integer
+        invitedEmail:
+          type: ["string", "null"]
+        invitedByUserId:
+          type: integer
+        role:
+          type: string
+          enum: [admin, member, guest]
+        customMessage:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, sent, accepted, expired, revoked]
+        token:
+          type: string
+        expiresAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - circleId
+        - invitedByUserId
+        - role
+        - status
+        - token
+        - createdAt
+
+    CreateInvitationBody:
+      type: object
+      properties:
+        invitedEmail:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, member, guest]
+          default: member
+        customMessage:
+          type: string
+      required:
+        - invitedEmail
+
+    # ── Support Requests ───────────────────────────────────────────────────────
+    SupportRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+        circleId:
+          type: integer
+        createdByUserId:
+          type: integer
+        createdByName:
+          type: string
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        amountRequested:
+          type: number
+        amountFunded:
+          type: number
+        currency:
+          type: string
+        requestType:
+          type: string
+          enum: [money, service, emergency]
+        visibilityScope:
+          type: string
+          enum: [specific_person, selected_members, whole_circle, admins_only, private_draft]
+        repaymentExpected:
+          type: boolean
+        repaymentStyle:
+          type: string
+          enum: [one_time, installments, flexible, no_repayment, gift, discuss_later]
+        urgencyLevel:
+          type: string
+          enum: [low, normal, important, urgent, emergency]
+        category:
+          type: string
+        privacyLevel:
+          type: string
+          enum: [standard, sensitive, fully_private]
+        status:
+          type: string
+          enum: [draft, open, accepted, partially_funded, fully_funded, declined, canceled, completed, archived]
+        dueDate:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - circleId
+        - createdByUserId
+        - createdByName
+        - title
+        - amountRequested
+        - amountFunded
+        - currency
+        - requestType
+        - visibilityScope
+        - repaymentExpected
+        - repaymentStyle
+        - urgencyLevel
+        - category
+        - privacyLevel
+        - status
+        - createdAt
+        - updatedAt
+
+    SupportRequestDetail:
+      allOf:
+        - $ref: "#/components/schemas/SupportRequest"
+        - type: object
+          properties:
+            contributions:
+              type: array
+              items:
+                $ref: "#/components/schemas/Contribution"
+            repaymentPlan:
+              oneOf:
+                - $ref: "#/components/schemas/RepaymentPlan"
+                - type: "null"
+          required:
+            - contributions
+
+    CreateSupportRequestBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        amountRequested:
+          type: number
+        currency:
+          type: string
+          default: USD
+        requestType:
+          type: string
+          enum: [money, service, emergency]
+          default: money
+        visibilityScope:
+          type: string
+          enum: [specific_person, selected_members, whole_circle, admins_only, private_draft]
+          default: whole_circle
+        repaymentExpected:
+          type: boolean
+          default: false
+        repaymentStyle:
+          type: string
+          enum: [one_time, installments, flexible, no_repayment, gift, discuss_later]
+          default: discuss_later
+        urgencyLevel:
+          type: string
+          enum: [low, normal, important, urgent, emergency]
+          default: normal
+        category:
+          type: string
+          default: other
+        privacyLevel:
+          type: string
+          enum: [standard, sensitive, fully_private]
+          default: standard
+        dueDate:
+          type: string
+          format: date-time
+      required:
+        - title
+        - amountRequested
+
+    UpdateSupportRequestBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        amountRequested:
+          type: number
+        urgencyLevel:
+          type: string
+          enum: [low, normal, important, urgent, emergency]
+        category:
+          type: string
+        status:
+          type: string
+          enum: [draft, open, accepted, partially_funded, fully_funded, declined, canceled, completed, archived]
+        dueDate:
+          type: string
+          format: date-time
+        repaymentExpected:
+          type: boolean
+        repaymentStyle:
+          type: string
+          enum: [one_time, installments, flexible, no_repayment, gift, discuss_later]
+
+    # ── Contributions ──────────────────────────────────────────────────────────
+    Contribution:
+      type: object
+      properties:
+        id:
+          type: integer
+        requestId:
+          type: integer
+        contributorUserId:
+          type: integer
+        contributorName:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        contributionType:
+          type: string
+          enum: [loan, gift, installment, partial_support, pledge]
+        note:
+          type: ["string", "null"]
+        paymentMethod:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pledged, sent, confirmed, canceled, forgiven]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - requestId
+        - contributorUserId
+        - contributorName
+        - amount
+        - currency
+        - contributionType
+        - status
+        - createdAt
+
+    CreateContributionBody:
+      type: object
+      properties:
+        amount:
+          type: number
+        currency:
+          type: string
+          default: USD
+        contributionType:
+          type: string
+          enum: [loan, gift, installment, partial_support, pledge]
+          default: gift
+        note:
+          type: string
+        paymentMethod:
+          type: string
+      required:
+        - amount
+
+    # ── Repayment Plan ─────────────────────────────────────────────────────────
+    RepaymentPlan:
+      type: object
+      properties:
+        id:
+          type: integer
+        requestId:
+          type: integer
+        totalAmount:
+          type: number
+        startDate:
+          type: ["string", "null"]
+          format: date-time
+        frequency:
+          type: string
+          enum: [one_time, weekly, biweekly, monthly, custom]
+        installmentAmount:
+          type: ["number", "null"]
+        numberOfInstallments:
+          type: ["integer", "null"]
+        flexibleNotes:
+          type: ["string", "null"]
+        nextDueDate:
+          type: ["string", "null"]
+          format: date-time
+        status:
+          type: string
+          enum: [active, completed, paused]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - requestId
+        - totalAmount
+        - frequency
+        - status
+        - createdAt
+
+    CreateRepaymentPlanBody:
+      type: object
+      properties:
+        totalAmount:
+          type: number
+        startDate:
+          type: string
+          format: date-time
+        frequency:
+          type: string
+          enum: [one_time, weekly, biweekly, monthly, custom]
+        installmentAmount:
+          type: number
+        numberOfInstallments:
+          type: integer
+        flexibleNotes:
+          type: string
+        nextDueDate:
+          type: string
+          format: date-time
+      required:
+        - totalAmount
+        - frequency
+
+    # ── Repayment ─────────────────────────────────────────────────────────────
+    Repayment:
+      type: object
+      properties:
+        id:
+          type: integer
+        requestId:
+          type: integer
+        payerUserId:
+          type: integer
+        payerName:
+          type: string
+        payeeUserId:
+          type: ["integer", "null"]
+        payeeName:
+          type: ["string", "null"]
+        amount:
+          type: number
+        currency:
+          type: string
+        paymentDate:
+          type: string
+          format: date-time
+        note:
+          type: ["string", "null"]
+        paymentMethod:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [scheduled, completed, partial, pending_confirmation, forgiven]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - requestId
+        - payerUserId
+        - payerName
+        - amount
+        - currency
+        - paymentDate
+        - status
+        - createdAt
+
+    CreateRepaymentBody:
+      type: object
+      properties:
+        requestId:
+          type: integer
+        amount:
+          type: number
+        currency:
+          type: string
+          default: USD
+        paymentDate:
+          type: string
+          format: date-time
+        note:
+          type: string
+        paymentMethod:
+          type: string
+      required:
+        - requestId
+        - amount
+
+    # ── Service Posts ──────────────────────────────────────────────────────────
+    ServicePost:
+      type: object
+      properties:
+        id:
+          type: integer
+        circleId:
+          type: integer
+        createdByUserId:
+          type: integer
+        createdByName:
+          type: string
+        serviceType:
+          type: string
+          enum: [offer, request, barter_offer, barter_request]
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        category:
+          type: string
+        availability:
+          type: ["string", "null"]
+        locationMode:
+          type: string
+          enum: [in_person, remote, hybrid]
+        exchangePreference:
+          type: string
+          enum: [free, barter, paid_later, open_to_discuss]
+        estimatedValue:
+          type: ["number", "null"]
+        status:
+          type: string
+          enum: [open, matched, in_progress, completed, withdrawn, archived]
+        visibilityScope:
+          type: string
+          enum: [whole_circle, selected_members, admins_only]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - circleId
+        - createdByUserId
+        - createdByName
+        - serviceType
+        - title
+        - category
+        - locationMode
+        - exchangePreference
+        - status
+        - visibilityScope
+        - createdAt
+        - updatedAt
+
+    CreateServicePostBody:
+      type: object
+      properties:
+        serviceType:
+          type: string
+          enum: [offer, request, barter_offer, barter_request]
+          default: offer
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          default: other
+        availability:
+          type: string
+        locationMode:
+          type: string
+          enum: [in_person, remote, hybrid]
+          default: remote
+        exchangePreference:
+          type: string
+          enum: [free, barter, paid_later, open_to_discuss]
+          default: free
+        estimatedValue:
+          type: number
+        visibilityScope:
+          type: string
+          enum: [whole_circle, selected_members, admins_only]
+          default: whole_circle
+      required:
+        - title
+        - serviceType
+
+    UpdateServicePostBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        availability:
+          type: string
+        locationMode:
+          type: string
+          enum: [in_person, remote, hybrid]
+        exchangePreference:
+          type: string
+          enum: [free, barter, paid_later, open_to_discuss]
+        estimatedValue:
+          type: number
+        status:
+          type: string
+          enum: [open, matched, in_progress, completed, withdrawn, archived]
+
+    MatchServiceBody:
+      type: object
+      properties:
+        note:
+          type: string
+
+    # ── Activity ──────────────────────────────────────────────────────────────
+    ActivityItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        circleId:
+          type: integer
+        actorUserId:
+          type: ["integer", "null"]
+        actorName:
+          type: string
+        activityType:
+          type: string
+          enum: [member_joined, request_posted, support_offered, request_funded, request_completed, repayment_marked, service_posted, service_matched, service_completed, member_invited]
+        targetEntityType:
+          type: ["string", "null"]
+        targetEntityId:
+          type: ["integer", "null"]
+        summaryText:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - circleId
+        - actorName
+        - activityType
+        - summaryText
+        - createdAt
+
+    # ── Ledger ────────────────────────────────────────────────────────────────
+    LedgerEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        circleId:
+          type: integer
+        entryKind:
+          type: string
+          enum: [money_given, money_received, money_repaid, service_offered, service_received, gift_given, amount_forgiven]
+        sourceType:
+          type: string
+        sourceId:
+          type: integer
+        giverName:
+          type: string
+        receiverName:
+          type: string
+        amount:
+          type: ["number", "null"]
+        currency:
+          type: ["string", "null"]
+        description:
+          type: string
+        date:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - circleId
+        - entryKind
+        - sourceType
+        - sourceId
+        - giverName
+        - receiverName
+        - description
+        - date
+        - createdAt
+
+    LedgerSummary:
+      type: object
+      properties:
+        circleId:
+          type: integer
+        totalGiven:
+          type: number
+        totalReceived:
+          type: number
+        totalRepaid:
+          type: number
+        totalForgiven:
+          type: number
+        outstandingBalance:
+          type: number
+        myGiven:
+          type: number
+        myReceived:
+          type: number
+        myOutstanding:
+          type: number
+        currency:
+          type: string
+        softMessage:
+          type: string
+      required:
+        - circleId
+        - totalGiven
+        - totalReceived
+        - totalRepaid
+        - totalForgiven
+        - outstandingBalance
+        - myGiven
+        - myReceived
+        - myOutstanding
+        - currency
+        - softMessage
+
+    # ── Dashboard ─────────────────────────────────────────────────────────────
+    DashboardSummary:
+      type: object
+      properties:
+        circleId:
+          type: integer
+        openRequestsCount:
+          type: integer
+        urgentRequestsCount:
+          type: integer
+        pendingRepayments:
+          type: array
+          items:
+            $ref: "#/components/schemas/RepaymentReminder"
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityItem"
+        activeServices:
+          type: integer
+        myOpenRequests:
+          type: integer
+        circleHealth:
+          type: string
+          enum: [quiet, active, busy]
+      required:
+        - circleId
+        - openRequestsCount
+        - urgentRequestsCount
+        - pendingRepayments
+        - recentActivity
+        - activeServices
+        - myOpenRequests
+        - circleHealth
+
+    RepaymentReminder:
+      type: object
+      properties:
+        requestId:
+          type: integer
+        requestTitle:
+          type: string
+        amountOwed:
+          type: number
+        currency:
+          type: string
+        dueDate:
+          type: ["string", "null"]
+          format: date-time
+        counterpartyName:
+          type: string
+      required:
+        - requestId
+        - requestTitle
+        - amountOwed
+        - currency
+        - counterpartyName
