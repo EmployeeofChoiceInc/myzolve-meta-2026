@@ -1,0 +1,1969 @@
+MyZolve Family
+
+Full Product Specification for Replit
+
+1. Product Overview
+
+Product name: MyZolve Family
+
+Position in ecosystem: A private support and exchange platform within the MyZolve ecosystem that helps families and trusted circles lend, borrow, repay, barter, organize support, and strengthen mutual aid.
+
+Core idea:
+MyZolve Family gives trusted groups their own private digital home where they can:
+	•	request and provide financial support
+	•	track repayment in a relationship-sensitive way
+	•	exchange services and favors
+	•	organize family resources
+	•	support one another during normal life and difficult times
+	•	optionally connect with other trusted circles later
+
+This is not a public marketplace and not a traditional fintech product. It is a trust-based family support platform with financial and service-exchange functionality.
+
+⸻
+
+2. Product Philosophy
+
+The product should feel:
+	•	warm
+	•	private
+	•	supportive
+	•	calm
+	•	human
+	•	non-punitive
+	•	emotionally intelligent
+
+The product should not feel:
+	•	cold
+	•	bank-like
+	•	debt-collector-like
+	•	socially shaming
+	•	gamified in a way that harms relationships
+	•	public or performative
+
+Guiding principle
+
+This platform should help people organize support without making relationships feel transactional.
+
+⸻
+
+3. Product Vision
+
+MyZolve Family is designed to become the private infrastructure layer for families, chosen families, and trusted circles.
+
+Long-term purpose
+
+To help people rely on each other more clearly, more safely, and more sustainably.
+
+Immediate purpose
+
+To provide a private digital space where trusted people can coordinate money, services, needs, support, and repayment.
+
+⸻
+
+4. Core User Types
+
+The product should support multiple forms of trusted circles, not just traditional families.
+
+Supported circle types
+	•	biological families
+	•	blended families
+	•	chosen families
+	•	caregiver groups
+	•	multigenerational households
+	•	close friend circles
+	•	faith-based support groups
+	•	neighborhood support groups
+	•	emergency support circles
+
+Use “circle” as the primary universal term in the product.
+
+⸻
+
+5. Primary Jobs To Be Done
+
+Users come to MyZolve Family to:
+	•	ask for help without awkwardness
+	•	lend money with more clarity
+	•	pay people back without confusion
+	•	document support that usually lives only in text messages or memory
+	•	offer services to trusted people
+	•	trade skills and favors
+	•	reduce family tension caused by forgotten or vague agreements
+	•	coordinate help during emergencies or temporary hardship
+	•	maintain dignity while asking for support
+	•	keep support networks organized
+
+⸻
+
+6. Core Product Modules
+
+The full product should include these modules:
+	1.	Authentication and onboarding
+	2.	Circle creation and management
+	3.	Member invitations and roles
+	4.	Support requests for money
+	5.	Support offers for money
+	6.	Repayment tracking
+	7.	Service exchange and barter board
+	8.	Shared activity feed
+	9.	Private conversations and comments
+	10.	Notifications and reminders
+	11.	Circle settings and privacy controls
+	12.	Soft ledger and support summaries
+	13.	Emergency support mode
+	14.	Cross-circle exchange framework
+	15.	Admin, moderation, trust, and compliance layer
+	16.	Payment integration framework
+	17.	Reporting, exports, and records
+	18.	Future MyZolve ecosystem integration hooks
+
+⸻
+
+7. Functional Scope
+
+7.1 Authentication and Accounts
+
+Required functionality
+
+Users must be able to:
+	•	create an account using email
+	•	sign in securely
+	•	reset password
+	•	verify email
+	•	optionally sign in with Google or Apple later
+	•	set display name
+	•	upload profile photo optionally
+	•	set phone number optionally
+	•	set timezone
+	•	set notification preferences
+
+Account profile fields
+	•	user_id
+	•	first_name
+	•	last_name optional
+	•	display_name
+	•	email
+	•	phone optional
+	•	password_hash
+	•	profile_photo_url optional
+	•	timezone
+	•	notification_preferences
+	•	created_at
+	•	updated_at
+	•	account_status
+
+Account status options
+	•	active
+	•	pending_verification
+	•	suspended
+	•	deactivated
+
+⸻
+
+7.2 Circle Creation and Management
+
+A user must be able to create one or more private circles.
+
+Create Circle fields
+	•	circle_name
+	•	circle_type
+	•	description optional
+	•	circle_photo optional
+	•	default_currency
+	•	privacy_mode
+	•	invite_method settings
+	•	whether ledger visibility is enabled
+	•	whether cross-circle discovery is enabled
+	•	whether minors may be listed as dependents
+	•	whether emergency mode is enabled
+
+Circle type options
+	•	family
+	•	chosen_family
+	•	friends
+	•	caregiving_circle
+	•	neighborhood_circle
+	•	other
+
+Privacy mode options
+	•	private invite-only
+	•	private discoverable by direct invite only
+	•	hidden from all search
+	•	eligible for trusted cross-circle exchange later
+
+Circle roles
+	•	Owner
+	•	Admin
+	•	Member
+	•	Dependent view-only optional
+	•	Guest limited-access optional
+
+Permissions by role
+
+Owner
+	•	full access
+	•	edit circle settings
+	•	transfer ownership
+	•	delete circle
+	•	manage roles
+	•	enable integrations
+	•	view all records unless hidden by privacy rules
+	•	manage moderation actions
+
+Admin
+	•	invite/remove members
+	•	create/edit requests
+	•	manage service board
+	•	view activity
+	•	manage tags/categories
+	•	send reminders
+	•	resolve disputes flag
+	•	cannot transfer ownership unless promoted
+
+Member
+	•	create own requests
+	•	respond to requests
+	•	make offers
+	•	mark payment made if involved
+	•	post service offers/requests
+	•	comment
+	•	react
+	•	see activity as allowed by settings
+
+Dependent view-only
+	•	limited dashboard
+	•	no financial authority
+	•	can view specific family information if permitted
+
+Guest
+	•	can respond to a specific request or participate temporarily
+	•	not visible as full member if circle chooses
+
+⸻
+
+7.3 Invitations
+
+Users must be able to invite members via:
+	•	email
+	•	text message later
+	•	shareable invite link
+	•	manual add placeholder for offline family members
+
+Invitation fields
+	•	invite_id
+	•	circle_id
+	•	invited_email or phone
+	•	invited_by_user_id
+	•	role
+	•	custom_message optional
+	•	status
+	•	expires_at
+	•	accepted_at
+
+Invitation status
+	•	pending
+	•	sent
+	•	accepted
+	•	expired
+	•	revoked
+
+Important requirement
+
+The platform should allow a circle to track support involving people who have not yet joined digitally.
+
+Example: a user may record that “Aunt Lisa lent $100” even if Aunt Lisa has not created an account yet. This requires offline member placeholders.
+
+⸻
+
+7.4 Offline Members / Placeholder Profiles
+
+This is important for real-life family use.
+
+A circle should be able to create a non-login member profile for someone who participates informally.
+
+Placeholder profile fields
+	•	placeholder_member_id
+	•	circle_id
+	•	display_name
+	•	relationship optional
+	•	notes optional
+	•	can_be_converted_to_real_user boolean
+	•	linked_user_id optional if later claimed
+
+This allows support tracking without forcing every participant to join immediately.
+
+⸻
+
+7.5 Dashboard / Home Experience
+
+Each user should have a home dashboard that gives a clear view of what matters.
+
+Dashboard sections
+	•	welcome header
+	•	circle switcher
+	•	urgent/open requests
+	•	recent activity
+	•	requests needing response
+	•	services board summary
+	•	repayment reminders
+	•	quick actions
+	•	emergency requests if active
+	•	support summary
+	•	upcoming due dates
+	•	thank-you and completed support moments
+
+Quick actions
+	•	request money
+	•	offer help
+	•	post a service
+	•	repay support
+	•	invite a member
+	•	activate emergency request
+	•	browse family offers
+	•	view ledger
+
+⸻
+
+7.6 Support Requests for Money
+
+This is a core feature.
+
+Users should be able to request financial support from:
+	•	one specific member
+	•	multiple selected members
+	•	the entire circle
+	•	an external trusted circle later
+
+Create Support Request fields
+	•	request_id
+	•	circle_id
+	•	created_by_user_id
+	•	request_title
+	•	request_description
+	•	amount_requested
+	•	currency
+	•	request_type
+	•	visibility_scope
+	•	target_member_ids optional
+	•	due_date optional
+	•	repayment_expected boolean
+	•	repayment_style
+	•	repayment_plan optional
+	•	urgency_level
+	•	category
+	•	supporting_documents optional
+	•	privacy_level
+	•	status
+	•	created_at
+	•	updated_at
+
+Request type options
+	•	money
+	•	service
+	•	goods later
+	•	emergency
+
+Visibility scope options
+	•	specific person only
+	•	selected members only
+	•	whole circle
+	•	admins only
+	•	private draft
+
+Repayment style options
+	•	one-time repayment
+	•	installments
+	•	flexible
+	•	no repayment expected
+	•	gift
+	•	discuss later
+
+Urgency level options
+	•	low
+	•	normal
+	•	important
+	•	urgent
+	•	emergency
+
+Categories
+	•	rent
+	•	utilities
+	•	groceries
+	•	transportation
+	•	child-related
+	•	elder care
+	•	medical
+	•	education
+	•	emergency
+	•	moving
+	•	business help
+	•	personal
+	•	other
+
+Privacy levels
+	•	standard visible to allowed viewers
+	•	sensitive with limited detail
+	•	fully private with only participants able to see
+
+Request status
+	•	draft
+	•	open
+	•	under_review
+	•	accepted
+	•	partially_funded
+	•	fully_funded
+	•	declined
+	•	canceled
+	•	completed
+	•	archived
+
+Important logic
+
+A request can be:
+	•	filled by one person
+	•	partially funded by multiple people
+	•	converted from request to gift
+	•	converted from money request to service alternative if appropriate
+
+⸻
+
+7.7 Support Offers for Money
+
+Members should also be able to proactively offer support.
+
+Offer fields
+	•	offer_id
+	•	circle_id
+	•	created_by_user_id
+	•	offer_title
+	•	description
+	•	amount_available optional
+	•	category
+	•	target_scope
+	•	expiration_date optional
+	•	conditions optional
+	•	status
+
+Offer examples
+	•	“I can help with groceries this week”
+	•	“Up to $150 available for anyone who needs gas or school supplies”
+	•	“Can cover one bill this month if needed”
+
+Offer status
+	•	open
+	•	partially_used
+	•	fulfilled
+	•	expired
+	•	withdrawn
+
+⸻
+
+7.8 Funding Logic
+
+A request may receive one or more contributions.
+
+Contribution record fields
+	•	contribution_id
+	•	request_id
+	•	circle_id
+	•	contributor_user_id or placeholder_member_id
+	•	recipient_user_id or placeholder_member_id
+	•	amount
+	•	contribution_type
+	•	note optional
+	•	payment_method optional
+	•	proof optional
+	•	created_at
+	•	status
+
+Contribution type
+	•	loan
+	•	gift
+	•	installment
+	•	partial_support
+	•	pledge
+	•	matched_support
+
+Contribution status
+	•	pledged
+	•	sent
+	•	confirmed
+	•	disputed
+	•	canceled
+
+Requirements
+	•	more than one member can contribute to the same request
+	•	contributor can mark “gift” instead of loan
+	•	recipient can confirm receipt
+	•	contributors can remain visible or anonymous to circle if allowed
+	•	circle rules can determine whether anonymous support is allowed
+
+⸻
+
+7.9 Repayment Tracking
+
+This is another core feature.
+
+Repayment should be supported without harsh language.
+
+Product language
+
+Use terms like:
+	•	repayment
+	•	return support
+	•	complete support
+	•	installment
+	•	remaining amount
+	•	support history
+
+Avoid terms like:
+	•	debt collector
+	•	delinquent
+	•	overdue penalty
+	•	default
+
+Repayment record fields
+	•	repayment_id
+	•	original_contribution_id or request_id
+	•	payer_user_id
+	•	payee_user_id
+	•	amount
+	•	payment_date
+	•	note optional
+	•	proof optional
+	•	status
+	•	created_at
+
+Repayment status
+	•	scheduled
+	•	completed
+	•	partial
+	•	pending_confirmation
+	•	disputed
+	•	forgiven
+
+Repayment plan fields
+	•	plan_id
+	•	request_id
+	•	total_amount
+	•	start_date
+	•	frequency
+	•	installment_amount
+	•	number_of_installments
+	•	flexible_notes
+	•	next_due_date
+	•	status
+
+Frequency options
+	•	one-time
+	•	weekly
+	•	biweekly
+	•	monthly
+	•	custom
+
+Required behaviors
+	•	allow partial repayment
+	•	allow flexible repayment with no fixed date
+	•	allow contributor to forgive the amount
+	•	allow repayment to be manually entered
+	•	allow repayment reminder notifications
+	•	show remaining amount
+	•	maintain audit history
+
+⸻
+
+7.10 Service Exchange / Barter Board
+
+This should be a major feature, not an afterthought.
+
+Users must be able to post:
+	•	services they can offer
+	•	services they need
+	•	barter exchanges
+	•	time-based help
+
+Service post fields
+	•	service_post_id
+	•	circle_id
+	•	created_by_user_id
+	•	service_type
+	•	title
+	•	description
+	•	category
+	•	availability
+	•	location_mode
+	•	exchange_preference
+	•	estimated_value optional
+	•	tags
+	•	status
+	•	visibility_scope
+	•	created_at
+	•	updated_at
+
+Service type
+	•	offer
+	•	request
+	•	barter_offer
+	•	barter_request
+
+Categories
+	•	childcare
+	•	tutoring
+	•	rides
+	•	car help
+	•	resume help
+	•	interview prep
+	•	tech help
+	•	home repair
+	•	yard work
+	•	moving help
+	•	meal prep
+	•	elder support
+	•	pet care
+	•	emotional support check-ins
+	•	admin help
+	•	legal knowledge not advice disclaimer
+	•	creative services
+	•	business help
+	•	other
+
+Location mode
+	•	in-person
+	•	remote
+	•	hybrid
+
+Exchange preference
+	•	free
+	•	barter
+	•	paid later
+	•	open to discuss
+
+Service post status
+	•	open
+	•	matched
+	•	in_progress
+	•	completed
+	•	withdrawn
+	•	archived
+
+Barter matching
+
+The system should allow:
+	•	direct exchange
+	•	one-way service gift
+	•	service-for-money
+	•	service-for-service
+	•	later cross-circle exchange
+
+⸻
+
+7.11 Family Marketplace Within Trusted Circles
+
+Internally this can function like a private micro-marketplace.
+
+Members should be able to:
+	•	browse services
+	•	search by category
+	•	filter by location
+	•	filter by availability
+	•	respond to offers
+	•	propose barter terms
+	•	save favorites
+	•	mark completion
+	•	leave appreciation or trust signals if enabled
+
+Avoid public ratings that create shame. If ratings exist, keep them private, soft, and optional.
+
+Better options than hard ratings
+	•	reliable
+	•	helpful
+	•	generous
+	•	communicative
+	•	appreciated
+
+These should be lightweight trust signals, not public star ratings.
+
+⸻
+
+7.12 Activity Feed
+
+Every circle needs a shared feed.
+
+Feed should include
+	•	new member joins
+	•	new request posted
+	•	support offered
+	•	partial funding completed
+	•	repayment marked
+	•	service posted
+	•	barter completed
+	•	gratitude shared
+	•	reminder sent
+	•	emergency request activated
+	•	member invited
+
+Feed item fields
+	•	activity_id
+	•	circle_id
+	•	actor_user_id
+	•	activity_type
+	•	target_entity_type
+	•	target_entity_id
+	•	summary_text
+	•	privacy_scope
+	•	created_at
+
+Privacy requirements
+
+Some feed items must be hidden from members who are not authorized to view the underlying item.
+
+⸻
+
+7.13 Comments, Reactions, and Conversations
+
+Each request, service post, and support item should allow contextual conversation.
+
+Required features
+	•	comments
+	•	replies
+	•	soft reactions
+	•	private notes between participants optionally
+	•	update history
+
+Reaction examples
+	•	heart
+	•	support
+	•	praying hands optional
+	•	thank you
+	•	got it
+
+Messaging principles
+
+This is not intended to replace a full messaging app. Use lightweight contextual discussion, not open-ended chat-first product design.
+
+⸻
+
+7.14 Soft Ledger
+
+This is important, but it must be designed carefully.
+
+The product should track support exchanged within a circle without making users feel scored.
+
+Ledger items to track
+	•	money given
+	•	money received
+	•	money repaid
+	•	services offered
+	•	services received
+	•	gifted support
+	•	forgiven amounts
+	•	outstanding balances if allowed
+	•	net support position if enabled
+
+Ledger display options
+
+Circle owners should choose one of these modes:
+
+Mode 1: Private participant-only
+Only participants in a transaction see the details.
+
+Mode 2: Summary visible
+Members can see general summaries but not exact details.
+
+Mode 3: Full circle transparency
+All circle members can see all support records.
+
+Mode 4: Admin-only view
+Only owner/admins can see the full ledger.
+
+Suggested soft states
+
+Instead of exposing a harsh balance score, the interface can display:
+	•	You’ve supported your circle recently
+	•	You’ve received support recently
+	•	Your circle is active and responsive
+	•	Several support exchanges have been completed
+
+Full ledger fields
+	•	ledger_entry_id
+	•	circle_id
+	•	entry_type
+	•	source_entity_type
+	•	source_entity_id
+	•	giver_member_ref
+	•	receiver_member_ref
+	•	amount_or_value
+	•	currency
+	•	description
+	•	date
+	•	visibility_mode
+	•	created_at
+
+⸻
+
+7.15 Emergency Support Mode
+
+This is strategically important.
+
+A user should be able to create an emergency request that signals urgency.
+
+Emergency request use cases
+	•	sudden bill
+	•	food need
+	•	transportation crisis
+	•	family emergency
+	•	evacuation/travel issue
+	•	medical gap
+	•	child-related immediate need
+
+Emergency mode features
+	•	urgent badge
+	•	priority in feed
+	•	faster notifications
+	•	“support now” quick response button
+	•	less required form detail
+	•	optional hide sensitive context
+	•	support pooling from multiple members
+	•	auto-expiry or resolution reminder
+
+Emergency mode fields
+
+All standard request fields plus:
+	•	emergency_flag
+	•	emergency_category
+	•	notification_priority
+	•	expires_at
+	•	immediate_needs_text
+
+⸻
+
+7.16 Cross-Circle Exchange
+
+Build the architecture now even if full functionality comes later.
+
+This feature should allow trusted circles to optionally connect with other trusted circles for support and barter.
+
+Important principle
+
+Cross-circle access must be opt-in only.
+
+Cross-circle use cases
+	•	Family A needs tutoring; Family B offers it
+	•	Family A can help with childcare; Family B can help with transport
+	•	trusted referrals between circles
+
+Cross-circle requirements
+	•	circle owners control whether cross-circle participation is allowed
+	•	no public discovery by default
+	•	invitation or approved connection only
+	•	visibility can be service-only, money-only, or full
+	•	separate permission layer from internal circle permissions
+
+Cross-circle connection fields
+	•	connection_id
+	•	source_circle_id
+	•	target_circle_id
+	•	status
+	•	connection_type
+	•	permissions_scope
+	•	approved_by
+	•	created_at
+
+Connection status
+	•	pending
+	•	approved
+	•	declined
+	•	blocked
+	•	suspended
+
+Connection type
+	•	referral_only
+	•	service_exchange
+	•	support_requests
+	•	full_partner_circle
+
+⸻
+
+7.17 Dependents and Household Structure
+
+Circles may include minors or dependents for planning purposes.
+
+Dependents may be listed as:
+	•	child
+	•	elder
+	•	dependent adult
+	•	shared household member
+
+Dependent functionality
+	•	can be associated with needs
+	•	can be associated with school, childcare, transport, or care requests
+	•	should not have financial permissions
+	•	should not receive direct notifications unless specifically designed later
+
+⸻
+
+7.18 Gratitude and Relationship Repair Layer
+
+This is part of the product’s emotional intelligence.
+
+Support exchanges should allow:
+	•	thank-you notes
+	•	gratitude reactions
+	•	optional appreciation prompts after completed transactions
+	•	forgiveness marker
+	•	“support completed” celebration micro-moments
+
+Example product prompts
+	•	“Would you like to thank them?”
+	•	“Support completed.”
+	•	“This exchange is now complete.”
+	•	“Would you like to leave a note of appreciation?”
+
+⸻
+
+8. Search, Filter, and Discovery
+
+Users should be able to search across their authorized content.
+
+Searchable content
+	•	requests
+	•	services
+	•	offers
+	•	members
+	•	tags
+	•	categories
+	•	notes they authored
+	•	completed transactions if visible
+
+Filters
+	•	open
+	•	completed
+	•	urgent
+	•	category
+	•	amount range
+	•	repayment status
+	•	service availability
+	•	visibility
+	•	participant
+	•	date
+
+⸻
+
+9. Information Architecture / Screens
+
+9.1 Global Navigation
+	•	Home
+	•	Circle
+	•	Requests
+	•	Services
+	•	Ledger
+	•	Activity
+	•	Members
+	•	Settings
+
+Mobile-first design is preferred.
+
+⸻
+
+9.2 Screen List
+
+Authentication
+	•	Sign up
+	•	Sign in
+	•	Email verification
+	•	Password reset
+	•	Invite acceptance
+
+Onboarding
+	•	Welcome
+	•	Create or join circle
+	•	Set profile
+	•	Invite first members
+	•	Choose privacy settings
+	•	Choose circle language/tone preferences later
+
+Home
+	•	Dashboard
+	•	urgent items
+	•	quick actions
+	•	recent activity
+
+Circle
+	•	circle overview
+	•	summary cards
+	•	circle description
+	•	support stats
+	•	privacy mode
+	•	connected circles later
+
+Requests
+	•	requests list
+	•	request detail
+	•	create request
+	•	edit request
+	•	fund request
+	•	mark received
+	•	create repayment plan
+	•	repayment history
+
+Services
+	•	services list
+	•	service detail
+	•	create post
+	•	edit post
+	•	match flow
+	•	completion flow
+
+Ledger
+	•	summary
+	•	transaction history
+	•	filters
+	•	participant view
+	•	exports later
+
+Activity
+	•	full feed
+	•	filters
+	•	item detail jump links
+
+Members
+	•	member list
+	•	member profile
+	•	placeholder member profile
+	•	invite management
+	•	role management
+
+Settings
+	•	circle settings
+	•	privacy settings
+	•	notification settings
+	•	permissions settings
+	•	connected circles later
+	•	account settings
+
+⸻
+
+10. UX and Tone Rules
+
+Language rules
+
+Use:
+	•	support
+	•	help
+	•	request
+	•	return
+	•	complete
+	•	contribute
+	•	offer
+	•	share
+	•	trusted circle
+
+Avoid:
+	•	debt collection
+	•	penalty
+	•	delinquent
+	•	aggressively past due
+	•	public scoreboard
+	•	low score
+	•	late fee unless specifically enabled in future and likely never for family
+
+Visual design rules
+	•	soft modern design
+	•	warm neutrals or MyZolve-aligned palette
+	•	clean cards
+	•	subtle motion
+	•	high readability
+	•	emotionally safe UI
+	•	not cluttered
+	•	not over-gamified
+
+Accessibility
+	•	color contrast compliant
+	•	keyboard navigation
+	•	screen-reader labels
+	•	support large text
+	•	mobile responsive
+	•	clear focus states
+
+⸻
+
+11. Notifications
+
+Users should receive notifications for events that matter.
+
+Notification channels
+	•	in-app
+	•	email
+	•	SMS later optional
+	•	push later optional
+
+Notification events
+	•	invited to circle
+	•	request created
+	•	request directed to user
+	•	request partially funded
+	•	request fully funded
+	•	support received
+	•	repayment due soon
+	•	repayment completed
+	•	service match
+	•	service completed
+	•	emergency request posted
+	•	role changed
+	•	cross-circle connection request
+
+Notification preferences
+
+Users should be able to set:
+	•	all notifications
+	•	urgent only
+	•	direct requests only
+	•	digest mode
+	•	no email
+	•	no SMS
+	•	reminders on/off
+
+Reminder logic
+
+Reminders should be configurable and gentle.
+
+Examples:
+	•	3 days before repayment target
+	•	on due date
+	•	3 days after due date if enabled
+	•	weekly reminder for flexible repayment
+
+Never use punitive wording.
+
+⸻
+
+12. Data Model
+
+Below is a recommended relational data model. Replit can adapt implementation details, but these entities should exist.
+
+Core tables
+	•	users
+	•	user_profiles
+	•	circles
+	•	circle_members
+	•	circle_invitations
+	•	placeholder_members
+	•	support_requests
+	•	support_contributions
+	•	repayment_plans
+	•	repayments
+	•	service_posts
+	•	service_matches
+	•	barter_agreements
+	•	activity_feed_items
+	•	comments
+	•	reactions
+	•	notifications
+	•	ledger_entries
+	•	emergency_requests or emergency flag within support_requests
+	•	circle_connections
+	•	audit_logs
+	•	file_attachments
+	•	settings_user
+	•	settings_circle
+	•	trust_markers
+	•	gratitude_notes
+	•	disputes
+	•	blocked_members optional
+	•	categories
+	•	tags
+	•	entity_tags join table
+
+Example: circle_members
+
+Fields:
+	•	circle_member_id
+	•	circle_id
+	•	user_id nullable
+	•	placeholder_member_id nullable
+	•	role
+	•	status
+	•	joined_at
+	•	invited_by
+	•	permissions_override json optional
+
+Example: support_requests
+
+Fields:
+	•	request_id
+	•	circle_id
+	•	created_by_user_id
+	•	request_title
+	•	request_description
+	•	amount_requested
+	•	currency
+	•	request_type
+	•	category
+	•	urgency_level
+	•	repayment_expected
+	•	repayment_style
+	•	due_date
+	•	visibility_scope
+	•	privacy_level
+	•	status
+	•	is_emergency
+	•	created_at
+	•	updated_at
+	•	archived_at nullable
+
+Example: service_posts
+
+Fields:
+	•	service_post_id
+	•	circle_id
+	•	created_by_user_id
+	•	service_type
+	•	title
+	•	description
+	•	category
+	•	availability_text
+	•	location_mode
+	•	exchange_preference
+	•	estimated_value nullable
+	•	visibility_scope
+	•	status
+	•	created_at
+	•	updated_at
+
+Example: ledger_entries
+
+Fields:
+	•	ledger_entry_id
+	•	circle_id
+	•	source_type
+	•	source_id
+	•	giver_type
+	•	giver_id
+	•	receiver_type
+	•	receiver_id
+	•	entry_kind
+	•	amount
+	•	currency
+	•	estimated_value nullable
+	•	description
+	•	visibility_mode
+	•	created_at
+
+⸻
+
+13. API Requirements
+
+Replit can choose stack and structure, but the system should support a clean API layer.
+
+Suggested API domains
+
+Auth
+	•	POST /auth/signup
+	•	POST /auth/login
+	•	POST /auth/logout
+	•	POST /auth/forgot-password
+	•	POST /auth/reset-password
+	•	POST /auth/verify-email
+
+User
+	•	GET /me
+	•	PATCH /me
+	•	PATCH /me/notifications
+
+Circles
+	•	POST /circles
+	•	GET /circles
+	•	GET /circles/:id
+	•	PATCH /circles/:id
+	•	DELETE /circles/:id
+	•	POST /circles/:id/invite
+	•	GET /circles/:id/members
+	•	PATCH /circles/:id/members/:memberId
+	•	DELETE /circles/:id/members/:memberId
+
+Placeholder members
+	•	POST /circles/:id/placeholders
+	•	PATCH /circles/:id/placeholders/:placeholderId
+	•	POST /circles/:id/placeholders/:placeholderId/claim
+
+Requests
+	•	POST /circles/:id/requests
+	•	GET /circles/:id/requests
+	•	GET /requests/:id
+	•	PATCH /requests/:id
+	•	POST /requests/:id/contributions
+	•	POST /requests/:id/confirm-receipt
+	•	POST /requests/:id/cancel
+	•	POST /requests/:id/complete
+
+Repayments
+	•	POST /requests/:id/repayment-plan
+	•	POST /repayments
+	•	PATCH /repayments/:id
+	•	POST /repayments/:id/confirm
+	•	POST /repayments/:id/forgive
+
+Services
+	•	POST /circles/:id/services
+	•	GET /circles/:id/services
+	•	GET /services/:id
+	•	PATCH /services/:id
+	•	POST /services/:id/match
+	•	POST /services/:id/complete
+
+Activity
+	•	GET /circles/:id/activity
+
+Ledger
+	•	GET /circles/:id/ledger
+	•	GET /circles/:id/ledger/summary
+
+Comments and reactions
+	•	POST /comments
+	•	PATCH /comments/:id
+	•	DELETE /comments/:id
+	•	POST /reactions
+
+Notifications
+	•	GET /notifications
+	•	PATCH /notifications/:id/read
+	•	PATCH /notifications/preferences
+
+Cross-circle
+	•	POST /circles/:id/connections
+	•	PATCH /connections/:id
+	•	GET /circles/:id/connections
+
+Files
+	•	POST /uploads
+	•	DELETE /uploads/:id
+
+⸻
+
+14. Business Logic Rules
+
+Request rules
+	•	only authorized members can create requests
+	•	circle settings determine who can post
+	•	requests can be draft/private/open
+	•	multiple contributors may fund one request
+	•	gifts should not generate repayment unless manually changed
+	•	loans generate repayment tracking if enabled
+	•	a request may be closed manually or automatically when fully funded
+
+Contribution rules
+	•	contributor must be authorized
+	•	amount cannot exceed remaining request amount unless overfunding is enabled
+	•	overfunding behavior should be configurable:
+	•	block
+	•	allow with recipient confirmation
+	•	convert extra to circle support pool later
+
+Repayment rules
+	•	repayment cannot exceed remaining owed unless allowed and explained
+	•	forgiveness should update outstanding balance
+	•	disputes should freeze status until resolved
+	•	manual edits must be logged in audit trail
+
+Service rules
+	•	service matches can be accepted/declined
+	•	a service post can spawn a barter agreement
+	•	one service post may have multiple interested responders
+	•	final match closes or partially reserves the post based on capacity settings
+
+Visibility rules
+	•	privacy settings always override feed visibility
+	•	members only see what they are authorized to see
+	•	hidden or sensitive requests should remain off global circle views except for participants/admins if permitted
+
+⸻
+
+15. Privacy and Security Requirements
+
+This matters a lot.
+
+Security fundamentals
+	•	secure authentication
+	•	hashed passwords
+	•	encrypted transport over HTTPS
+	•	database access controls
+	•	rate limiting on auth and invite endpoints
+	•	audit logging for sensitive actions
+	•	permission checks on every circle resource
+	•	secure file upload handling
+	•	signed URLs for private files if applicable
+	•	server-side validation for all writes
+
+Privacy requirements
+	•	no public indexing of circles
+	•	no public user profiles
+	•	no sharing or selling user data
+	•	fine-grained visibility controls
+	•	users can leave a circle
+	•	owners/admins can remove members
+	•	data export should be supported later
+	•	soft delete and account deletion policy should exist
+
+Sensitive request handling
+
+Users must be able to limit detail visibility for:
+	•	medical-related requests
+	•	abuse/safety related situations
+	•	child-related concerns
+	•	emergency situations
+
+Audit logs should track
+	•	role changes
+	•	deletion actions
+	•	repayment edits
+	•	forgiveness actions
+	•	dispute resolution
+	•	connection approvals
+	•	privacy setting changes
+
+⸻
+
+16. Trust and Safety
+
+Because this involves money and relationships, the product needs some protection.
+
+Include:
+	•	report issue button
+	•	dispute flag on contribution/repayment
+	•	block member capability within platform context if necessary
+	•	owner/admin moderation actions
+	•	suspicious activity logging
+	•	limits on spam invites
+	•	no public reviews or harassment-prone mechanics
+
+Disputes
+
+A dispute object should support:
+	•	disputed item type
+	•	disputed item id
+	•	opened by
+	•	reason
+	•	notes
+	•	status
+	•	resolution notes
+	•	resolved by
+	•	timestamps
+
+Status:
+	•	open
+	•	under_review
+	•	resolved
+	•	dismissed
+
+⸻
+
+17. Payments
+
+Do not require native money movement on day one, but architect for it now.
+
+Phase-appropriate approach
+
+At minimum, support:
+	•	manual recording of money exchanged
+	•	payment method note
+	•	optional external method field:
+	•	cash
+	•	Zelle
+	•	Cash App
+	•	Venmo
+	•	PayPal
+	•	bank transfer
+	•	other
+
+Future payment integration architecture
+
+System should be designed so native or linked payments can be added later.
+
+Payment-related fields
+	•	payment_method_type
+	•	external_reference optional
+	•	payment_status
+	•	confirmed_by_recipient
+
+Compliance note
+
+If native payments are ever implemented, legal/compliance considerations must be reviewed. For now, the product can function primarily as a coordination and recordkeeping layer with optional external payment confirmation.
+
+⸻
+
+18. File Attachments
+
+Users should be able to attach files or images where relevant.
+
+Allowed attachment contexts
+	•	support request
+	•	repayment proof
+	•	service post
+	•	profile
+	•	circle photo
+	•	gratitude note optional later
+
+Example attachments
+	•	bill screenshot
+	•	invoice
+	•	school fee notice
+	•	moving estimate
+	•	receipt
+	•	proof of repayment
+
+Requirements
+	•	private access only
+	•	file size limit
+	•	safe file types
+	•	virus/malware scanning if feasible
+	•	delete support
+
+⸻
+
+19. Admin and Operational Layer
+
+Even if hidden initially, the product should include an admin backend or internal tools.
+
+Admin features
+	•	user lookup
+	•	circle lookup
+	•	dispute review
+	•	moderation notes
+	•	suspicious behavior log
+	•	support request logs
+	•	audit log viewer
+	•	flag handling
+	•	account status change
+	•	invite abuse review
+
+⸻
+
+20. Analytics and Insights
+
+Analytics should be privacy-respecting.
+
+Product analytics to track
+	•	circles created
+	•	members invited
+	•	active circles
+	•	requests created
+	•	requests funded
+	•	repayment completion rate
+	•	service posts created
+	•	service matches completed
+	•	emergency requests posted
+	•	gratitude notes sent
+	•	cross-circle connections later
+
+Circle-level insights
+
+Only if enabled:
+	•	total support exchanged
+	•	number of completed support events
+	•	common categories
+	•	response speed
+	•	participation rate
+
+Important
+
+Do not create public family rankings or embarrassing comparisons.
+
+⸻
+
+21. Notifications Copy Style
+
+Examples of preferred copy:
+	•	“A new support request was posted in your circle.”
+	•	“Your circle member responded to your request.”
+	•	“A repayment was marked as completed.”
+	•	“Someone in your circle may need support.”
+	•	“A new service offer is available.”
+	•	“This request is marked urgent.”
+	•	“You received a thank-you note.”
+
+Avoid copy like:
+	•	“You are overdue.”
+	•	“You failed to pay.”
+	•	“Low reliability score.”
+	•	“Debt outstanding.”
+
+⸻
+
+22. Default Categories and Taxonomy
+
+Financial request categories
+	•	housing
+	•	food
+	•	transportation
+	•	childcare
+	•	school
+	•	medical
+	•	elder care
+	•	pet needs
+	•	utilities
+	•	moving
+	•	work-related
+	•	emergency
+	•	other
+
+Service categories
+	•	childcare
+	•	tutoring
+	•	rides
+	•	errands
+	•	moving help
+	•	meal support
+	•	tech support
+	•	home maintenance
+	•	paperwork help
+	•	resume/interview help
+	•	emotional support
+	•	elder care help
+	•	pet care
+	•	creative help
+	•	admin/business help
+	•	other
+
+Tags
+
+Support custom tags such as:
+	•	urgent
+	•	this week
+	•	recurring
+	•	remote
+	•	local only
+	•	open to barter
+	•	gift preferred
+	•	installment friendly
+
+⸻
+
+23. Edge Cases and Special Behaviors
+
+Replit should handle these.
+
+Edge case list
+	•	member invited but never joins
+	•	support recorded for placeholder member
+	•	request funded by multiple people
+	•	contributor converts loan to gift
+	•	repayment exceeds outstanding balance
+	•	request edited after contributions begin
+	•	service matched with more than one person
+	•	emergency request expires unresolved
+	•	user leaves circle with open obligations
+	•	owner leaves circle
+	•	circle has no admin except owner
+	•	member is removed mid-transaction
+	•	dispute opened after repayment confirmation
+	•	privacy settings changed after activity exists
+	•	circle merges with another later
+	•	currency support if international families emerge later
+
+Required handling
+	•	preserve history
+	•	prevent broken references
+	•	maintain audit logs
+	•	notify affected users appropriately
+
+⸻
+
+24. Recommended Technical Architecture
+
+Replit can adapt, but this is the preferred architecture direction.
+
+Frontend
+	•	modern responsive web app
+	•	mobile-first
+	•	component-based UI
+	•	clear state handling
+	•	accessible forms and tables/cards
+
+Backend
+	•	secure API server
+	•	relational database preferred
+	•	role/permission middleware
+	•	background jobs for notifications and reminders
+	•	file storage for attachments
+	•	audit logging service
+	•	notification service abstraction
+
+Recommended stack direction
+	•	React or Next.js frontend
+	•	Node/TypeScript backend
+	•	PostgreSQL database
+	•	Prisma or equivalent ORM
+	•	secure auth provider or custom auth with hashed passwords
+	•	object storage for files
+	•	cron/background jobs for reminders
+
+Replit may adjust, but architecture should support scale and maintainability.
+
+⸻
+
+25. Non-Functional Requirements
+
+Performance
+	•	pages should load quickly
+	•	search and filters should feel responsive
+	•	common list views should paginate
+	•	notification updates should be near-real-time or frequent refresh
+
+Reliability
+	•	prevent duplicate funding submissions
+	•	transaction-safe writes where money records are involved
+	•	robust form validation
+	•	recoverable errors
+	•	activity log consistency
+
+Accessibility
+	•	WCAG-conscious color contrast
+	•	semantic labels
+	•	keyboard support
+	•	responsive on small screens
+
+Internationalization readiness
+
+Even if English-only at launch, avoid hardcoding assumptions that block future localization.
+
+⸻
+
+26. Product States / Empty States
+
+Good empty states matter.
+
+Examples
+
+No requests:
+	•	“No support requests yet.”
+
+No services:
+	•	“Nothing posted yet. Offer help or ask for what you need.”
+
+No activity:
+	•	“Your circle activity will appear here.”
+
+No members:
+	•	“Invite your people to get started.”
+
+No repayments:
+	•	“Repayment history will appear once support is returned.”
+
+Keep empty states warm and invitational.
+
+⸻
+
+27. Full Feature List Summary
+
+This section is intended to ensure nothing gets missed.
+
+User/account
+	•	sign up
+	•	sign in
+	•	reset password
+	•	verify email
+	•	profile settings
+	•	notification preferences
+
+Circle management
+	•	create circle
+	•	edit circle
+	•	privacy settings
+	•	role management
+	•	invite members
+	•	placeholder members
+	•	remove members
+	•	transfer ownership
+
+Requests and money support
+	•	create request
+	•	edit request
+	•	draft request
+	•	private request
+	•	urgent/emergency request
+	•	directed request
+	•	open circle request
+	•	contributions
+	•	gifts
+	•	loans
+	•	partial funding
+	•	receipt confirmation
+	•	close request
+	•	cancel request
+
+Repayment
+	•	create repayment plan
+	•	one-time repayment
+	•	installment repayment
+	•	flexible repayment
+	•	mark paid
+	•	confirm payment
+	•	forgiveness
+	•	reminders
+	•	disputes
+
+Services/barter
+	•	post service offer
+	•	post service request
+	•	categorize services
+	•	match services
+	•	mark completed
+	•	propose barter
+	•	track barter agreement
+	•	add appreciation
+
+Feed/social layer
+	•	activity feed
+	•	comments
+	•	reactions
+	•	gratitude notes
+	•	participant updates
+
+Ledger
+	•	support history
+	•	summaries
+	•	filtered ledger
+	•	privacy-aware ledger visibility
+	•	soft support indicators
+
+Notifications
+	•	in-app
+	•	email
+	•	reminder engine
+	•	emergency alerts
+	•	notification settings
+
+Cross-circle
+	•	connection framework
+	•	trust-based circle linking
+	•	service-only or support-only permissions
+
+Operations
+	•	audit logs
+	•	admin tools
+	•	disputes
+	•	reports later
+	•	exports later
+
+Files
+	•	uploads
+	•	proof attachments
+	•	image/file management
+
+⸻
+
+28. Future Features Already Anticipated
+
+These do not need full v1 implementation, but architecture should support them cleanly.
+	•	native payment processing
+	•	support pools or shared emergency funds
+	•	recurring contributions
+	•	family goals and savings circles
+	•	shared family calendar
+	•	care coordination
+	•	goods exchange
+	•	shared resource library
+	•	reputation layer with soft trust signals
+	•	AI support summaries
+	•	suggested helpers based on past behavior
+	•	MyZolve Money integration
+	•	MyZolve Identity integration
+	•	household budgeting tools
+	•	crisis mode coordination
+	•	document vault
+	•	wills/emergency planning support
+	•	location-based nearby help
+	•	multilingual support
+
+⸻
+
+29. Suggested MVP Prioritization Reference
+
+Even though you want the full product spec now, here is a natural implementation sequence Replit can choose from.
+
+Foundation
+	•	auth
+	•	circles
+	•	invitations
+	•	member roles
+	•	dashboard
+	•	activity feed
+
+Core support layer
+	•	support requests
+	•	contributions
+	•	repayment tracking
+	•	reminder notifications
+
+Service layer
+	•	service posts
+	•	matching
+	•	completion
+
+Trust and admin layer
+	•	comments
+	•	privacy settings
+	•	audit logs
+	•	disputes
+
+Advanced layer
+	•	emergency mode
+	•	placeholder members
+	•	cross-circle framework
+	•	soft ledger sophistication
+	•	integrations
+
+⸻
+
+30. Acceptance Criteria Direction
+
+Replit should treat the product as complete only when the following are true:
+	•	users can securely create accounts and circles
+	•	members can be invited and assigned roles
+	•	support requests can be created with privacy and urgency controls
+	•	contributions can be recorded from one or more members
+	•	repayments can be tracked with partials and flexible plans
+	•	services can be posted, matched, and completed
+	•	activity feed reflects authorized activity accurately
+	•	privacy controls prevent unauthorized visibility
+	•	notifications work for major events
+	•	audit history exists for sensitive edits
+	•	placeholder members can participate in the data model
+	•	architecture allows future payment and cross-circle functionality
+
+⸻
+
+31. Brand / Positioning Notes for Replit
+
+This should visually and structurally feel like a MyZolve ecosystem product.
+
+Brand direction
+	•	emotionally intelligent
+	•	elegant
+	•	trustworthy
+	•	modern
+	•	calm
+	•	people-centered
+	•	not corporate
+	•	not fintech-harsh
+	•	not childish
+
+Core framing statement
+
+MyZolve Family helps trusted circles organize support, exchange help, and stay connected through real life.
+
+Supporting language ideas
+	•	Keep your circle strong.
+	•	Support should not have to live in text threads and memory.
+	•	Organize help without making it cold.
+	•	A private home for mutual support.
+
+⸻
+
+32. Final Build Instruction for Replit
+
+Build MyZolve Family as a secure, private, mobile-first web platform inside the MyZolve ecosystem. Treat this document as the full functional and architectural source of truth. Prioritize implementation as needed, but preserve all major entities, permissions, flows, privacy rules, and future-ready architecture so features can be layered in without rework.
+
+⸻
+
+If you want, I can turn this next into a cleaner copy-paste Replit prompt/spec format with more direct implementation language like “Build X, include Y, create these tables, use these routes,” so it reads less like a product brief and more like a build order.
