@@ -1,7 +1,7 @@
 import { type Request, type Response, type NextFunction } from "express";
 import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
-import { usersTable } from "@workspace/db/schema";
+import { usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 declare global {
@@ -31,11 +31,11 @@ export async function requireAuth(
     .then((rows) => rows[0]);
 
   if (!user) {
-    const clerkUser = (req as any).auth?.sessionClaims;
+    const claims = getAuth(req).sessionClaims as Record<string, string> | null | undefined;
     const email =
-      clerkUser?.email_address ?? clerkUser?.email ?? `${clerkId}@unknown.com`;
-    const firstName = clerkUser?.first_name ?? "";
-    const lastName = clerkUser?.last_name ?? "";
+      claims?.["email"] ?? `${clerkId}@unknown.com`;
+    const firstName = claims?.["first_name"] ?? "";
+    const lastName = claims?.["last_name"] ?? "";
     const displayName =
       firstName && lastName
         ? `${firstName} ${lastName}`

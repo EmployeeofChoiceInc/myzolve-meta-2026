@@ -10,7 +10,7 @@ export default function RequestsPage() {
   const { id } = useParams<{ id: string }>();
   const circleId = parseInt(id!);
 
-  const { data: requests, isLoading } = useListSupportRequests({ circleId });
+  const { data: requests, isLoading } = useListSupportRequests(circleId);
 
   const getUrgencyColor = (level: string) => {
     switch(level) {
@@ -70,7 +70,7 @@ export default function RequestsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {requests?.map((req) => {
-            const percentFunded = req.amount > 0 ? Math.min(100, Math.round((req.fundedAmount / req.amount) * 100)) : 0;
+            const percentFunded = req.amountRequested > 0 ? Math.min(100, Math.round(((req.amountFunded ?? 0) / req.amountRequested) * 100)) : 0;
             
             return (
               <Link key={req.id} href={`/requests/${req.id}`}>
@@ -102,8 +102,8 @@ export default function RequestsPage() {
                     
                     <div className="space-y-2 mt-auto">
                       <div className="flex justify-between text-sm font-medium">
-                        <span className="text-primary">${req.fundedAmount} <span className="text-muted-foreground font-normal">supported</span></span>
-                        <span className="text-foreground">Goal: ${req.amount}</span>
+                        <span className="text-primary">${req.amountFunded ?? 0} <span className="text-muted-foreground font-normal">supported</span></span>
+                        <span className="text-foreground">Goal: ${req.amountRequested}</span>
                       </div>
                       <Progress value={percentFunded} className="h-2 bg-primary/10" />
                     </div>

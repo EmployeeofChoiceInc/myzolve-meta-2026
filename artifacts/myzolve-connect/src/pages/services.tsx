@@ -22,8 +22,8 @@ const serviceFormSchema = z.object({
   serviceType: z.enum(["offer", "request"]),
   category: z.string().min(2, "Category is required"),
   availability: z.string().optional(),
-  locationMode: z.enum(["remote", "in_person", "flexible"]),
-  exchangePreference: z.enum(["free", "barter", "paid", "flexible"]),
+  locationMode: z.enum(["remote", "in_person", "hybrid"]),
+  exchangePreference: z.enum(["free", "barter", "paid_later", "open_to_discuss"]),
   estimatedValue: z.number().optional(),
 });
 
@@ -34,7 +34,7 @@ export default function ServicesPage() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
 
-  const { data: services, isLoading } = useListServicePosts({ circleId });
+  const { data: services, isLoading } = useListServicePosts(circleId);
   const createService = useCreateServicePost();
 
   const form = useForm<z.infer<typeof serviceFormSchema>>({
@@ -44,21 +44,21 @@ export default function ServicesPage() {
       description: "",
       serviceType: "offer",
       category: "general",
-      locationMode: "flexible",
-      exchangePreference: "free",
+      locationMode: "hybrid",
+      exchangePreference: "free" as const,
     },
   });
 
   function onSubmit(values: z.infer<typeof serviceFormSchema>) {
     createService.mutate({
+      circleId,
       data: {
         ...values,
-        circleId,
-        visibilityScope: "circle",
+        visibilityScope: "whole_circle",
       }
     }, {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListServicePostsQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getListServicePostsQueryKey(circleId) });
         setOpen(false);
         form.reset();
         toast({ title: "Service posted", description: "Your service has been shared with the circle." });
@@ -171,7 +171,7 @@ export default function ServicesPage() {
                           <SelectContent>
                             <SelectItem value="in_person">In Person</SelectItem>
                             <SelectItem value="remote">Remote</SelectItem>
-                            <SelectItem value="flexible">Flexible</SelectItem>
+                            <SelectItem value="hybrid">Hybrid</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -193,8 +193,8 @@ export default function ServicesPage() {
                           <SelectContent>
                             <SelectItem value="free">Free / Gift</SelectItem>
                             <SelectItem value="barter">Barter</SelectItem>
-                            <SelectItem value="paid">Paid</SelectItem>
-                            <SelectItem value="flexible">Flexible</SelectItem>
+                            <SelectItem value="paid_later">Pay Later</SelectItem>
+                            <SelectItem value="open_to_discuss">Open to Discuss</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />

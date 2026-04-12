@@ -8,7 +8,7 @@ export default function ActivityPage() {
   const { id } = useParams<{ id: string }>();
   const circleId = parseInt(id!);
 
-  const { data: activity, isLoading } = useGetCircleActivity({ circleId });
+  const { data: activity, isLoading } = useGetCircleActivity(circleId);
 
   const getActivityIcon = (type: string) => {
     switch(type) {

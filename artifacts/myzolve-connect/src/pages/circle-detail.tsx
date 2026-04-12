@@ -14,7 +14,7 @@ export default function CircleDetailPage() {
   });
   
   const { data: stats, isLoading: statsLoading } = useGetCircleStats(circleId, {
-    query: { enabled: !!circleId }
+    query: { enabled: !!circleId, queryKey: ["circle-stats", circleId] as const }
   });
 
   const CIRCLE_TYPE_LABELS: Record<string, string> = {

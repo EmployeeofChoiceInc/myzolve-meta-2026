@@ -9,7 +9,8 @@ import {
   supportContributionsTable,
   supportRequestsTable,
   repaymentsTable,
-} from "@workspace/db/schema";
+  servicePostsTable,
+} from "@workspace/db";
 import { eq, and, desc, sql } from "drizzle-orm";
 
 const router = Router();
@@ -31,7 +32,7 @@ async function assertCircleMember(circleId: number, userId: number) {
 
 router.get("/circles/:circleId/activity", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const circleId = parseInt(req.params.circleId);
+  const circleId = parseInt(String(req.params.circleId));
   const limit = parseInt(String(req.query.limit ?? "20"));
   const offset = parseInt(String(req.query.offset ?? "0"));
 
@@ -67,7 +68,7 @@ router.get("/circles/:circleId/activity", requireAuth, async (req, res) => {
 
 router.get("/circles/:circleId/ledger", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const circleId = parseInt(req.params.circleId);
+  const circleId = parseInt(String(req.params.circleId));
   const limit = parseInt(String(req.query.limit ?? "50"));
   const offset = parseInt(String(req.query.offset ?? "0"));
 
@@ -108,7 +109,7 @@ router.get(
   requireAuth,
   async (req, res) => {
     const userId = req.dbUser!.id;
-    const circleId = parseInt(req.params.circleId);
+    const circleId = parseInt(String(req.params.circleId));
 
     const member = await assertCircleMember(circleId, userId);
     if (!member) {
@@ -207,7 +208,7 @@ router.get(
 
 router.get("/circles/:circleId/dashboard", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const circleId = parseInt(req.params.circleId);
+  const circleId = parseInt(String(req.params.circleId));
 
   const member = await assertCircleMember(circleId, userId);
   if (!member) {

@@ -10,8 +10,8 @@ import {
   usersTable,
   activityFeedItemsTable,
   ledgerEntriesTable,
-} from "@workspace/db/schema";
-import { eq, and, sql } from "drizzle-orm";
+} from "@workspace/db";
+import { eq, and, sql, desc } from "drizzle-orm";
 
 const router = Router();
 
@@ -82,7 +82,7 @@ function contributionToApi(c: any, contributorName: string) {
 
 router.get("/circles/:circleId/requests", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const circleId = parseInt(req.params.circleId);
+  const circleId = parseInt(String(req.params.circleId));
   const { status, urgency, category } = req.query;
 
   const member = await assertCircleMember(circleId, userId);
@@ -118,7 +118,7 @@ router.get("/circles/:circleId/requests", requireAuth, async (req, res) => {
 
 router.post("/circles/:circleId/requests", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const circleId = parseInt(req.params.circleId);
+  const circleId = parseInt(String(req.params.circleId));
 
   const member = await assertCircleMember(circleId, userId);
   if (!member) {
@@ -183,7 +183,7 @@ router.post("/circles/:circleId/requests", requireAuth, async (req, res) => {
 
 router.get("/requests/:requestId", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const requestId = parseInt(req.params.requestId);
+  const requestId = parseInt(String(req.params.requestId));
 
   const [row] = await db
     .select({ req: supportRequestsTable, user: usersTable })
@@ -237,7 +237,7 @@ router.get("/requests/:requestId", requireAuth, async (req, res) => {
 
 router.patch("/requests/:requestId", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const requestId = parseInt(req.params.requestId);
+  const requestId = parseInt(String(req.params.requestId));
 
   const existing = await db
     .select()
@@ -286,7 +286,7 @@ router.patch("/requests/:requestId", requireAuth, async (req, res) => {
 
 router.post("/requests/:requestId/cancel", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const requestId = parseInt(req.params.requestId);
+  const requestId = parseInt(String(req.params.requestId));
 
   const existing = await db
     .select()
@@ -318,7 +318,7 @@ router.post("/requests/:requestId/cancel", requireAuth, async (req, res) => {
 
 router.post("/requests/:requestId/complete", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const requestId = parseInt(req.params.requestId);
+  const requestId = parseInt(String(req.params.requestId));
 
   const existing = await db
     .select()
@@ -360,7 +360,7 @@ router.post("/requests/:requestId/complete", requireAuth, async (req, res) => {
 
 router.get("/requests/:requestId/contributions", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const requestId = parseInt(req.params.requestId);
+  const requestId = parseInt(String(req.params.requestId));
 
   const existing = await db
     .select()
@@ -391,7 +391,7 @@ router.get("/requests/:requestId/contributions", requireAuth, async (req, res) =
 
 router.post("/requests/:requestId/contributions", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const requestId = parseInt(req.params.requestId);
+  const requestId = parseInt(String(req.params.requestId));
 
   const existing = await db
     .select()
@@ -477,7 +477,7 @@ router.post("/requests/:requestId/contributions", requireAuth, async (req, res) 
 
 router.post("/requests/:requestId/confirm-receipt", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const requestId = parseInt(req.params.requestId);
+  const requestId = parseInt(String(req.params.requestId));
 
   const existing = await db
     .select()
@@ -518,7 +518,7 @@ router.post("/requests/:requestId/confirm-receipt", requireAuth, async (req, res
 
 router.post("/contributions/:contributionId/forgive", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const contributionId = parseInt(req.params.contributionId);
+  const contributionId = parseInt(String(req.params.contributionId));
 
   const contribution = await db
     .select()
@@ -574,7 +574,7 @@ router.post("/contributions/:contributionId/forgive", requireAuth, async (req, r
 
 router.get("/requests/:requestId/repayment-plan", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const requestId = parseInt(req.params.requestId);
+  const requestId = parseInt(String(req.params.requestId));
 
   const existing = await db
     .select()
@@ -617,7 +617,7 @@ router.get("/requests/:requestId/repayment-plan", requireAuth, async (req, res) 
 
 router.post("/requests/:requestId/repayment-plan", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const requestId = parseInt(req.params.requestId);
+  const requestId = parseInt(String(req.params.requestId));
 
   const existing = await db
     .select()
@@ -710,12 +710,25 @@ router.post("/repayments", requireAuth, async (req, res) => {
     return;
   }
 
+  const primaryContribution = await db
+    .select()
+    .from(supportContributionsTable)
+    .where(
+      and(
+        eq(supportContributionsTable.requestId, requestId),
+        eq(supportContributionsTable.status, "confirmed"),
+      ),
+    )
+    .orderBy(desc(supportContributionsTable.amount))
+    .limit(1)
+    .then((r) => r[0]);
+
   const [repayment] = await db
     .insert(repaymentsTable)
     .values({
       requestId,
-      payerUserId: userId,
-      payeeUserId: existing.createdByUserId,
+      payerUserId: existing.createdByUserId,
+      payeeUserId: primaryContribution?.contributorUserId ?? null,
       amount: String(amount),
       currency,
       paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
@@ -771,7 +784,7 @@ router.post("/repayments", requireAuth, async (req, res) => {
 
 router.get("/circles/:circleId/repayments", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const circleId = parseInt(req.params.circleId);
+  const circleId = parseInt(String(req.params.circleId));
 
   const member = await assertCircleMember(circleId, userId);
   if (!member) {
@@ -820,7 +833,7 @@ router.get("/circles/:circleId/repayments", requireAuth, async (req, res) => {
 
 router.post("/repayments/:repaymentId/confirm", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const repaymentId = parseInt(req.params.repaymentId);
+  const repaymentId = parseInt(String(req.params.repaymentId));
 
   const repayment = await db
     .select()

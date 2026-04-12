@@ -13,11 +13,11 @@ export default function LedgerPage() {
   const circleId = parseInt(id!);
 
   const { data: summary, isLoading: summaryLoading } = useGetCircleLedgerSummary(circleId, {
-    query: { enabled: !!circleId }
+    query: { enabled: !!circleId, queryKey: ["circle-ledger-summary", circleId] as const }
   });
 
-  const { data: ledgerEntries, isLoading: entriesLoading } = useGetCircleLedger(circleId, {
-    query: { enabled: !!circleId }
+  const { data: ledgerEntries, isLoading: entriesLoading } = useGetCircleLedger(circleId, undefined, {
+    query: { enabled: !!circleId, queryKey: ["circle-ledger", circleId] as const }
   });
 
   const formatCurrency = (amount: number) => {
@@ -26,10 +26,23 @@ export default function LedgerPage() {
 
   const getEntryIcon = (kind: string) => {
     switch(kind) {
-      case 'support_given': return <ArrowUpRight className="w-5 h-5 text-secondary" />;
-      case 'support_received': return <ArrowDownRight className="w-5 h-5 text-primary" />;
-      case 'returned': return <ArrowLeftRight className="w-5 h-5 text-muted-foreground" />;
+      case 'money_given': return <ArrowUpRight className="w-5 h-5 text-secondary" />;
+      case 'money_received': return <ArrowDownRight className="w-5 h-5 text-primary" />;
+      case 'money_repaid': return <ArrowLeftRight className="w-5 h-5 text-muted-foreground" />;
       default: return <BookOpen className="w-5 h-5 text-foreground" />;
+    }
+  };
+
+  const getEntryLabel = (kind: string) => {
+    switch(kind) {
+      case 'money_given': return 'Support Given';
+      case 'money_received': return 'Support Received';
+      case 'money_repaid': return 'Returned';
+      case 'service_offered': return 'Service Offered';
+      case 'service_received': return 'Service Received';
+      case 'gift_given': return 'Gift Given';
+      case 'amount_forgiven': return 'Forgiven';
+      default: return kind.replace('_', ' ');
     }
   };
 
@@ -67,15 +80,15 @@ export default function LedgerPage() {
           <Card className="rounded-2xl shadow-none border-border/50 bg-card">
             <CardContent className="p-6">
               <div className="text-sm font-medium text-muted-foreground mb-2">Returned</div>
-              <div className="text-2xl font-bold text-muted-foreground">{formatCurrency(summary?.totalReturned || 0)}</div>
+              <div className="text-2xl font-bold text-muted-foreground">{formatCurrency(summary?.totalRepaid || 0)}</div>
             </CardContent>
           </Card>
           <Card className="rounded-2xl shadow-none border-border/50 bg-card bg-primary/5">
             <CardContent className="p-6">
               <div className="text-sm font-medium text-primary mb-2">My Outstanding</div>
-              <div className="text-2xl font-bold text-foreground">{formatCurrency(summary?.myOutstanding || 0)}</div>
-              {summary?.myOutstanding > 0 && (
-                <p className="text-xs text-muted-foreground mt-2">{summary.softMessage || "Take your time returning this support."}</p>
+              <div className="text-2xl font-bold text-foreground">{formatCurrency(summary?.myOutstanding ?? 0)}</div>
+              {(summary?.myOutstanding ?? 0) > 0 && (
+                <p className="text-xs text-muted-foreground mt-2">{summary?.softMessage || "Take your time returning this support."}</p>
               )}
             </CardContent>
           </Card>
@@ -106,24 +119,24 @@ export default function LedgerPage() {
                     </div>
                     <div>
                       <p className="font-medium text-foreground">
-                        {entry.entryKind === 'returned' ? (
+                        {entry.entryKind === 'money_repaid' ? (
                           <span><span className="font-semibold">{entry.giverName}</span> returned support to <span className="font-semibold">{entry.receiverName}</span></span>
                         ) : (
                           <span><span className="font-semibold">{entry.giverName}</span> supported <span className="font-semibold">{entry.receiverName}</span></span>
                         )}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {entry.description || entry.entryKind.replace('_', ' ')} • {format(new Date(entry.createdAt), 'MMM d, yyyy')}
+                        {entry.description || getEntryLabel(entry.entryKind)} • {format(new Date(entry.createdAt), 'MMM d, yyyy')}
                       </p>
                     </div>
                   </div>
                   <div className="text-right pl-4">
                     <Badge variant="outline" className={`rounded-full px-2.5 py-1 text-sm font-bold border-transparent ${
-                      entry.entryKind === 'support_received' ? 'bg-primary/10 text-primary' : 
-                      entry.entryKind === 'returned' ? 'bg-muted text-muted-foreground' : 
+                      entry.entryKind === 'money_received' ? 'bg-primary/10 text-primary' : 
+                      entry.entryKind === 'money_repaid' ? 'bg-muted text-muted-foreground' : 
                       'bg-secondary/10 text-secondary'
                     }`}>
-                      {formatCurrency(entry.amount)}
+                      {formatCurrency(entry.amount ?? 0)}
                     </Badge>
                   </div>
                 </div>

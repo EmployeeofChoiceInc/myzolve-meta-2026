@@ -35,11 +35,11 @@ export default function MembersPage() {
   const [open, setOpen] = useState(false);
 
   const { data: members, isLoading: membersLoading } = useListCircleMembers(circleId, {
-    query: { enabled: !!circleId }
+    query: { enabled: !!circleId, queryKey: ["circle-members", circleId] as const }
   });
   
   const { data: invitations, isLoading: invitationsLoading } = useListCircleInvitations(circleId, {
-    query: { enabled: !!circleId }
+    query: { enabled: !!circleId, queryKey: ["circle-invitations", circleId] as const }
   });
 
   const createInvitation = useCreateCircleInvitation();

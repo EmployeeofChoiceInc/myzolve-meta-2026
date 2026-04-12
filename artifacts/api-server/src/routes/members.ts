@@ -6,7 +6,7 @@ import {
   circlesTable,
   circleInvitationsTable,
   usersTable,
-} from "@workspace/db/schema";
+} from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { addDays } from "date-fns";
@@ -32,7 +32,7 @@ function memberToApi(
 
 router.get("/circles/:circleId/members", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const circleId = parseInt(req.params.circleId);
+  const circleId = parseInt(String(req.params.circleId));
 
   const myMembership = await db
     .select()
@@ -78,8 +78,8 @@ router.patch(
   requireAuth,
   async (req, res) => {
     const userId = req.dbUser!.id;
-    const circleId = parseInt(req.params.circleId);
-    const memberId = parseInt(req.params.memberId);
+    const circleId = parseInt(String(req.params.circleId));
+    const memberId = parseInt(String(req.params.memberId));
 
     const myMembership = await db
       .select()
@@ -116,7 +116,7 @@ router.patch(
     const [updated] = await db
       .update(circleMembersTable)
       .set({ ...(role !== undefined && { role }) })
-      .where(eq(circleMembersTable.id, memberId))
+      .where(and(eq(circleMembersTable.id, memberId), eq(circleMembersTable.circleId, circleId)))
       .returning();
 
     if (!updated) {
@@ -140,8 +140,8 @@ router.delete(
   requireAuth,
   async (req, res) => {
     const userId = req.dbUser!.id;
-    const circleId = parseInt(req.params.circleId);
-    const memberId = parseInt(req.params.memberId);
+    const circleId = parseInt(String(req.params.circleId));
+    const memberId = parseInt(String(req.params.memberId));
 
     const circle = await db
       .select()
@@ -171,7 +171,7 @@ router.delete(
     const target = await db
       .select()
       .from(circleMembersTable)
-      .where(eq(circleMembersTable.id, memberId))
+      .where(and(eq(circleMembersTable.id, memberId), eq(circleMembersTable.circleId, circleId)))
       .limit(1)
       .then((r) => r[0]);
 
@@ -192,7 +192,7 @@ router.delete(
     await db
       .update(circleMembersTable)
       .set({ status: "removed" })
-      .where(eq(circleMembersTable.id, memberId));
+      .where(and(eq(circleMembersTable.id, memberId), eq(circleMembersTable.circleId, circleId)));
 
     res.status(204).end();
   },
@@ -200,7 +200,7 @@ router.delete(
 
 router.get("/circles/:circleId/invitations", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const circleId = parseInt(req.params.circleId);
+  const circleId = parseInt(String(req.params.circleId));
 
   const myMembership = await db
     .select()
@@ -235,7 +235,7 @@ router.get("/circles/:circleId/invitations", requireAuth, async (req, res) => {
 
 router.post("/circles/:circleId/invitations", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const circleId = parseInt(req.params.circleId);
+  const circleId = parseInt(String(req.params.circleId));
 
   const myMembership = await db
     .select()
@@ -284,7 +284,7 @@ router.post("/circles/:circleId/invitations", requireAuth, async (req, res) => {
 
 router.post("/invitations/:token/accept", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const { token } = req.params;
+  const token = String(req.params.token);
 
   const invitation = await db
     .select()
@@ -304,6 +304,14 @@ router.post("/invitations/:token/accept", requireAuth, async (req, res) => {
       .set({ status: "expired" })
       .where(eq(circleInvitationsTable.id, invitation.id));
     res.status(404).json({ error: "Invitation has expired" });
+    return;
+  }
+
+  if (
+    invitation.invitedEmail &&
+    invitation.invitedEmail.toLowerCase() !== req.dbUser!.email.toLowerCase()
+  ) {
+    res.status(403).json({ error: "This invitation was sent to a different email address" });
     return;
   }
 
@@ -329,7 +337,7 @@ router.post("/invitations/:token/accept", requireAuth, async (req, res) => {
 
 router.delete("/invitations/:invitationId", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const invitationId = parseInt(req.params.invitationId);
+  const invitationId = parseInt(String(req.params.invitationId));
 
   const invitation = await db
     .select()

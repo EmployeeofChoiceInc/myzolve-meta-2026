@@ -4,14 +4,14 @@ import { db } from "@workspace/db";
 import {
   circlesTable,
   circleMembersTable,
-} from "@workspace/db/schema";
+} from "@workspace/db";
 import { eq, and, count, sql } from "drizzle-orm";
 import {
   supportRequestsTable,
   servicePostsTable,
   activityFeedItemsTable,
   supportContributionsTable,
-} from "@workspace/db/schema";
+} from "@workspace/db";
 
 const router = Router();
 
@@ -119,7 +119,7 @@ router.post("/circles", requireAuth, async (req, res) => {
 
 router.get("/circles/:circleId", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const circleId = parseInt(req.params.circleId);
+  const circleId = parseInt(String(req.params.circleId));
 
   const membership = await db
     .select()
@@ -162,7 +162,7 @@ router.get("/circles/:circleId", requireAuth, async (req, res) => {
 
 router.patch("/circles/:circleId", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const circleId = parseInt(req.params.circleId);
+  const circleId = parseInt(String(req.params.circleId));
 
   const circle = await db
     .select()
@@ -226,7 +226,7 @@ router.patch("/circles/:circleId", requireAuth, async (req, res) => {
 
 router.delete("/circles/:circleId", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const circleId = parseInt(req.params.circleId);
+  const circleId = parseInt(String(req.params.circleId));
 
   const circle = await db
     .select()
@@ -250,7 +250,7 @@ router.delete("/circles/:circleId", requireAuth, async (req, res) => {
 
 router.get("/circles/:circleId/stats", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const circleId = parseInt(req.params.circleId);
+  const circleId = parseInt(String(req.params.circleId));
 
   const member = await db
     .select()

@@ -35,13 +35,10 @@ export default function RequestDetailPage() {
   if (isLoading) return <div className="p-8 animate-pulse flex flex-col gap-4"><div className="h-8 bg-muted w-1/3 rounded"></div><div className="h-64 bg-muted rounded-3xl"></div></div>;
   if (!requestData) return <div>Request not found</div>;
 
-  const { request, contributions, repaymentPlan } = requestData;
-  const percentFunded = request.amount > 0 ? Math.min(100, Math.round((request.fundedAmount / request.amount) * 100)) : 0;
+  const { contributions, repaymentPlan, ...request } = requestData;
+  const percentFunded = request.amountRequested > 0 ? Math.min(100, Math.round(((request.amountFunded ?? 0) / request.amountRequested) * 100)) : 0;
   
-  // Assuming the user's clerk ID is checked against some internal ID, or we just rely on createdBy
-  // For simplicity, we'll check if we are the creator using the API response or assume if we can't tell, we just show offer support
-  // The API doesn't directly return boolean `isCreator`, so we might need a workaround or use the clerk user info if available.
-  const isCreator = request.createdByName === user?.fullName; // rough check, ideally use ID
+  const isCreator = request.createdByName === user?.fullName;
 
   const handleConfirmReceipt = () => {
     confirmReceipt.mutate({ requestId }, {
@@ -97,7 +94,7 @@ export default function RequestDetailPage() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground mb-1">Support Progress</p>
                 <div className="text-3xl font-bold text-primary">
-                  ${request.fundedAmount} <span className="text-lg text-muted-foreground font-normal">of ${request.amount}</span>
+                  ${request.amountFunded ?? 0} <span className="text-lg text-muted-foreground font-normal">of ${request.amountRequested}</span>
                 </div>
               </div>
               <div className="text-right">

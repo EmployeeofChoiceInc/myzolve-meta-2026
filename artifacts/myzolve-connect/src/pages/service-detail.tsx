@@ -34,7 +34,7 @@ export default function ServiceDetailPage() {
   const isCreator = service.createdByName === user?.fullName; // Rough check
 
   const handleMatch = () => {
-    matchService.mutate({ serviceId, data: { message: "I'm interested!" } }, {
+    matchService.mutate({ serviceId, data: { note: "I'm interested!" } }, {
       onSuccess: () => {
         toast({ title: "Interest Shared", description: "The poster has been notified." });
         queryClient.invalidateQueries({ queryKey: getGetServicePostQueryKey(serviceId) });
@@ -69,7 +69,7 @@ export default function ServiceDetailPage() {
               <Badge variant="outline" className="rounded-full px-3 py-1 font-medium bg-background">
                 {service.category}
               </Badge>
-              {service.status !== 'active' && (
+              {service.status !== 'open' && (
                 <Badge variant="secondary" className="rounded-full px-3 py-1 font-medium">
                   {service.status}
                 </Badge>
@@ -115,13 +115,13 @@ export default function ServiceDetailPage() {
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-border/50">
-            {!isCreator && service.status === 'active' && (
+            {!isCreator && service.status === 'open' && (
               <Button size="lg" className="rounded-full w-full" onClick={handleMatch} disabled={matchService.isPending}>
                 <UserPlus className="w-5 h-5 mr-2" /> {service.serviceType === 'offer' ? "I'm interested" : "I can help"}
               </Button>
             )}
             
-            {isCreator && service.status === 'active' && (
+            {isCreator && service.status === 'open' && (
               <Button size="lg" variant="secondary" className="rounded-full w-full" onClick={handleComplete} disabled={completeService.isPending}>
                 <CheckCircle2 className="w-5 h-5 mr-2" /> Mark as Complete
               </Button>

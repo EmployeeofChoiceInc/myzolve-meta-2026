@@ -6,7 +6,7 @@ import {
   circleMembersTable,
   usersTable,
   activityFeedItemsTable,
-} from "@workspace/db/schema";
+} from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 
 const router = Router();
@@ -58,7 +58,7 @@ function serviceToApi(post: any, createdByName: string) {
 
 router.get("/circles/:circleId/services", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const circleId = parseInt(req.params.circleId);
+  const circleId = parseInt(String(req.params.circleId));
   const { serviceType, category, status } = req.query;
 
   const member = await assertCircleMember(circleId, userId);
@@ -89,7 +89,7 @@ router.get("/circles/:circleId/services", requireAuth, async (req, res) => {
 
 router.post("/circles/:circleId/services", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const circleId = parseInt(req.params.circleId);
+  const circleId = parseInt(String(req.params.circleId));
 
   const member = await assertCircleMember(circleId, userId);
   if (!member) {
@@ -148,7 +148,7 @@ router.post("/circles/:circleId/services", requireAuth, async (req, res) => {
 
 router.get("/services/:serviceId", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const serviceId = parseInt(req.params.serviceId);
+  const serviceId = parseInt(String(req.params.serviceId));
 
   const [row] = await db
     .select({ post: servicePostsTable, user: usersTable })
@@ -173,7 +173,7 @@ router.get("/services/:serviceId", requireAuth, async (req, res) => {
 
 router.patch("/services/:serviceId", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const serviceId = parseInt(req.params.serviceId);
+  const serviceId = parseInt(String(req.params.serviceId));
 
   const existing = await db
     .select()
@@ -216,7 +216,7 @@ router.patch("/services/:serviceId", requireAuth, async (req, res) => {
 
 router.post("/services/:serviceId/match", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const serviceId = parseInt(req.params.serviceId);
+  const serviceId = parseInt(String(req.params.serviceId));
 
   const existing = await db
     .select()
@@ -259,7 +259,7 @@ router.post("/services/:serviceId/match", requireAuth, async (req, res) => {
 
 router.post("/services/:serviceId/complete", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
-  const serviceId = parseInt(req.params.serviceId);
+  const serviceId = parseInt(String(req.params.serviceId));
 
   const existing = await db
     .select()
