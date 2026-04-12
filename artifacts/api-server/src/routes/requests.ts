@@ -12,6 +12,7 @@ import {
   usersTable,
   activityFeedItemsTable,
   ledgerEntriesTable,
+  placeholderMembersTable,
   type SupportRequest,
   type Contribution,
   type Repayment,
@@ -247,6 +248,17 @@ router.post("/circles/:circleId/requests", requireAuth, validateParams(circleIdP
     dueDate,
     onBehalfOfPlaceholderId,
   } = req.body;
+
+  if (onBehalfOfPlaceholderId != null) {
+    const [placeholder] = await db
+      .select({ id: placeholderMembersTable.id })
+      .from(placeholderMembersTable)
+      .where(and(eq(placeholderMembersTable.id, onBehalfOfPlaceholderId), eq(placeholderMembersTable.circleId, circleId)));
+    if (!placeholder) {
+      res.status(400).json({ error: "onBehalfOfPlaceholderId must belong to the same circle" });
+      return;
+    }
+  }
 
   const [supportReq] = await db
     .insert(supportRequestsTable)
@@ -575,6 +587,17 @@ router.post("/requests/:requestId/contributions", requireAuth, validateParams(re
     paymentMethod,
     onBehalfOfPlaceholderId,
   } = req.body;
+
+  if (onBehalfOfPlaceholderId != null) {
+    const [placeholder] = await db
+      .select({ id: placeholderMembersTable.id })
+      .from(placeholderMembersTable)
+      .where(and(eq(placeholderMembersTable.id, onBehalfOfPlaceholderId), eq(placeholderMembersTable.circleId, existing.circleId)));
+    if (!placeholder) {
+      res.status(400).json({ error: "onBehalfOfPlaceholderId must belong to the same circle as this request" });
+      return;
+    }
+  }
 
   const [contribution] = await db
     .insert(supportContributionsTable)

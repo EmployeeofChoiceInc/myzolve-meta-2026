@@ -12,6 +12,8 @@ export interface Contribution {
   id: number;
   requestId: number;
   contributorUserId: number;
+  /** @nullable */
+  onBehalfOfPlaceholderId?: number | null;
   contributorName: string;
   amount: number;
   currency: string;

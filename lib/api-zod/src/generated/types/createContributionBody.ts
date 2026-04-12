@@ -13,4 +13,6 @@ export interface CreateContributionBody {
   contributionType?: CreateContributionBodyContributionType;
   note?: string;
   paymentMethod?: string;
+  /** ID of a placeholder member this contribution is attributed to (must belong to the same circle) */
+  onBehalfOfPlaceholderId?: number;
 }

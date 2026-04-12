@@ -1,6 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { Readable } from "stream";
-import { z } from "zod";
 import {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
@@ -11,10 +10,6 @@ import { requireAuth } from "../middlewares/requireAuth";
 import { db } from "@workspace/db";
 import { attachmentsTable, circleMembersTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
-
-const uploadUrlBodyExtended = z.object({
-  circleId: z.number().int().positive(),
-});
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -28,18 +23,12 @@ const objectStorageService = new ObjectStorageService();
 router.post("/storage/uploads/request-url", requireAuth, async (req: Request, res: Response) => {
   const parsed = RequestUploadUrlBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Missing or invalid required fields" });
-    return;
-  }
-
-  const circleBodyParsed = uploadUrlBodyExtended.safeParse(req.body);
-  if (!circleBodyParsed.success) {
-    res.status(400).json({ error: "circleId is required to scope the upload to a circle" });
+    res.status(400).json({ error: "Missing or invalid required fields (name, size, contentType, circleId)" });
     return;
   }
 
   const userId = req.dbUser!.id;
-  const { circleId } = circleBodyParsed.data;
+  const { circleId } = parsed.data;
 
   const membership = await db
     .select({ id: circleMembersTable.id })

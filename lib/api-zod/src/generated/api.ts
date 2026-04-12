@@ -341,6 +341,7 @@ export const ListSupportRequestsResponseItem = zod.object({
   id: zod.number(),
   circleId: zod.number(),
   createdByUserId: zod.number(),
+  onBehalfOfPlaceholderId: zod.number().nullish(),
   createdByName: zod.string(),
   title: zod.string(),
   description: zod.string().nullish(),
@@ -372,6 +373,7 @@ export const ListSupportRequestsResponseItem = zod.object({
     "completed",
     "archived",
   ]),
+  isExpired: zod.boolean().optional(),
   dueDate: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
@@ -428,6 +430,12 @@ export const CreateSupportRequestBody = zod.object({
     .enum(["standard", "sensitive", "fully_private"])
     .default(createSupportRequestBodyPrivacyLevelDefault),
   dueDate: zod.coerce.date().optional(),
+  onBehalfOfPlaceholderId: zod
+    .number()
+    .optional()
+    .describe(
+      "ID of a placeholder member this request is being made on behalf of (must belong to the same circle)",
+    ),
 });
 
 /**
@@ -442,6 +450,7 @@ export const GetSupportRequestResponse = zod
     id: zod.number(),
     circleId: zod.number(),
     createdByUserId: zod.number(),
+    onBehalfOfPlaceholderId: zod.number().nullish(),
     createdByName: zod.string(),
     title: zod.string(),
     description: zod.string().nullish(),
@@ -479,6 +488,7 @@ export const GetSupportRequestResponse = zod
       "completed",
       "archived",
     ]),
+    isExpired: zod.boolean().optional(),
     dueDate: zod.coerce.date().nullish(),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
@@ -490,6 +500,7 @@ export const GetSupportRequestResponse = zod
           id: zod.number(),
           requestId: zod.number(),
           contributorUserId: zod.number(),
+          onBehalfOfPlaceholderId: zod.number().nullish(),
           contributorName: zod.string(),
           amount: zod.number(),
           currency: zod.string(),
@@ -585,6 +596,7 @@ export const UpdateSupportRequestResponse = zod.object({
   id: zod.number(),
   circleId: zod.number(),
   createdByUserId: zod.number(),
+  onBehalfOfPlaceholderId: zod.number().nullish(),
   createdByName: zod.string(),
   title: zod.string(),
   description: zod.string().nullish(),
@@ -616,6 +628,7 @@ export const UpdateSupportRequestResponse = zod.object({
     "completed",
     "archived",
   ]),
+  isExpired: zod.boolean().optional(),
   dueDate: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
@@ -632,6 +645,7 @@ export const CancelSupportRequestResponse = zod.object({
   id: zod.number(),
   circleId: zod.number(),
   createdByUserId: zod.number(),
+  onBehalfOfPlaceholderId: zod.number().nullish(),
   createdByName: zod.string(),
   title: zod.string(),
   description: zod.string().nullish(),
@@ -663,6 +677,7 @@ export const CancelSupportRequestResponse = zod.object({
     "completed",
     "archived",
   ]),
+  isExpired: zod.boolean().optional(),
   dueDate: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
@@ -679,6 +694,7 @@ export const CompleteSupportRequestResponse = zod.object({
   id: zod.number(),
   circleId: zod.number(),
   createdByUserId: zod.number(),
+  onBehalfOfPlaceholderId: zod.number().nullish(),
   createdByName: zod.string(),
   title: zod.string(),
   description: zod.string().nullish(),
@@ -710,6 +726,56 @@ export const CompleteSupportRequestResponse = zod.object({
     "completed",
     "archived",
   ]),
+  isExpired: zod.boolean().optional(),
+  dueDate: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Expire an emergency or time-sensitive support request that has passed its due date
+ */
+export const ExpireSupportRequestParams = zod.object({
+  requestId: zod.coerce.number(),
+});
+
+export const ExpireSupportRequestResponse = zod.object({
+  id: zod.number(),
+  circleId: zod.number(),
+  createdByUserId: zod.number(),
+  onBehalfOfPlaceholderId: zod.number().nullish(),
+  createdByName: zod.string(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  amountRequested: zod.number(),
+  amountFunded: zod.number(),
+  currency: zod.string(),
+  requestType: zod.enum(["money", "service", "emergency"]),
+  visibilityScope: zod.enum(["whole_circle", "admins_only", "private_draft"]),
+  repaymentExpected: zod.boolean(),
+  repaymentStyle: zod.enum([
+    "one_time",
+    "installments",
+    "flexible",
+    "no_repayment",
+    "gift",
+    "discuss_later",
+  ]),
+  urgencyLevel: zod.enum(["low", "normal", "important", "urgent", "emergency"]),
+  category: zod.string(),
+  privacyLevel: zod.enum(["standard", "sensitive", "fully_private"]),
+  status: zod.enum([
+    "draft",
+    "open",
+    "accepted",
+    "partially_funded",
+    "fully_funded",
+    "declined",
+    "canceled",
+    "completed",
+    "archived",
+  ]),
+  isExpired: zod.boolean().optional(),
   dueDate: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
@@ -726,6 +792,7 @@ export const ListContributionsResponseItem = zod.object({
   id: zod.number(),
   requestId: zod.number(),
   contributorUserId: zod.number(),
+  onBehalfOfPlaceholderId: zod.number().nullish(),
   contributorName: zod.string(),
   amount: zod.number(),
   currency: zod.string(),
@@ -763,6 +830,12 @@ export const CreateContributionBody = zod.object({
     .default(createContributionBodyContributionTypeDefault),
   note: zod.string().optional(),
   paymentMethod: zod.string().optional(),
+  onBehalfOfPlaceholderId: zod
+    .number()
+    .optional()
+    .describe(
+      "ID of a placeholder member this contribution is attributed to (must belong to the same circle)",
+    ),
 });
 
 /**
@@ -776,6 +849,7 @@ export const ConfirmReceiptResponse = zod.object({
   id: zod.number(),
   circleId: zod.number(),
   createdByUserId: zod.number(),
+  onBehalfOfPlaceholderId: zod.number().nullish(),
   createdByName: zod.string(),
   title: zod.string(),
   description: zod.string().nullish(),
@@ -807,6 +881,7 @@ export const ConfirmReceiptResponse = zod.object({
     "completed",
     "archived",
   ]),
+  isExpired: zod.boolean().optional(),
   dueDate: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
@@ -823,6 +898,7 @@ export const ForgiveContributionResponse = zod.object({
   id: zod.number(),
   requestId: zod.number(),
   contributorUserId: zod.number(),
+  onBehalfOfPlaceholderId: zod.number().nullish(),
   contributorName: zod.string(),
   amount: zod.number(),
   currency: zod.string(),
@@ -1860,6 +1936,9 @@ export const RequestUploadUrlBody = zod.object({
   name: zod.string().min(1),
   size: zod.number().min(1),
   contentType: zod.string().min(1),
+  circleId: zod
+    .number()
+    .describe("Circle the upload belongs to; caller must be an active member"),
 });
 
 export const RequestUploadUrlResponse = zod.object({
@@ -1870,6 +1949,11 @@ export const RequestUploadUrlResponse = zod.object({
       name: zod.string().min(1),
       size: zod.number().min(1),
       contentType: zod.string().min(1),
+      circleId: zod
+        .number()
+        .describe(
+          "Circle the upload belongs to; caller must be an active member",
+        ),
     })
     .optional(),
 });

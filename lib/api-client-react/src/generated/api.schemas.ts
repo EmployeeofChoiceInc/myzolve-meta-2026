@@ -349,6 +349,8 @@ export interface SupportRequest {
   id: number;
   circleId: number;
   createdByUserId: number;
+  /** @nullable */
+  onBehalfOfPlaceholderId?: number | null;
   createdByName: string;
   title: string;
   /** @nullable */
@@ -364,6 +366,7 @@ export interface SupportRequest {
   category: string;
   privacyLevel: SupportRequestPrivacyLevel;
   status: SupportRequestStatus;
+  isExpired?: boolean;
   /** @nullable */
   dueDate?: string | null;
   createdAt: string;
@@ -396,6 +399,8 @@ export interface Contribution {
   id: number;
   requestId: number;
   contributorUserId: number;
+  /** @nullable */
+  onBehalfOfPlaceholderId?: number | null;
   contributorName: string;
   amount: number;
   currency: string;
@@ -515,6 +520,8 @@ export interface CreateSupportRequestBody {
   category?: string;
   privacyLevel?: CreateSupportRequestBodyPrivacyLevel;
   dueDate?: string;
+  /** ID of a placeholder member this request is being made on behalf of (must belong to the same circle) */
+  onBehalfOfPlaceholderId?: number;
 }
 
 export type UpdateSupportRequestBodyUrgencyLevel =
@@ -584,6 +591,8 @@ export interface CreateContributionBody {
   contributionType?: CreateContributionBodyContributionType;
   note?: string;
   paymentMethod?: string;
+  /** ID of a placeholder member this contribution is attributed to (must belong to the same circle) */
+  onBehalfOfPlaceholderId?: number;
 }
 
 export type CreateRepaymentPlanBodyFrequency =
@@ -1241,6 +1250,8 @@ export interface UploadUrlRequest {
   size: number;
   /** @minLength 1 */
   contentType: string;
+  /** Circle the upload belongs to; caller must be an active member */
+  circleId: number;
 }
 
 export interface UploadUrlResponse {

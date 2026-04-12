@@ -16,6 +16,8 @@ export interface SupportRequest {
   id: number;
   circleId: number;
   createdByUserId: number;
+  /** @nullable */
+  onBehalfOfPlaceholderId?: number | null;
   createdByName: string;
   title: string;
   /** @nullable */
@@ -31,6 +33,7 @@ export interface SupportRequest {
   category: string;
   privacyLevel: SupportRequestPrivacyLevel;
   status: SupportRequestStatus;
+  isExpired?: boolean;
   /** @nullable */
   dueDate?: Date | null;
   createdAt: Date;

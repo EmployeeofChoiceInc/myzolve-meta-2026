@@ -519,6 +519,32 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /requests/{requestId}/expire:
+    post:
+      operationId: expireSupportRequest
+      tags: [requests]
+      summary: Expire an emergency or time-sensitive support request that has passed its due date
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+      responses:
+        "200":
+          description: Expired (archived) request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Request cannot be expired (wrong status or due date not reached)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   # ── Contributions ──────────────────────────────────────────────────────────
   /requests/{requestId}/contributions:
     get:
@@ -2024,6 +2050,8 @@ components:
           type: integer
         createdByUserId:
           type: integer
+        onBehalfOfPlaceholderId:
+          type: ["integer", "null"]
         createdByName:
           type: string
         title:
@@ -2058,6 +2086,8 @@ components:
         status:
           type: string
           enum: [draft, open, accepted, partially_funded, fully_funded, declined, canceled, completed, archived]
+        isExpired:
+          type: boolean
         dueDate:
           type: ["string", "null"]
           format: date-time
@@ -2144,6 +2174,9 @@ components:
         dueDate:
           type: string
           format: date-time
+        onBehalfOfPlaceholderId:
+          type: integer
+          description: ID of a placeholder member this request is being made on behalf of (must belong to the same circle)
       required:
         - title
         - amountRequested
@@ -2184,6 +2217,8 @@ components:
           type: integer
         contributorUserId:
           type: integer
+        onBehalfOfPlaceholderId:
+          type: ["integer", "null"]
         contributorName:
           type: string
         amount:
@@ -2230,6 +2265,9 @@ components:
           type: string
         paymentMethod:
           type: string
+        onBehalfOfPlaceholderId:
+          type: integer
+          description: ID of a placeholder member this contribution is attributed to (must belong to the same circle)
       required:
         - amount
 
@@ -3173,10 +3211,14 @@ components:
         contentType:
           type: string
           minLength: 1
+        circleId:
+          type: integer
+          description: Circle the upload belongs to; caller must be an active member
       required:
         - name
         - size
         - contentType
+        - circleId
 
     UploadUrlResponse:
       type: object

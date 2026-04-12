@@ -24,4 +24,6 @@ export interface CreateSupportRequestBody {
   category?: string;
   privacyLevel?: CreateSupportRequestBodyPrivacyLevel;
   dueDate?: Date;
+  /** ID of a placeholder member this request is being made on behalf of (must belong to the same circle) */
+  onBehalfOfPlaceholderId?: number;
 }

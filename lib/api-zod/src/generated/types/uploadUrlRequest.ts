@@ -13,4 +13,6 @@ export interface UploadUrlRequest {
   size: number;
   /** @minLength 1 */
   contentType: string;
+  /** Circle the upload belongs to; caller must be an active member */
+  circleId: number;
 }

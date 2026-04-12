@@ -40,6 +40,7 @@ import type {
   CreateSupportRequestBody,
   DashboardSummary,
   Dispute,
+  ErrorResponse,
   ForbiddenResponse,
   GetCircleActivityParams,
   GetCircleLedgerParams,
@@ -2059,6 +2060,92 @@ export const useCompleteSupportRequest = <
   TContext
 > => {
   return useMutation(getCompleteSupportRequestMutationOptions(options));
+};
+
+/**
+ * @summary Expire an emergency or time-sensitive support request that has passed its due date
+ */
+export const getExpireSupportRequestUrl = (requestId: number) => {
+  return `/api/requests/${requestId}/expire`;
+};
+
+export const expireSupportRequest = async (
+  requestId: number,
+  options?: RequestInit,
+): Promise<SupportRequest> => {
+  return customFetch<SupportRequest>(getExpireSupportRequestUrl(requestId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getExpireSupportRequestMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof expireSupportRequest>>,
+    TError,
+    { requestId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof expireSupportRequest>>,
+  TError,
+  { requestId: number },
+  TContext
+> => {
+  const mutationKey = ["expireSupportRequest"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof expireSupportRequest>>,
+    { requestId: number }
+  > = (props) => {
+    const { requestId } = props ?? {};
+
+    return expireSupportRequest(requestId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ExpireSupportRequestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof expireSupportRequest>>
+>;
+
+export type ExpireSupportRequestMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | ErrorResponse
+>;
+
+/**
+ * @summary Expire an emergency or time-sensitive support request that has passed its due date
+ */
+export const useExpireSupportRequest = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof expireSupportRequest>>,
+    TError,
+    { requestId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof expireSupportRequest>>,
+  TError,
+  { requestId: number },
+  TContext
+> => {
+  return useMutation(getExpireSupportRequestMutationOptions(options));
 };
 
 /**
