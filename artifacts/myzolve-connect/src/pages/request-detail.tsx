@@ -31,6 +31,7 @@ import {
   useCreateAttachment,
   useCreateGratitudeNote,
 } from "@/hooks/use-api";
+import { customFetch } from "@workspace/api-client-react";
 
 const REACTION_ICONS: Record<string, React.ReactNode> = {
   heart: <Heart className="w-3.5 h-3.5" />,
@@ -76,6 +77,7 @@ export default function RequestDetailPage() {
     amount: "",
     note: "",
   });
+  const [returnProofFile, setReturnProofFile] = useState<File | null>(null);
 
   const circleId = requestData?.circleId ?? 0;
 
@@ -180,11 +182,41 @@ export default function RequestDetailPage() {
         },
       },
       {
-        onSuccess: () => {
+        onSuccess: async (repayment) => {
+          if (returnProofFile && circleId) {
+            try {
+              const { uploadURL, objectPath } = await requestUploadUrl.mutateAsync({
+                name: returnProofFile.name,
+                size: returnProofFile.size,
+                contentType: returnProofFile.type,
+                circleId,
+              });
+              await fetch(uploadURL, {
+                method: "PUT",
+                body: returnProofFile,
+                headers: { "Content-Type": returnProofFile.type },
+              });
+              await customFetch(
+                `/api/circles/${circleId}/attachments/repayment/${repayment.id}`,
+                {
+                  method: "POST",
+                  body: JSON.stringify({
+                    storageKey: objectPath,
+                    fileName: returnProofFile.name,
+                    fileSize: returnProofFile.size,
+                    mimeType: returnProofFile.type,
+                  }),
+                }
+              );
+            } catch {
+              toast({ title: "Return logged, but proof upload failed.", variant: "destructive" });
+            }
+          }
           toast({ title: "Return logged", description: "Thank you for completing the circle." });
           queryClient.invalidateQueries({ queryKey: getGetSupportRequestQueryKey(requestId) });
           setReturnOpen(false);
           setReturnForm({ amount: "", note: "" });
+          setReturnProofFile(null);
         },
         onError: () => {
           toast({ title: "Could not log return. Please try again.", variant: "destructive" });
@@ -600,6 +632,27 @@ export default function RequestDetailPage() {
                 onChange={(e) => setReturnForm({ ...returnForm, note: e.target.value })}
                 className="rounded-xl"
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Attach proof (optional)</Label>
+              {returnProofFile ? (
+                <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-xl text-sm">
+                  <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="flex-1 truncate">{returnProofFile.name}</span>
+                  <button className="text-muted-foreground hover:text-destructive transition-colors" onClick={() => setReturnProofFile(null)}>Remove</button>
+                </div>
+              ) : (
+                <label className="flex items-center gap-2 p-3 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-primary/40 hover:bg-muted/20 transition-colors text-sm text-muted-foreground">
+                  <Upload className="w-4 h-4" />
+                  <span>Choose a receipt or screenshot</span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*,.pdf"
+                    onChange={(e) => setReturnProofFile(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+              )}
             </div>
           </div>
           <DialogFooter className="gap-2">

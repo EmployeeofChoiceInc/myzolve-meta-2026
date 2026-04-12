@@ -7,6 +7,7 @@ import { attachmentsTable, supportRequestsTable, servicePostsTable, repaymentsTa
 import { eq, and, isNull, inArray } from "drizzle-orm";
 import { assertCircleMember, createAuditLog } from "../lib/helpers";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { validateAndConsumePendingUpload } from "../lib/uploadTokens";
 
 async function assertAttachmentEntityInCircle(circleId: number, entityType: string, entityId: number): Promise<boolean> {
   if (entityType === "support_request") {
@@ -131,6 +132,12 @@ router.post(
     }
 
     const normalizedKey = storage.normalizeObjectEntityPath(storageKey);
+
+    const isOwner = validateAndConsumePendingUpload(normalizedKey, userId);
+    if (!isOwner) {
+      res.status(403).json({ error: "Invalid or expired upload token. Please re-upload the file." });
+      return;
+    }
 
     const [attachment] = await db
       .insert(attachmentsTable)

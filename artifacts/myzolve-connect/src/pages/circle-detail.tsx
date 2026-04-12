@@ -33,6 +33,11 @@ import {
   useAuditLogs,
 } from "@/hooks/use-api";
 
+interface DisputeResolution {
+  disputeId: number;
+  resolution: "resolved" | "dismissed";
+}
+
 const circleSettingsSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   description: z.string().max(1000).optional(),
@@ -180,12 +185,26 @@ export default function CircleDetailPage() {
     );
   }
 
-  function handleResolveDispute(disputeId: number) {
+  const [disputeDialog, setDisputeDialog] = useState<{ id: number; reason: string } | null>(null);
+  const [disputeResolution, setDisputeResolution] = useState<"resolved" | "dismissed">("resolved");
+  const [disputeNote, setDisputeNote] = useState("");
+
+  function openDisputeDialog(d: { id: number; reason: string }) {
+    setDisputeDialog(d);
+    setDisputeResolution("resolved");
+    setDisputeNote("");
+  }
+
+  function handleSubmitDisputeResolution() {
+    if (!disputeDialog) return;
     resolveDispute.mutate(
-      { disputeId, resolution: "resolved", resolutionNote: "Resolved by circle admin" },
+      { disputeId: disputeDialog.id, resolution: disputeResolution, resolutionNote: disputeNote.trim() },
       {
-        onSuccess: () => toast({ title: "Dispute resolved" }),
-        onError: () => toast({ title: "Could not resolve dispute", variant: "destructive" }),
+        onSuccess: () => {
+          toast({ title: disputeResolution === "resolved" ? "Dispute resolved" : "Dispute dismissed" });
+          setDisputeDialog(null);
+        },
+        onError: () => toast({ title: "Could not update dispute", variant: "destructive" }),
       }
     );
   }
@@ -490,10 +509,9 @@ export default function CircleDetailPage() {
                               size="sm"
                               variant="outline"
                               className="rounded-full text-xs h-7 px-3"
-                              onClick={() => handleResolveDispute(d.id)}
-                              disabled={resolveDispute.isPending}
+                              onClick={() => openDisputeDialog({ id: d.id, reason: d.reason })}
                             >
-                              Resolve
+                              Review
                             </Button>
                           )}
                         </div>
@@ -695,6 +713,61 @@ export default function CircleDetailPage() {
             >
               {deleteCircle.isPending ? "Removing..." : "Yes, Remove"}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dispute resolution dialog */}
+      <Dialog open={!!disputeDialog} onOpenChange={(open) => { if (!open) setDisputeDialog(null); }}>
+        <DialogContent className="sm:max-w-[440px] rounded-3xl">
+          <DialogHeader>
+            <DialogTitle>Review Dispute</DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground">
+              {disputeDialog?.reason}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <p className="text-sm font-medium mb-2">Outcome</p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDisputeResolution("resolved")}
+                  className={`flex-1 py-2 px-3 rounded-2xl border text-sm font-medium transition-colors ${disputeResolution === "resolved" ? "border-secondary bg-secondary/10 text-secondary" : "border-border text-muted-foreground hover:bg-muted"}`}
+                >
+                  Mark Resolved
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDisputeResolution("dismissed")}
+                  className={`flex-1 py-2 px-3 rounded-2xl border text-sm font-medium transition-colors ${disputeResolution === "dismissed" ? "border-muted-foreground bg-muted text-foreground" : "border-border text-muted-foreground hover:bg-muted"}`}
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Admin Note (optional)</label>
+              <Textarea
+                placeholder="Briefly note what was decided or why this is being dismissed..."
+                value={disputeNote}
+                onChange={(e) => setDisputeNote(e.target.value)}
+                className="rounded-2xl resize-none"
+                rows={3}
+              />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" className="flex-1 rounded-full" onClick={() => setDisputeDialog(null)}>
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 rounded-full"
+                onClick={handleSubmitDisputeResolution}
+                disabled={resolveDispute.isPending}
+              >
+                {resolveDispute.isPending ? "Saving..." : disputeResolution === "resolved" ? "Mark Resolved" : "Dismiss Dispute"}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

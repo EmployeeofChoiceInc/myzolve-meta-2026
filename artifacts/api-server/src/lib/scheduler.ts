@@ -12,7 +12,7 @@ async function expireUrgentRequests(): Promise<void> {
 
     const expired = await db
       .update(supportRequestsTable)
-      .set({ status: "expired" })
+      .set({ status: "archived" })
       .where(
         and(
           inArray(supportRequestsTable.status, ["open", "partially_funded"]),

@@ -6,6 +6,7 @@ import {
 } from "@workspace/api-zod";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { logger } from "../lib/logger";
+import { registerPendingUpload } from "../lib/uploadTokens";
 import { requireAuth } from "../middlewares/requireAuth";
 import { db } from "@workspace/db";
 import { attachmentsTable, circleMembersTable } from "@workspace/db";
@@ -53,6 +54,8 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
 
     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+
+    registerPendingUpload(objectPath, userId, circleId);
 
     res.json(
       RequestUploadUrlResponse.parse({
