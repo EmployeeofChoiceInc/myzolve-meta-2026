@@ -42,6 +42,17 @@ const allowedOrigins: Set<string> = new Set([
     : []),
 ]);
 
+function isOriginAllowed(origin: string): boolean {
+  if (allowedOrigins.has(origin)) return true;
+  try {
+    const url = new URL(origin);
+    if (url.hostname.endsWith(".replit.app") || url.hostname.endsWith(".replit.dev") || url.hostname.endsWith(".repl.co")) return true;
+  } catch {
+    // ignore malformed origin
+  }
+  return false;
+}
+
 app.use(
   cors({
     credentials: true,
@@ -50,7 +61,7 @@ app.use(
         callback(null, true);
         return;
       }
-      if (allowedOrigins.has(origin)) {
+      if (isOriginAllowed(origin)) {
         callback(null, true);
       } else {
         callback(new Error(`CORS: origin '${origin}' is not allowed`));

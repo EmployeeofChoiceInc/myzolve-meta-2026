@@ -32,7 +32,12 @@ export function validateQuery<T extends z.ZodTypeAny>(schema: T) {
       });
       return;
     }
-    req.query = result.data;
+    Object.defineProperty(req, "query", {
+      value: result.data,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
     next();
   };
 }
