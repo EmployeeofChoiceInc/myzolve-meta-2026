@@ -27,6 +27,7 @@ export interface Comment {
   replyCount: number;
   createdAt: string;
   updatedAt: string;
+  replies?: Comment[];
 }
 
 export interface Reactions {

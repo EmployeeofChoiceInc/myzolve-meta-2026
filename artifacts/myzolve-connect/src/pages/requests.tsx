@@ -35,6 +35,7 @@ export default function RequestsPage() {
     repaymentExpected: false,
     repaymentStyle: "discuss_later",
     onBehalfOfPlaceholderId: "",
+    dueDate: "",
   });
 
   const handleOpen = () => setOpen(true);
@@ -58,6 +59,7 @@ export default function RequestsPage() {
           requestType: "money",
           visibilityScope: "whole_circle",
           onBehalfOfPlaceholderId: form.onBehalfOfPlaceholderId ? parseInt(form.onBehalfOfPlaceholderId) : undefined,
+          dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : undefined,
         },
       },
       {
@@ -65,7 +67,7 @@ export default function RequestsPage() {
           toast({ title: "Support request shared with your circle." });
           queryClient.invalidateQueries({ queryKey: getListSupportRequestsQueryKey(circleId) });
           setOpen(false);
-          setForm({ title: "", description: "", amountRequested: "", urgencyLevel: "normal", category: "other", repaymentExpected: false, repaymentStyle: "discuss_later", onBehalfOfPlaceholderId: "" });
+          setForm({ title: "", description: "", amountRequested: "", urgencyLevel: "normal", category: "other", repaymentExpected: false, repaymentStyle: "discuss_later", onBehalfOfPlaceholderId: "", dueDate: "" });
         },
         onError: () => {
           toast({ title: "Could not create request. Please try again.", variant: "destructive" });
@@ -284,6 +286,24 @@ export default function RequestsPage() {
                 </Select>
               </div>
             </div>
+            {(form.urgencyLevel === "urgent" || form.urgencyLevel === "emergency") && (
+              <div className="space-y-1.5">
+                <Label htmlFor="due-date">
+                  When do you need this by?{" "}
+                  <span className="text-muted-foreground font-normal text-xs">
+                    ({form.urgencyLevel === "emergency" ? "required for emergency" : "recommended for urgent"})
+                  </span>
+                </Label>
+                <Input
+                  id="due-date"
+                  type="date"
+                  value={form.dueDate}
+                  min={new Date().toISOString().split("T")[0]}
+                  onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+                  className="rounded-xl"
+                />
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label>Repayment expectation</Label>
               <Select value={form.repaymentStyle} onValueChange={(v) => setForm({ ...form, repaymentStyle: v, repaymentExpected: v !== "gift" && v !== "no_repayment" })}>

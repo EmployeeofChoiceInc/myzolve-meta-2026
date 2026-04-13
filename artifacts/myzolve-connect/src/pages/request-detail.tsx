@@ -60,6 +60,8 @@ export default function RequestDetailPage() {
   const [offerOpen, setOfferOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
   const [commentBody, setCommentBody] = useState("");
+  const [replyingToId, setReplyingToId] = useState<number | null>(null);
+  const [replyBody, setReplyBody] = useState("");
   const [gratitudeOpen, setGratitudeOpen] = useState(false);
   const [gratitudeMessage, setGratitudeMessage] = useState("");
   const [uploadingFile, setUploadingFile] = useState(false);
@@ -513,6 +515,91 @@ export default function RequestDetailPage() {
                       <span className="text-xs text-muted-foreground ml-auto">{format(new Date(comment.createdAt), "MMM d")}</span>
                     </div>
                     <p className="text-sm text-foreground/90 leading-relaxed">{comment.body}</p>
+                    <div className="flex items-center gap-3 mt-2">
+                      <button
+                        className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                        onClick={() => {
+                          if (replyingToId === comment.id) {
+                            setReplyingToId(null);
+                            setReplyBody("");
+                          } else {
+                            setReplyingToId(comment.id);
+                            setReplyBody("");
+                          }
+                        }}
+                      >
+                        {replyingToId === comment.id ? "Cancel" : "Reply"}
+                      </button>
+                      {comment.replyCount > 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          {comment.replyCount} {comment.replyCount === 1 ? "reply" : "replies"}
+                        </span>
+                      )}
+                    </div>
+                    {replyingToId === comment.id && (
+                      <div className="flex gap-2 mt-3 items-start">
+                        <Textarea
+                          placeholder={`Reply to ${comment.authorName}...`}
+                          value={replyBody}
+                          onChange={(e) => setReplyBody(e.target.value)}
+                          className="rounded-xl resize-none text-sm flex-1"
+                          rows={2}
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                              if (!replyBody.trim()) return;
+                              createComment.mutate(
+                                { body: replyBody.trim(), parentCommentId: comment.id },
+                                {
+                                  onSuccess: () => {
+                                    setReplyBody("");
+                                    setReplyingToId(null);
+                                    toast({ title: "Reply posted" });
+                                  },
+                                }
+                              );
+                            }
+                          }}
+                        />
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="rounded-full shrink-0 mt-0.5"
+                          disabled={!replyBody.trim() || createComment.isPending}
+                          onClick={() => {
+                            if (!replyBody.trim()) return;
+                            createComment.mutate(
+                              { body: replyBody.trim(), parentCommentId: comment.id },
+                              {
+                                onSuccess: () => {
+                                  setReplyBody("");
+                                  setReplyingToId(null);
+                                  toast({ title: "Reply posted" });
+                                },
+                              }
+                            );
+                          }}
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                    {comment.replies && comment.replies.length > 0 && (
+                      <div className="mt-3 pl-4 border-l-2 border-border/40 space-y-3">
+                        {comment.replies.map((reply) => (
+                          <div key={reply.id}>
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="w-5 h-5 rounded-full bg-secondary/10 text-secondary text-xs font-bold flex items-center justify-center shrink-0">
+                                {(reply.authorName ?? "?")[0].toUpperCase()}
+                              </div>
+                              <span className="font-medium text-xs">{reply.authorName}</span>
+                              <span className="text-xs text-muted-foreground ml-auto">{format(new Date(reply.createdAt), "MMM d")}</span>
+                            </div>
+                            <p className="text-sm text-foreground/80 leading-relaxed">{reply.body}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}

@@ -18,7 +18,7 @@ import {
   type Repayment,
 } from "@workspace/db";
 import { eq, and, sql, desc } from "drizzle-orm";
-import { createNotification, createAuditLog } from "../lib/helpers";
+import { createNotification, createAuditLog, assertCircleMember, getUserName } from "../lib/helpers";
 
 const router = Router();
 
@@ -77,30 +77,6 @@ const createRepaymentPlanSchema = z.object({
   flexibleNotes: z.string().max(1000).optional(),
   nextDueDate: z.string().datetime().optional(),
 });
-
-async function assertCircleMember(circleId: number, userId: number) {
-  return db
-    .select()
-    .from(circleMembersTable)
-    .where(
-      and(
-        eq(circleMembersTable.circleId, circleId),
-        eq(circleMembersTable.userId, userId),
-        eq(circleMembersTable.status, "active"),
-      ),
-    )
-    .limit(1)
-    .then((r) => r[0] ?? null);
-}
-
-async function getUserName(userId: number) {
-  return db
-    .select()
-    .from(usersTable)
-    .where(eq(usersTable.id, userId))
-    .limit(1)
-    .then((r) => r[0]?.displayName ?? "Unknown");
-}
 
 async function getRequestWithVisibilityCheck(requestId: number, userId: number) {
   const [row] = await db
