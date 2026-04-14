@@ -421,6 +421,7 @@ export interface CirclePost {
   circleId: number;
   authorUserId: number;
   authorName: string;
+  authorAvatarObjectPath: string | null;
   title: string | null;
   body: string;
   imageObjectPath: string | null;
@@ -438,6 +439,7 @@ export interface UserProfile {
   location: string | null;
   avatarObjectPath: string | null;
   commonCircleCount: number;
+  sharedCircles: Array<{ id: number; name: string }>;
   memberSince: string;
 }
 

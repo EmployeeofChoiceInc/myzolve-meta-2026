@@ -3,8 +3,8 @@ import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
 import { validateParams } from "../middlewares/validate";
 import { db } from "@workspace/db";
-import { usersTable, circleMembersTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { usersTable, circleMembersTable, circlesTable } from "@workspace/db";
+import { eq, and, inArray } from "drizzle-orm";
 
 const router = Router();
 
@@ -40,12 +40,23 @@ router.get("/users/:userId/profile", requireAuth, validateParams(userIdParam), a
     .from(circleMembersTable)
     .where(and(eq(circleMembersTable.userId, targetUserId), eq(circleMembersTable.status, "active")));
 
-  const commonCircleCount = theirCircles.filter((m) => myCircleIds.has(m.circleId)).length;
+  const sharedCircleIds = theirCircles
+    .filter((m) => myCircleIds.has(m.circleId))
+    .map((m) => m.circleId);
+  const commonCircleCount = sharedCircleIds.length;
 
   if (viewerId !== targetUserId && commonCircleCount === 0) {
     res.status(403).json({ error: "You must share a circle with this member to view their profile" });
     return;
   }
+
+  const sharedCircles =
+    sharedCircleIds.length > 0
+      ? await db
+          .select({ id: circlesTable.id, name: circlesTable.name })
+          .from(circlesTable)
+          .where(inArray(circlesTable.id, sharedCircleIds))
+      : [];
 
   res.json({
     id: targetUser.id,
@@ -55,6 +66,7 @@ router.get("/users/:userId/profile", requireAuth, validateParams(userIdParam), a
     location: targetUser.location,
     avatarObjectPath: targetUser.avatarObjectPath,
     commonCircleCount,
+    sharedCircles,
     memberSince: targetUser.createdAt,
   });
 });

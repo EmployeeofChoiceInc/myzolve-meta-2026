@@ -4,6 +4,7 @@ import { ArrowLeft, MapPin, Users, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 
@@ -92,17 +93,29 @@ export default function ProfilePage() {
                   <MapPin className="w-3.5 h-3.5" /> {profile.location}
                 </span>
               )}
-              {profile.commonCircleCount > 0 && (
-                <span className="flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5" />
-                  {profile.commonCircleCount} circle{profile.commonCircleCount !== 1 ? "s" : ""} in common
-                </span>
-              )}
               <span className="flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5" />
                 Member since {format(new Date(profile.memberSince), "MMMM yyyy")}
               </span>
             </div>
+
+            {profile.sharedCircles.length > 0 && (
+              <div className="pt-2 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5" />
+                  {profile.sharedCircles.length} circle{profile.sharedCircles.length !== 1 ? "s" : ""} in common
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {profile.sharedCircles.map((c) => (
+                    <Link key={c.id} href={`/circles/${c.id}`}>
+                      <Badge variant="secondary" className="rounded-full cursor-pointer hover:bg-secondary/80 transition-colors">
+                        {c.name}
+                      </Badge>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

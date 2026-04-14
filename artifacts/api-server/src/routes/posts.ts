@@ -28,12 +28,14 @@ function postToApi(
   post: typeof circlePostsTable.$inferSelect,
   authorName: string,
   commentCount: number,
+  authorAvatarObjectPath: string | null = null,
 ) {
   return {
     id: post.id,
     circleId: post.circleId,
     authorUserId: post.authorUserId,
     authorName,
+    authorAvatarObjectPath,
     title: post.title,
     body: post.body,
     imageObjectPath: post.imageObjectPath,
@@ -74,7 +76,11 @@ router.get(
       .limit(limit)
       .offset(offset);
 
-    res.json(rows.map((r) => postToApi(r.post, r.author?.displayName ?? "Someone", 0)));
+    res.json(
+      rows.map((r) =>
+        postToApi(r.post, r.author?.displayName ?? "Someone", 0, r.author?.avatarObjectPath ?? null),
+      ),
+    );
   },
 );
 
@@ -106,7 +112,7 @@ router.post(
       })
       .returning();
 
-    res.status(201).json(postToApi(post, req.dbUser!.displayName, 0));
+    res.status(201).json(postToApi(post, req.dbUser!.displayName, 0, req.dbUser!.avatarObjectPath));
   },
 );
 

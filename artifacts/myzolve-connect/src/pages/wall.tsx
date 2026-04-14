@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -169,6 +169,7 @@ function PostCard({
   const { toast } = useToast();
   const canDelete = myUserId !== undefined && (post.authorUserId === myUserId || isAdmin);
   const imageUrl = objectPathToUrl(post.imageObjectPath);
+  const authorAvatarUrl = objectPathToUrl(post.authorAvatarObjectPath);
 
   function handleDelete() {
     deletePost.mutate(post.id, {
@@ -184,6 +185,7 @@ function PostCard({
           <div className="flex items-center gap-3">
             <Link href={`/profile/${post.authorUserId}`}>
               <Avatar className="w-9 h-9 cursor-pointer">
+                {authorAvatarUrl && <AvatarImage src={authorAvatarUrl} alt={post.authorName} />}
                 <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
                   {post.authorName.charAt(0)}
                 </AvatarFallback>
