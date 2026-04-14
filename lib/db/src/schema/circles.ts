@@ -66,6 +66,30 @@ export const circleInvitationsTable = pgTable("circle_invitations", {
     .defaultNow(),
 });
 
+export const circleJoinRequestsTable = pgTable("circle_join_requests", {
+  id: serial("id").primaryKey(),
+  circleId: integer("circle_id")
+    .notNull()
+    .references(() => circlesTable.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => usersTable.id, { onDelete: "cascade" }),
+  note: text("note"),
+  status: text("status").notNull().default("pending"),
+  reviewedByUserId: integer("reviewed_by_user_id").references(
+    () => usersTable.id,
+  ),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+}, (table) => [
+  uniqueIndex("circle_join_requests_circle_user_uniq").on(
+    table.circleId,
+    table.userId,
+  ),
+]);
+
 export const insertCircleSchema = createInsertSchema(circlesTable).omit({
   id: true,
   createdAt: true,
@@ -87,3 +111,11 @@ export type InsertCircleInvitation = z.infer<
   typeof insertCircleInvitationSchema
 >;
 export type CircleInvitation = typeof circleInvitationsTable.$inferSelect;
+
+export const insertCircleJoinRequestSchema = createInsertSchema(
+  circleJoinRequestsTable,
+).omit({ id: true, createdAt: true });
+export type InsertCircleJoinRequest = z.infer<
+  typeof insertCircleJoinRequestSchema
+>;
+export type CircleJoinRequest = typeof circleJoinRequestsTable.$inferSelect;

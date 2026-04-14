@@ -21,6 +21,7 @@ import SettingsPage from "@/pages/settings";
 import InviteAcceptPage from "@/pages/invite-accept";
 import OnboardingPage from "@/pages/onboarding";
 import NotificationsPage from "@/pages/notifications";
+import DiscoverPage from "@/pages/discover";
 
 const queryClient = new QueryClient();
 
@@ -137,6 +138,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/settings"><ProtectedRoute component={SettingsPage} /></Route>
           <Route path="/notifications"><ProtectedRoute component={NotificationsPage} /></Route>
           <Route path="/onboarding"><ProtectedRoute component={OnboardingPage} /></Route>
+          <Route path="/discover"><ProtectedRoute component={DiscoverPage} /></Route>
           <Route path="/invite/:token" component={InviteAcceptPage} />
           <Route component={NotFound} />
         </Switch>

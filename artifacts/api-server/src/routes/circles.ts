@@ -6,9 +6,11 @@ import { db } from "@workspace/db";
 import {
   circlesTable,
   circleMembersTable,
+  circleJoinRequestsTable,
+  usersTable,
   type Circle,
 } from "@workspace/db";
-import { eq, and, count, sql } from "drizzle-orm";
+import { eq, and, count, sql, ne } from "drizzle-orm";
 import { createAuditLog } from "../lib/helpers";
 import {
   supportRequestsTable,
@@ -53,6 +55,179 @@ function circleToApi(circle: Circle, memberCount: number, myRole: string | null)
     createdAt: circle.createdAt,
   };
 }
+
+const createJoinRequestSchema = z.object({
+  note: z.string().max(500).optional(),
+});
+
+router.get("/circles/discover", requireAuth, async (req, res) => {
+  const userId = req.dbUser!.id;
+
+  const discoverableCircles = await db
+    .select({
+      circle: circlesTable,
+      creatorName: usersTable.displayName,
+      memberCount: count(circleMembersTable.id),
+    })
+    .from(circlesTable)
+    .leftJoin(usersTable, eq(circlesTable.ownerId, usersTable.id))
+    .leftJoin(
+      circleMembersTable,
+      and(
+        eq(circleMembersTable.circleId, circlesTable.id),
+        eq(circleMembersTable.status, "active"),
+      ),
+    )
+    .where(eq(circlesTable.privacyMode, "discoverable"))
+    .groupBy(circlesTable.id, usersTable.displayName);
+
+  const circleIds = discoverableCircles.map((c) => c.circle.id);
+
+  const [myMemberships, myJoinRequests] = await Promise.all([
+    circleIds.length > 0
+      ? db
+          .select({ circleId: circleMembersTable.circleId })
+          .from(circleMembersTable)
+          .where(
+            and(
+              eq(circleMembersTable.userId, userId),
+              eq(circleMembersTable.status, "active"),
+            ),
+          )
+      : Promise.resolve([]),
+    circleIds.length > 0
+      ? db
+          .select({ circleId: circleJoinRequestsTable.circleId, status: circleJoinRequestsTable.status })
+          .from(circleJoinRequestsTable)
+          .where(eq(circleJoinRequestsTable.userId, userId))
+      : Promise.resolve([]),
+  ]);
+
+  const memberSet = new Set(myMemberships.map((m) => m.circleId));
+  const joinRequestMap = new Map(myJoinRequests.map((r) => [r.circleId, r.status]));
+
+  res.json(
+    discoverableCircles.map(({ circle, creatorName, memberCount }) => ({
+      id: circle.id,
+      name: circle.name,
+      circleType: circle.circleType,
+      description: circle.description,
+      currency: circle.currency,
+      privacyMode: circle.privacyMode,
+      ownerId: circle.ownerId,
+      creatorName: creatorName ?? "Unknown",
+      memberCount: Number(memberCount),
+      isMember: memberSet.has(circle.id),
+      joinRequestStatus: joinRequestMap.get(circle.id) ?? null,
+      createdAt: circle.createdAt,
+    })),
+  );
+});
+
+router.post(
+  "/circles/:circleId/join-request",
+  requireAuth,
+  validateParams(circleIdParam),
+  validateBody(createJoinRequestSchema),
+  async (req, res) => {
+    const userId = req.dbUser!.id;
+    const circleId = parseInt(String(req.params.circleId));
+    const { note } = req.body;
+
+    const circle = await db
+      .select()
+      .from(circlesTable)
+      .where(eq(circlesTable.id, circleId))
+      .limit(1)
+      .then((r) => r[0]);
+
+    if (!circle) {
+      res.status(404).json({ error: "Circle not found" });
+      return;
+    }
+
+    if (circle.privacyMode !== "discoverable") {
+      res.status(403).json({ error: "This circle does not accept join requests" });
+      return;
+    }
+
+    const existing = await db
+      .select()
+      .from(circleMembersTable)
+      .where(
+        and(
+          eq(circleMembersTable.circleId, circleId),
+          eq(circleMembersTable.userId, userId),
+          eq(circleMembersTable.status, "active"),
+        ),
+      )
+      .limit(1)
+      .then((r) => r[0]);
+
+    if (existing) {
+      res.status(409).json({ error: "You are already a member of this circle" });
+      return;
+    }
+
+    const existingRequest = await db
+      .select()
+      .from(circleJoinRequestsTable)
+      .where(
+        and(
+          eq(circleJoinRequestsTable.circleId, circleId),
+          eq(circleJoinRequestsTable.userId, userId),
+        ),
+      )
+      .limit(1)
+      .then((r) => r[0]);
+
+    if (existingRequest) {
+      if (existingRequest.status === "pending") {
+        res.status(409).json({ error: "You already have a pending join request for this circle" });
+        return;
+      }
+      const [updated] = await db
+        .update(circleJoinRequestsTable)
+        .set({ status: "pending", note: note ?? null, reviewedByUserId: null, reviewedAt: null })
+        .where(eq(circleJoinRequestsTable.id, existingRequest.id))
+        .returning();
+      res.status(201).json(updated);
+      return;
+    }
+
+    const [joinRequest] = await db
+      .insert(circleJoinRequestsTable)
+      .values({ circleId, userId, note: note ?? null, status: "pending" })
+      .returning();
+
+    const owner = await db
+      .select({ userId: circleMembersTable.userId })
+      .from(circleMembersTable)
+      .where(
+        and(
+          eq(circleMembersTable.circleId, circleId),
+          eq(circleMembersTable.status, "active"),
+        ),
+      )
+      .then((rows) => rows.filter((r) => r.userId !== null)) as { userId: number }[];
+
+    const { createNotification } = await import("../lib/helpers");
+    const requesterName = req.dbUser!.displayName;
+    for (const m of owner) {
+      await createNotification({
+        userId: m.userId,
+        circleId,
+        notificationType: "join_request",
+        title: "Someone wants to join your circle",
+        body: `${requesterName} has requested to join ${circle.name}.`,
+        targetEntityType: "circle_join_request",
+        targetEntityId: joinRequest.id,
+      });
+    }
+
+    res.status(201).json(joinRequest);
+  },
+);
 
 router.get("/circles", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;

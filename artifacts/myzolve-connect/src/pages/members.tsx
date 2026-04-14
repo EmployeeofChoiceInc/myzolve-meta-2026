@@ -11,7 +11,8 @@ import {
   useCreateCircleInvitation,
   type CircleInvitation
 } from "@workspace/api-client-react";
-import { ArrowLeft, UserPlus, Mail, ShieldAlert, Link2, Copy, MoreHorizontal, UserMinus, Shield } from "lucide-react";
+import { useJoinRequests, useApproveJoinRequest, useDeclineJoinRequest } from "@/hooks/use-api";
+import { ArrowLeft, UserPlus, Mail, ShieldAlert, Link2, Copy, MoreHorizontal, UserMinus, Shield, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -72,9 +73,13 @@ export default function MembersPage() {
   const revokeInvitation = useRevokeInvitation();
   const updateMember = useUpdateCircleMember();
   const removeMember = useRemoveCircleMember();
+  const approveJoinRequest = useApproveJoinRequest(circleId);
+  const declineJoinRequest = useDeclineJoinRequest(circleId);
 
   const myRole = circle?.myRole;
   const isAdminOrOwner = myRole === "owner" || myRole === "admin";
+
+  const { data: joinRequests } = useJoinRequests(circleId);
 
   function handleRevokeInvitation(invitationId: number) {
     revokeInvitation.mutate(
@@ -395,6 +400,63 @@ export default function MembersPage() {
             </CardContent>
           </Card>
           
+          {isAdminOrOwner && joinRequests && joinRequests.length > 0 && (
+            <Card className="rounded-3xl border-border/50 shadow-none bg-card">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center text-lg">
+                  <UserCheck className="w-5 h-5 mr-2 text-primary" /> Join Requests
+                  <span className="ml-auto text-xs font-normal text-muted-foreground">{joinRequests.length} pending</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="divide-y divide-border/50">
+                  {joinRequests.map((req) => (
+                    <div key={req.id} className="p-4 sm:px-6 space-y-3">
+                      <div>
+                        <p className="font-medium text-sm text-foreground">{req.requesterName}</p>
+                        {req.requesterEmail && (
+                          <p className="text-xs text-muted-foreground">{req.requesterEmail}</p>
+                        )}
+                        {req.note && (
+                          <p className="text-xs text-muted-foreground mt-1 italic">"{req.note}"</p>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          className="rounded-full flex-1 h-8 text-xs"
+                          disabled={approveJoinRequest.isPending}
+                          onClick={() =>
+                            approveJoinRequest.mutate(req.id, {
+                              onSuccess: () => toast({ title: `${req.requesterName} approved and added to circle` }),
+                              onError: () => toast({ title: "Could not approve request", variant: "destructive" }),
+                            })
+                          }
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="rounded-full flex-1 h-8 text-xs"
+                          disabled={declineJoinRequest.isPending}
+                          onClick={() =>
+                            declineJoinRequest.mutate(req.id, {
+                              onSuccess: () => toast({ title: "Request declined" }),
+                              onError: () => toast({ title: "Could not decline request", variant: "destructive" }),
+                            })
+                          }
+                        >
+                          Decline
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card className="rounded-3xl border-border/50 shadow-none bg-accent/5">
             <CardContent className="p-6">
               <div className="flex items-start gap-3">

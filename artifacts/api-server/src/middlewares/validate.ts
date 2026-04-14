@@ -97,6 +97,11 @@ export const repaymentIdParam = z.object({
   repaymentId: z.coerce.number().int().positive(),
 });
 
+export const joinRequestIdParam = z.object({
+  circleId: z.coerce.number().int().positive(),
+  requestId: z.coerce.number().int().positive(),
+});
+
 export const paginationQuery = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
   offset: z.coerce.number().int().min(0).optional().default(0),

@@ -1,12 +1,13 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
-import { validateBody, validateParams, circleIdParam, memberIdParam, circleAndMemberIdParam, invitationIdParam, invitationTokenParam } from "../middlewares/validate";
+import { validateBody, validateParams, circleIdParam, memberIdParam, circleAndMemberIdParam, invitationIdParam, invitationTokenParam, joinRequestIdParam } from "../middlewares/validate";
 import { db } from "@workspace/db";
 import {
   circleMembersTable,
   circlesTable,
   circleInvitationsTable,
+  circleJoinRequestsTable,
   usersTable,
   type CircleMember,
 } from "@workspace/db";
@@ -605,6 +606,260 @@ router.post(
       .then((r) => r[0] ?? null);
 
     res.json(memberToApi(demoted, ownerUser));
+  },
+);
+
+router.get(
+  "/circles/:circleId/join-requests",
+  requireAuth,
+  validateParams(circleIdParam),
+  async (req, res) => {
+    const userId = req.dbUser!.id;
+    const circleId = parseInt(String(req.params.circleId));
+
+    const myMembership = await db
+      .select()
+      .from(circleMembersTable)
+      .where(
+        and(
+          eq(circleMembersTable.circleId, circleId),
+          eq(circleMembersTable.userId, userId),
+          eq(circleMembersTable.status, "active"),
+        ),
+      )
+      .limit(1)
+      .then((r) => r[0]);
+
+    if (!myMembership || !["owner", "admin"].includes(myMembership.role)) {
+      res.status(403).json({ error: "Only circle admins can view join requests" });
+      return;
+    }
+
+    const requests = await db
+      .select({
+        request: circleJoinRequestsTable,
+        requesterName: usersTable.displayName,
+        requesterEmail: usersTable.email,
+      })
+      .from(circleJoinRequestsTable)
+      .leftJoin(usersTable, eq(circleJoinRequestsTable.userId, usersTable.id))
+      .where(
+        and(
+          eq(circleJoinRequestsTable.circleId, circleId),
+          eq(circleJoinRequestsTable.status, "pending"),
+        ),
+      );
+
+    res.json(
+      requests.map(({ request, requesterName, requesterEmail }) => ({
+        id: request.id,
+        circleId: request.circleId,
+        userId: request.userId,
+        requesterName: requesterName ?? "Unknown",
+        requesterEmail: requesterEmail ?? null,
+        note: request.note,
+        status: request.status,
+        createdAt: request.createdAt,
+      })),
+    );
+  },
+);
+
+router.post(
+  "/circles/:circleId/join-requests/:requestId/approve",
+  requireAuth,
+  validateParams(joinRequestIdParam),
+  async (req, res) => {
+    const userId = req.dbUser!.id;
+    const circleId = parseInt(String(req.params.circleId));
+    const requestId = parseInt(String(req.params.requestId));
+
+    const myMembership = await db
+      .select()
+      .from(circleMembersTable)
+      .where(
+        and(
+          eq(circleMembersTable.circleId, circleId),
+          eq(circleMembersTable.userId, userId),
+          eq(circleMembersTable.status, "active"),
+        ),
+      )
+      .limit(1)
+      .then((r) => r[0]);
+
+    if (!myMembership || !["owner", "admin"].includes(myMembership.role)) {
+      res.status(403).json({ error: "Only circle admins can approve join requests" });
+      return;
+    }
+
+    const joinRequest = await db
+      .select()
+      .from(circleJoinRequestsTable)
+      .where(
+        and(
+          eq(circleJoinRequestsTable.id, requestId),
+          eq(circleJoinRequestsTable.circleId, circleId),
+          eq(circleJoinRequestsTable.status, "pending"),
+        ),
+      )
+      .limit(1)
+      .then((r) => r[0]);
+
+    if (!joinRequest) {
+      res.status(404).json({ error: "Join request not found or already resolved" });
+      return;
+    }
+
+    const now = new Date();
+
+    const member = await db.transaction(async (tx) => {
+      await tx
+        .update(circleJoinRequestsTable)
+        .set({ status: "approved", reviewedByUserId: userId, reviewedAt: now })
+        .where(eq(circleJoinRequestsTable.id, requestId));
+
+      const existing = await tx
+        .select()
+        .from(circleMembersTable)
+        .where(
+          and(
+            eq(circleMembersTable.circleId, circleId),
+            eq(circleMembersTable.userId, joinRequest.userId),
+          ),
+        )
+        .limit(1)
+        .then((r) => r[0] ?? null);
+
+      if (existing) {
+        if (existing.status === "active") return existing;
+        const [reactivated] = await tx
+          .update(circleMembersTable)
+          .set({ status: "active", role: "member", joinedAt: now, updatedAt: now })
+          .where(eq(circleMembersTable.id, existing.id))
+          .returning();
+        return reactivated;
+      }
+
+      const [inserted] = await tx
+        .insert(circleMembersTable)
+        .values({
+          circleId,
+          userId: joinRequest.userId,
+          role: "member",
+          status: "active",
+          joinedAt: now,
+        })
+        .returning();
+      return inserted;
+    });
+
+    const circle = await db
+      .select({ name: circlesTable.name })
+      .from(circlesTable)
+      .where(eq(circlesTable.id, circleId))
+      .limit(1)
+      .then((r) => r[0]);
+
+    await createNotification({
+      userId: joinRequest.userId,
+      circleId,
+      notificationType: "join_request",
+      title: "Your request was approved",
+      body: `You have been approved to join ${circle?.name ?? "the circle"}.`,
+      targetEntityType: "circle",
+      targetEntityId: circleId,
+    });
+
+    await createAuditLog({
+      circleId,
+      actorUserId: userId,
+      action: "join_request_approved",
+      targetEntityType: "circle_join_request",
+      targetEntityId: requestId,
+      metadata: { approvedUserId: joinRequest.userId },
+    });
+
+    const requesterUser = await db
+      .select({ displayName: usersTable.displayName, email: usersTable.email })
+      .from(usersTable)
+      .where(eq(usersTable.id, joinRequest.userId))
+      .limit(1)
+      .then((r) => r[0] ?? null);
+
+    res.json(memberToApi(member, requesterUser));
+  },
+);
+
+router.post(
+  "/circles/:circleId/join-requests/:requestId/decline",
+  requireAuth,
+  validateParams(joinRequestIdParam),
+  async (req, res) => {
+    const userId = req.dbUser!.id;
+    const circleId = parseInt(String(req.params.circleId));
+    const requestId = parseInt(String(req.params.requestId));
+
+    const myMembership = await db
+      .select()
+      .from(circleMembersTable)
+      .where(
+        and(
+          eq(circleMembersTable.circleId, circleId),
+          eq(circleMembersTable.userId, userId),
+          eq(circleMembersTable.status, "active"),
+        ),
+      )
+      .limit(1)
+      .then((r) => r[0]);
+
+    if (!myMembership || !["owner", "admin"].includes(myMembership.role)) {
+      res.status(403).json({ error: "Only circle admins can decline join requests" });
+      return;
+    }
+
+    const joinRequest = await db
+      .select()
+      .from(circleJoinRequestsTable)
+      .where(
+        and(
+          eq(circleJoinRequestsTable.id, requestId),
+          eq(circleJoinRequestsTable.circleId, circleId),
+          eq(circleJoinRequestsTable.status, "pending"),
+        ),
+      )
+      .limit(1)
+      .then((r) => r[0]);
+
+    if (!joinRequest) {
+      res.status(404).json({ error: "Join request not found or already resolved" });
+      return;
+    }
+
+    const now = new Date();
+
+    await db
+      .update(circleJoinRequestsTable)
+      .set({ status: "declined", reviewedByUserId: userId, reviewedAt: now })
+      .where(eq(circleJoinRequestsTable.id, requestId));
+
+    const circle = await db
+      .select({ name: circlesTable.name })
+      .from(circlesTable)
+      .where(eq(circlesTable.id, circleId))
+      .limit(1)
+      .then((r) => r[0]);
+
+    await createNotification({
+      userId: joinRequest.userId,
+      circleId,
+      notificationType: "join_request",
+      title: "Your join request was not approved",
+      body: `Your request to join ${circle?.name ?? "the circle"} was not approved at this time.`,
+      targetEntityType: "circle_join_request",
+      targetEntityId: requestId,
+    });
+
+    res.status(204).end();
   },
 );
 

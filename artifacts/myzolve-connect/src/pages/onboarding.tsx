@@ -12,7 +12,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Heart, Users, Link2 } from "lucide-react";
+import { Heart, Users, Compass } from "lucide-react";
 
 const createCircleSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -89,23 +89,23 @@ export default function OnboardingPage() {
               </CardContent>
             </Card>
 
-            <Card className="rounded-3xl border-border/50 shadow-none">
+            <Card
+              className="rounded-3xl border-border/50 shadow-none cursor-pointer hover:shadow-md hover:border-secondary/30 transition-all group"
+              onClick={() => navigate("/discover")}
+            >
               <CardHeader className="pb-3">
-                <div className="w-12 h-12 bg-secondary/10 rounded-2xl flex items-center justify-center text-secondary mb-4">
-                  <Link2 className="w-6 h-6" />
+                <div className="w-12 h-12 bg-secondary/10 rounded-2xl flex items-center justify-center text-secondary mb-4 group-hover:scale-105 transition-transform">
+                  <Compass className="w-6 h-6" />
                 </div>
-                <CardTitle className="text-xl">Join a Circle</CardTitle>
+                <CardTitle className="text-xl">Find a Circle</CardTitle>
                 <CardDescription className="text-sm leading-relaxed">
-                  Already have an invite link or email invitation? Follow the link from your invitation to join.
+                  Browse circles open to new members, see who created them, and request to join — like finding a group that's right for you.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground bg-muted/50 rounded-2xl p-4 leading-relaxed">
-                  Check your email for an invite link, or ask the circle owner to send you one. Invite links look like:
-                  <span className="block mt-2 font-mono text-xs text-muted-foreground/80 break-all">
-                    myzolve.app/invite/abc123...
-                  </span>
-                </p>
+                <Button variant="outline" className="rounded-full w-full" onClick={() => navigate("/discover")}>
+                  Browse Circles
+                </Button>
               </CardContent>
             </Card>
           </div>

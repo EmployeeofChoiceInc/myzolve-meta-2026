@@ -332,3 +332,86 @@ export function useCreateGratitudeNote(circleId: number) {
       }),
   });
 }
+
+export interface DiscoverableCircle {
+  id: number;
+  name: string;
+  circleType: string;
+  description: string | null;
+  currency: string;
+  privacyMode: string;
+  ownerId: number;
+  creatorName: string;
+  memberCount: number;
+  isMember: boolean;
+  joinRequestStatus: string | null;
+  createdAt: string;
+}
+
+export interface JoinRequest {
+  id: number;
+  circleId: number;
+  userId: number;
+  requesterName: string;
+  requesterEmail: string | null;
+  note: string | null;
+  status: string;
+  createdAt: string;
+}
+
+export function useDiscoverCircles() {
+  return useQuery({
+    queryKey: ["circles", "discover"],
+    queryFn: () => customFetch<DiscoverableCircle[]>("/api/circles/discover"),
+  });
+}
+
+export function useCreateJoinRequest(circleId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { note?: string }) =>
+      customFetch(`/api/circles/${circleId}/join-request`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["circles", "discover"] });
+    },
+  });
+}
+
+export function useJoinRequests(circleId: number) {
+  return useQuery({
+    queryKey: ["join-requests", circleId],
+    queryFn: () =>
+      customFetch<JoinRequest[]>(`/api/circles/${circleId}/join-requests`),
+    enabled: !!circleId,
+  });
+}
+
+export function useApproveJoinRequest(circleId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (requestId: number) =>
+      customFetch(`/api/circles/${circleId}/join-requests/${requestId}/approve`, {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["join-requests", circleId] });
+      qc.invalidateQueries({ queryKey: ["circle-members", circleId] });
+    },
+  });
+}
+
+export function useDeclineJoinRequest(circleId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (requestId: number) =>
+      customFetch(`/api/circles/${circleId}/join-requests/${requestId}/decline`, {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["join-requests", circleId] });
+    },
+  });
+}
