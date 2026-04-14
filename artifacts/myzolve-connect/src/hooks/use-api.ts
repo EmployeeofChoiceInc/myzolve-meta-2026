@@ -482,3 +482,58 @@ export function useUserProfile(userId: number | null) {
     enabled: !!userId,
   });
 }
+
+export interface MeProfile {
+  id: number;
+  clerkId: string;
+  displayName: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+  timezone: string | null;
+  bio: string | null;
+  location: string | null;
+  avatarObjectPath: string | null;
+  createdAt: string;
+}
+
+export function useMe() {
+  return useQuery({
+    queryKey: ["/api/me"],
+    queryFn: () => customFetch<MeProfile>("/api/me"),
+  });
+}
+
+export function useUpdateMe() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<Pick<MeProfile, "displayName" | "firstName" | "lastName" | "timezone" | "bio" | "location" | "avatarObjectPath">>) =>
+      customFetch<MeProfile>("/api/me", {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (updated) => {
+      qc.setQueryData(["/api/me"], updated);
+    },
+  });
+}
+
+export function useAvatarUpload() {
+  return useMutation({
+    mutationFn: async (file: File): Promise<string> => {
+      const { uploadURL, objectPath } = await customFetch<{ uploadURL: string; objectPath: string }>(
+        "/api/storage/avatar/request-url",
+        {
+          method: "POST",
+          body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+        },
+      );
+      await fetch(uploadURL, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      });
+      return objectPath;
+    },
+  });
+}

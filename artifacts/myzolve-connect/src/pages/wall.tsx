@@ -1,5 +1,6 @@
 import { useParams, Link } from "wouter";
 import {
+  useMe,
   useCirclePosts,
   useCreateCirclePost,
   useDeleteCirclePost,
@@ -10,19 +11,34 @@ import {
   type CirclePost,
 } from "@/hooks/use-api";
 import { useGetCircle, getGetCircleQueryKey } from "@workspace/api-client-react";
-import { ArrowLeft, PenSquare, Trash2, Heart, MessageSquare, ChevronDown, ChevronUp, Send } from "lucide-react";
+import {
+  ArrowLeft,
+  PenSquare,
+  Trash2,
+  MessageSquare,
+  ChevronDown,
+  ChevronUp,
+  Send,
+  Heart,
+  ImagePlus,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { useAuth } from "@clerk/react";
-import { useQueryClient } from "@tanstack/react-query";
 
 const REACTION_TYPES = [
   { type: "heart", label: "❤️" },
@@ -69,9 +85,7 @@ function CommentsSection({ circleId, postId }: { circleId: number; postId: numbe
     if (!commentText.trim()) return;
     createComment.mutate(
       { body: commentText.trim() },
-      {
-        onSuccess: () => setCommentText(""),
-      },
+      { onSuccess: () => setCommentText("") },
     );
   }
 
@@ -112,7 +126,12 @@ function CommentsSection({ circleId, postId }: { circleId: number; postId: numbe
               onChange={(e) => setCommentText(e.target.value)}
               placeholder="Write a comment..."
               className="rounded-xl text-sm h-9"
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSubmit()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
             />
             <Button
               size="sm"
@@ -137,13 +156,14 @@ function PostCard({
 }: {
   post: CirclePost;
   circleId: number;
-  myUserId: number | null | undefined;
+  myUserId: number | undefined;
   isAdmin: boolean;
 }) {
   const deletePost = useDeleteCirclePost(circleId);
   const { toast } = useToast();
+  const canDelete = myUserId !== undefined && (post.authorUserId === myUserId || isAdmin);
 
-  const canDelete = post.authorUserId === myUserId || isAdmin;
+  const avatarSrc = undefined;
 
   function handleDelete() {
     deletePost.mutate(post.id, {
@@ -159,6 +179,7 @@ function PostCard({
           <div className="flex items-center gap-3">
             <Link href={`/profile/${post.authorUserId}`}>
               <Avatar className="w-9 h-9 cursor-pointer">
+                {avatarSrc && <AvatarImage src={avatarSrc} alt={post.authorName} />}
                 <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
                   {post.authorName.charAt(0)}
                 </AvatarFallback>
@@ -189,6 +210,14 @@ function PostCard({
         {post.title && <h3 className="font-semibold text-foreground">{post.title}</h3>}
         <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">{post.body}</p>
 
+        {post.imageObjectPath && (
+          <img
+            src={`/api/storage/objects${post.imageObjectPath}`}
+            alt="Post attachment"
+            className="rounded-2xl w-full object-cover max-h-80"
+          />
+        )}
+
         <div className="space-y-3 pt-1">
           <ReactionBar circleId={circleId} postId={post.id} />
           <CommentsSection circleId={circleId} postId={post.id} />
@@ -198,39 +227,71 @@ function PostCard({
   );
 }
 
-export default function WallPage() {
-  const { id } = useParams<{ id: string }>();
-  const circleId = parseInt(id!);
-  const { userId: clerkId } = useAuth();
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  const { data: circle } = useGetCircle(circleId, {
-    query: { enabled: !!circleId, queryKey: getGetCircleQueryKey(circleId) },
-  });
-  const { data: posts, isLoading } = useCirclePosts(circleId);
+function ComposeDialog({
+  open,
+  onOpenChange,
+  circleId,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  circleId: number;
+}) {
   const createPost = useCreateCirclePost(circleId);
-
-  const [newPostOpen, setNewPostOpen] = useState(false);
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
-  const isAdmin = circle?.myRole === "owner" || circle?.myRole === "admin";
+  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  }
 
-  // We need the numeric DB userId; the api-client-react getMe returns it
-  const [myUserId, setMyUserId] = useState<number | null>(null);
-  const meData = queryClient.getQueryData<{ id: number }>(["/api/me"]);
-  if (meData?.id && myUserId === null) setMyUserId(meData.id);
+  function clearImage() {
+    setImageFile(null);
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
 
-  function handleCreatePost() {
+  async function handleCreate() {
     if (!body.trim()) return;
+
+    let imageObjectPath: string | undefined;
+
+    if (imageFile) {
+      setUploading(true);
+      try {
+        const res = await fetch("/api/storage/avatar/request-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ name: imageFile.name, size: imageFile.size, contentType: imageFile.type }),
+        });
+        if (!res.ok) throw new Error("Upload URL failed");
+        const { uploadURL, objectPath } = await res.json() as { uploadURL: string; objectPath: string };
+        await fetch(uploadURL, { method: "PUT", body: imageFile, headers: { "Content-Type": imageFile.type } });
+        imageObjectPath = objectPath;
+      } catch {
+        toast({ title: "Could not upload image", variant: "destructive" });
+        setUploading(false);
+        return;
+      }
+      setUploading(false);
+    }
+
     createPost.mutate(
-      { title: title.trim() || undefined, body: body.trim() },
+      { title: title.trim() || undefined, body: body.trim(), imageObjectPath },
       {
         onSuccess: () => {
-          setNewPostOpen(false);
+          onOpenChange(false);
           setTitle("");
           setBody("");
+          clearImage();
           toast({ title: "Post shared" });
         },
         onError: () => toast({ title: "Could not share post", variant: "destructive" }),
@@ -238,10 +299,87 @@ export default function WallPage() {
     );
   }
 
+  const isBusy = uploading || createPost.isPending;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px] rounded-3xl">
+        <DialogHeader>
+          <DialogTitle>New Post</DialogTitle>
+          <DialogDescription>Share something with your circle.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 pt-2">
+          <Input
+            placeholder="Title (optional)"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="rounded-xl"
+          />
+          <Textarea
+            placeholder="What's on your mind?"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            rows={5}
+            className="resize-none rounded-xl"
+          />
+
+          {imagePreview ? (
+            <div className="relative">
+              <img src={imagePreview} alt="Preview" className="rounded-2xl w-full object-cover max-h-52" />
+              <Button
+                variant="secondary"
+                size="icon"
+                className="absolute top-2 right-2 h-7 w-7 rounded-full"
+                onClick={clearImage}
+              >
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ImagePlus className="w-4 h-4" /> Add a photo
+            </button>
+          )}
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" className="rounded-full" onClick={() => onOpenChange(false)} disabled={isBusy}>
+              Cancel
+            </Button>
+            <Button className="rounded-full" disabled={!body.trim() || isBusy} onClick={handleCreate}>
+              {isBusy ? "Posting..." : "Share with circle"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export default function WallPage() {
+  const { id } = useParams<{ id: string }>();
+  const circleId = parseInt(id!);
+
+  const { data: me } = useMe();
+  const { data: circle } = useGetCircle(circleId, {
+    query: { enabled: !!circleId, queryKey: getGetCircleQueryKey(circleId) },
+  });
+  const { data: posts, isLoading } = useCirclePosts(circleId);
+  const [newPostOpen, setNewPostOpen] = useState(false);
+
+  const isAdmin = circle?.myRole === "owner" || circle?.myRole === "admin";
+
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in duration-500">
       <div className="flex items-center gap-2">
-        <Link href={`/circles/${circleId}`} className="text-muted-foreground hover:text-foreground inline-flex items-center text-sm font-medium transition-colors">
+        <Link
+          href={`/circles/${circleId}`}
+          className="text-muted-foreground hover:text-foreground inline-flex items-center text-sm font-medium transition-colors"
+        >
           <ArrowLeft className="w-4 h-4 mr-1" /> Back to Circle
         </Link>
       </div>
@@ -295,48 +433,14 @@ export default function WallPage() {
               key={post.id}
               post={post}
               circleId={circleId}
-              myUserId={myUserId}
+              myUserId={me?.id}
               isAdmin={isAdmin}
             />
           ))}
         </div>
       )}
 
-      <Dialog open={newPostOpen} onOpenChange={setNewPostOpen}>
-        <DialogContent className="sm:max-w-[500px] rounded-3xl">
-          <DialogHeader>
-            <DialogTitle>New Post</DialogTitle>
-            <DialogDescription>Share something with your circle.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 pt-2">
-            <Input
-              placeholder="Title (optional)"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="rounded-xl"
-            />
-            <Textarea
-              placeholder="What's on your mind?"
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              rows={5}
-              className="resize-none rounded-xl"
-            />
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" className="rounded-full" onClick={() => setNewPostOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                className="rounded-full"
-                disabled={!body.trim() || createPost.isPending}
-                onClick={handleCreatePost}
-              >
-                {createPost.isPending ? "Posting..." : "Share with circle"}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ComposeDialog open={newPostOpen} onOpenChange={setNewPostOpen} circleId={circleId} />
     </div>
   );
 }

@@ -32,6 +32,7 @@ import {
   useDisputes,
   useResolveDispute,
   useAuditLogs,
+  useCirclePosts,
 } from "@/hooks/use-api";
 
 interface DisputeResolution {
@@ -51,6 +52,33 @@ const placeholderSchema = z.object({
   email: z.string().email().optional().or(z.literal("")),
   notes: z.string().max(500).optional(),
 });
+
+function LatestWallPostPreview({ circleId }: { circleId: number }) {
+  const { data: posts } = useCirclePosts(circleId);
+  const latest = posts?.[0];
+
+  if (!latest) return null;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Latest from the Wall</h2>
+        <Link href={`/circles/${circleId}/wall`} className="text-sm text-primary hover:underline font-medium">
+          View all
+        </Link>
+      </div>
+      <Link href={`/circles/${circleId}/wall`}>
+        <Card className="rounded-3xl border-border/50 shadow-none hover:shadow-md transition-shadow cursor-pointer">
+          <CardContent className="p-5">
+            <p className="text-xs text-muted-foreground mb-1">{latest.authorName}</p>
+            {latest.title && <p className="font-semibold text-sm mb-1">{latest.title}</p>}
+            <p className="text-sm text-foreground/80 line-clamp-3 leading-relaxed">{latest.body}</p>
+          </CardContent>
+        </Card>
+      </Link>
+    </div>
+  );
+}
 
 const connectionSchema = z.object({
   receiverCircleId: z.coerce.number().int().positive("Enter a valid circle ID"),
@@ -385,6 +413,9 @@ export default function CircleDetailPage() {
           </Card>
         </Link>
       </div>
+
+      {/* Latest Wall Post Preview */}
+      <LatestWallPostPreview circleId={circleId} />
 
       {/* Placeholder Members */}
       <div className="space-y-4">

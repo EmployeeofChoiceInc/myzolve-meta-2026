@@ -1,4 +1,3 @@
-import { useGetMe, useUpdateMe } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -6,13 +5,20 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
-import { useNotificationPreferences, useUpdateNotificationPreferences } from "@/hooks/use-api";
+import {
+  useMe,
+  useUpdateMe,
+  useAvatarUpload,
+  useNotificationPreferences,
+  useUpdateNotificationPreferences,
+} from "@/hooks/use-api";
+import { Camera } from "lucide-react";
 
 const profileFormSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -48,12 +54,9 @@ function NotificationPreferencesCard() {
   };
 
   const handleToggle = (key: string, enabled: boolean) => {
-    updatePrefs.mutate(
-      [{ notificationType: key, enabled }],
-      {
-        onError: () => toast({ title: "Failed to update preference", variant: "destructive" }),
-      },
-    );
+    updatePrefs.mutate([{ notificationType: key, enabled }], {
+      onError: () => toast({ title: "Failed to update preference", variant: "destructive" }),
+    });
   };
 
   if (isLoading) {
@@ -78,12 +81,12 @@ function NotificationPreferencesCard() {
         {NOTIFICATION_TYPES.map((type) => (
           <div key={type.key} className="flex items-center justify-between py-3 border-b border-border/40 last:border-0">
             <div className="flex-1 min-w-0 pr-4">
-              <p className="text-sm font-medium leading-none">{type.label}</p>
-              <p className="text-xs text-muted-foreground mt-1">{type.description}</p>
+              <p className="font-medium text-sm">{type.label}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{type.description}</p>
             </div>
             <Switch
               checked={getEnabled(type.key)}
-              onCheckedChange={(checked) => handleToggle(type.key, checked)}
+              onCheckedChange={(enabled) => handleToggle(type.key, enabled)}
               disabled={updatePrefs.isPending}
             />
           </div>
@@ -94,11 +97,13 @@ function NotificationPreferencesCard() {
 }
 
 export default function SettingsPage() {
-  const { data: profile, isLoading } = useGetMe();
+  const { data: profile, isLoading } = useMe();
   const updateMe = useUpdateMe();
+  const avatarUpload = useAvatarUpload();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const initialized = useRef(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   const form = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
@@ -115,34 +120,72 @@ export default function SettingsPage() {
   useEffect(() => {
     if (profile && !initialized.current) {
       form.reset({
-        firstName: profile.firstName || "",
-        lastName: profile.lastName || "",
-        displayName: profile.displayName || "",
-        timezone: profile.timezone || "UTC",
-        bio: (profile as unknown as { bio?: string }).bio || "",
-        location: (profile as unknown as { location?: string }).location || "",
+        firstName: profile.firstName ?? "",
+        lastName: profile.lastName ?? "",
+        displayName: profile.displayName ?? "",
+        timezone: profile.timezone ?? "UTC",
+        bio: profile.bio ?? "",
+        location: profile.location ?? "",
       });
       initialized.current = true;
     }
   }, [profile, form]);
 
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const previewUrl = URL.createObjectURL(file);
+    setAvatarPreview(previewUrl);
+
+    avatarUpload.mutate(file, {
+      onSuccess: (objectPath) => {
+        updateMe.mutate(
+          { avatarObjectPath: objectPath },
+          {
+            onSuccess: () => toast({ title: "Photo updated" }),
+            onError: () => {
+              toast({ title: "Could not save photo", variant: "destructive" });
+              setAvatarPreview(null);
+            },
+          },
+        );
+      },
+      onError: () => {
+        toast({ title: "Could not upload photo", variant: "destructive" });
+        setAvatarPreview(null);
+      },
+    });
+  }
+
   function onSubmit(values: z.infer<typeof profileFormSchema>) {
-    updateMe.mutate({
-      data: values
-    }, {
-      onSuccess: (updatedProfile) => {
+    updateMe.mutate(values, {
+      onSuccess: () => {
         toast({ title: "Profile updated", description: "Your changes have been saved successfully." });
-        queryClient.setQueryData(['/api/me'], updatedProfile);
       },
       onError: () => {
         toast({ title: "Error", description: "Could not update profile.", variant: "destructive" });
-      }
+      },
     });
   }
 
   if (isLoading) {
-    return <div className="p-8 animate-pulse"><div className="h-8 bg-muted w-1/4 rounded mb-8"></div><div className="h-96 bg-muted rounded-3xl max-w-2xl"></div></div>;
+    return (
+      <div className="p-8 animate-pulse">
+        <div className="h-8 bg-muted w-1/4 rounded mb-8" />
+        <div className="h-96 bg-muted rounded-3xl max-w-2xl" />
+      </div>
+    );
   }
+
+  const initials = (profile?.displayName ?? "?")
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  const avatarSrc = avatarPreview ?? (profile?.avatarObjectPath ? `/api/storage/objects${profile.avatarObjectPath}` : undefined);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 max-w-2xl mx-auto">
@@ -157,6 +200,34 @@ export default function SettingsPage() {
           <CardDescription>This is how you will appear to your trusted circles.</CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-6 flex items-center gap-4">
+            <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+              <Avatar className="w-20 h-20 border-2 border-border">
+                {avatarSrc && <AvatarImage src={avatarSrc} alt={profile?.displayName} />}
+                <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">{initials}</AvatarFallback>
+              </Avatar>
+              <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <Camera className="w-6 h-6 text-white" />
+              </div>
+              {avatarUpload.isPending && (
+                <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-medium">Profile photo</p>
+              <p className="text-xs text-muted-foreground">Click to upload. JPG, PNG, or WebP up to 5 MB.</p>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarChange}
+            />
+          </div>
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -187,7 +258,7 @@ export default function SettingsPage() {
                   )}
                 />
               </div>
-              
+
               <FormField
                 control={form.control}
                 name="displayName"
@@ -211,7 +282,7 @@ export default function SettingsPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Timezone</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger className="rounded-xl">
                           <SelectValue placeholder="Select a timezone" />
@@ -230,13 +301,15 @@ export default function SettingsPage() {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="bio"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Bio <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                    <FormLabel>
+                      Bio <span className="text-muted-foreground font-normal">(optional)</span>
+                    </FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="A little about yourself..."
@@ -257,7 +330,9 @@ export default function SettingsPage() {
                 name="location"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Location <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                    <FormLabel>
+                      Location <span className="text-muted-foreground font-normal">(optional)</span>
+                    </FormLabel>
                     <FormControl>
                       <Input placeholder="City, Country" {...field} className="rounded-xl" />
                     </FormControl>

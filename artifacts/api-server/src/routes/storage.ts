@@ -71,6 +71,44 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
 });
 
 /**
+ * POST /storage/avatar/request-url
+ *
+ * Request a presigned URL for avatar image upload.
+ * Only requires authentication — no circle membership check.
+ */
+router.post("/storage/avatar/request-url", requireAuth, async (req: Request, res: Response) => {
+  const userId = req.dbUser!.id;
+  const { name, size, contentType } = req.body as { name?: string; size?: number; contentType?: string };
+
+  if (!name || !size || !contentType) {
+    res.status(400).json({ error: "Missing required fields: name, size, contentType" });
+    return;
+  }
+
+  if (!contentType.startsWith("image/")) {
+    res.status(400).json({ error: "Only image files are allowed for avatars" });
+    return;
+  }
+
+  if (size > 5 * 1024 * 1024) {
+    res.status(400).json({ error: "Avatar image must be under 5 MB" });
+    return;
+  }
+
+  try {
+    const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+    const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+
+    registerPendingUpload(objectPath, userId, -1);
+
+    res.json({ uploadURL, objectPath, metadata: { name, size, contentType } });
+  } catch (error) {
+    logger.error({ err: error }, "Error generating avatar upload URL");
+    res.status(500).json({ error: "Failed to generate upload URL" });
+  }
+});
+
+/**
  * GET /storage/public-objects/*
  *
  * Serve public assets from PUBLIC_OBJECT_SEARCH_PATHS.
