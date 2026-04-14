@@ -537,3 +537,33 @@ export function useAvatarUpload() {
     },
   });
 }
+
+/**
+ * Converts a stored objectPath (e.g. /objects/abc123) to a serving URL via
+ * /api/storage/user-media/* — auth-gated, suitable for avatars and wall post images.
+ */
+export function objectPathToUrl(objectPath: string | null | undefined): string | undefined {
+  if (!objectPath) return undefined;
+  const stripped = objectPath.startsWith("/objects/") ? objectPath.slice("/objects/".length) : objectPath;
+  return `/api/storage/user-media/${stripped}`;
+}
+
+export function useCircleMediaUpload(circleId: number) {
+  return useMutation({
+    mutationFn: async (file: File): Promise<string> => {
+      const { uploadURL, objectPath } = await customFetch<{ uploadURL: string; objectPath: string }>(
+        "/api/storage/circle-media/request-url",
+        {
+          method: "POST",
+          body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type, circleId }),
+        },
+      );
+      await fetch(uploadURL, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      });
+      return objectPath;
+    },
+  });
+}

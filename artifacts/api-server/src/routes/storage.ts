@@ -109,6 +109,101 @@ router.post("/storage/avatar/request-url", requireAuth, async (req: Request, res
 });
 
 /**
+ * POST /storage/circle-media/request-url
+ *
+ * Request a presigned URL for a wall post image upload.
+ * Requires active circle membership.
+ */
+router.post("/storage/circle-media/request-url", requireAuth, async (req: Request, res: Response) => {
+  const userId = req.dbUser!.id;
+  const { name, size, contentType, circleId } = req.body as {
+    name?: string;
+    size?: number;
+    contentType?: string;
+    circleId?: number;
+  };
+
+  if (!name || !size || !contentType || !circleId) {
+    res.status(400).json({ error: "Missing required fields: name, size, contentType, circleId" });
+    return;
+  }
+
+  if (!contentType.startsWith("image/")) {
+    res.status(400).json({ error: "Only image files are allowed" });
+    return;
+  }
+
+  if (size > 10 * 1024 * 1024) {
+    res.status(400).json({ error: "Image must be under 10 MB" });
+    return;
+  }
+
+  const membership = await db
+    .select({ id: circleMembersTable.id })
+    .from(circleMembersTable)
+    .where(
+      and(
+        eq(circleMembersTable.circleId, circleId),
+        eq(circleMembersTable.userId, userId),
+        eq(circleMembersTable.status, "active"),
+      ),
+    )
+    .limit(1)
+    .then((r) => r[0] ?? null);
+
+  if (!membership) {
+    res.status(403).json({ error: "You must be a member of this circle to upload media" });
+    return;
+  }
+
+  try {
+    const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+    const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+    registerPendingUpload(objectPath, userId, circleId);
+    res.json({ uploadURL, objectPath, metadata: { name, size, contentType } });
+  } catch (error) {
+    logger.error({ err: error }, "Error generating circle media upload URL");
+    res.status(500).json({ error: "Failed to generate upload URL" });
+  }
+});
+
+/**
+ * GET /storage/user-media/*
+ *
+ * Serve stored objects that are user-profile or circle-media scoped.
+ * Requires authentication. No per-circle ACL check — access is governed
+ * at the API layer (profile visibility requires shared circle; wall access
+ * requires circle membership). Suitable for avatars and wall post images.
+ */
+router.get("/storage/user-media/*path", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const raw = req.params.path;
+    const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
+    const objectPath = `/objects/${wildcardPath}`;
+
+    const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
+    const response = await objectStorageService.downloadObject(objectFile);
+
+    res.status(response.status);
+    response.headers.forEach((value, key) => res.setHeader(key, value));
+
+    if (response.body) {
+      const nodeStream = Readable.fromWeb(response.body as ReadableStream<Uint8Array>);
+      nodeStream.pipe(res);
+    } else {
+      res.end();
+    }
+  } catch (error) {
+    if (error instanceof ObjectNotFoundError) {
+      res.status(404).json({ error: "Object not found" });
+      return;
+    }
+    logger.error({ err: error }, "Error serving user media object");
+    res.status(500).json({ error: "Failed to serve object" });
+  }
+});
+
+/**
  * GET /storage/public-objects/*
  *
  * Serve public assets from PUBLIC_OBJECT_SEARCH_PATHS.

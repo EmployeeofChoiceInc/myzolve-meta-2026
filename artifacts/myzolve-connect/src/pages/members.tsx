@@ -304,13 +304,17 @@ export default function MembersPage() {
                   {(members as CircleMember[] | undefined)?.map((member) => (
                     <div key={member.id} className="p-4 sm:px-6 flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <Avatar className="h-10 w-10 border">
-                          <AvatarFallback className="bg-primary/10 text-primary">
-                            {member.displayName?.charAt(0) || "U"}
-                          </AvatarFallback>
-                        </Avatar>
+                        <Link href={`/profile/${member.userId}`}>
+                          <Avatar className="h-10 w-10 border cursor-pointer">
+                            <AvatarFallback className="bg-primary/10 text-primary">
+                              {member.displayName?.charAt(0) || "U"}
+                            </AvatarFallback>
+                          </Avatar>
+                        </Link>
                         <div>
-                          <p className="font-medium text-foreground">{member.displayName}</p>
+                          <Link href={`/profile/${member.userId}`}>
+                            <p className="font-medium text-foreground hover:underline cursor-pointer">{member.displayName}</p>
+                          </Link>
                           <p className="text-sm text-muted-foreground">{member.email}</p>
                         </div>
                       </div>

@@ -17,6 +17,7 @@ import {
   useAvatarUpload,
   useNotificationPreferences,
   useUpdateNotificationPreferences,
+  objectPathToUrl,
 } from "@/hooks/use-api";
 import { Camera } from "lucide-react";
 
@@ -185,7 +186,7 @@ export default function SettingsPage() {
     .toUpperCase()
     .slice(0, 2);
 
-  const avatarSrc = avatarPreview ?? (profile?.avatarObjectPath ? `/api/storage/objects${profile.avatarObjectPath}` : undefined);
+  const avatarSrc = avatarPreview ?? objectPathToUrl(profile?.avatarObjectPath);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 max-w-2xl mx-auto">

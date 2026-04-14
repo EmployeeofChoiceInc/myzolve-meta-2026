@@ -1,5 +1,5 @@
 import { useParams, Link } from "wouter";
-import { useUserProfile } from "@/hooks/use-api";
+import { useUserProfile, objectPathToUrl } from "@/hooks/use-api";
 import { ArrowLeft, MapPin, Users, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -55,9 +55,7 @@ export default function ProfilePage() {
     .toUpperCase()
     .slice(0, 2);
 
-  const avatarSrc = profile.avatarObjectPath
-    ? `/api/storage/objects${profile.avatarObjectPath}`
-    : undefined;
+  const avatarSrc = objectPathToUrl(profile.avatarObjectPath);
 
   return (
     <div className="max-w-xl mx-auto space-y-6 animate-in fade-in duration-500">

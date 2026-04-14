@@ -8,6 +8,8 @@ import {
   useToggleReaction,
   useComments,
   useCreateComment,
+  useCircleMediaUpload,
+  objectPathToUrl,
   type CirclePost,
 } from "@/hooks/use-api";
 import { useGetCircle, getGetCircleQueryKey } from "@workspace/api-client-react";
@@ -25,7 +27,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -106,13 +108,17 @@ function CommentsSection({ circleId, postId }: { circleId: number; postId: numbe
         <div className="space-y-3 pl-2 border-l-2 border-border/40">
           {comments?.map((c) => (
             <div key={c.id} className="flex gap-2">
-              <Avatar className="w-7 h-7 shrink-0">
-                <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                  {c.authorName.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
+              <Link href={`/profile/${c.authorUserId ?? ""}`}>
+                <Avatar className="w-7 h-7 shrink-0 cursor-pointer">
+                  <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                    {c.authorName.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+              </Link>
               <div>
-                <p className="text-xs font-medium text-foreground">{c.authorName}</p>
+                <Link href={`/profile/${c.authorUserId ?? ""}`}>
+                  <p className="text-xs font-medium text-foreground hover:underline cursor-pointer">{c.authorName}</p>
+                </Link>
                 <p className="text-sm text-foreground/80">{c.body}</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">
                   {formatDistanceToNow(new Date(c.createdAt), { addSuffix: true })}
@@ -162,8 +168,7 @@ function PostCard({
   const deletePost = useDeleteCirclePost(circleId);
   const { toast } = useToast();
   const canDelete = myUserId !== undefined && (post.authorUserId === myUserId || isAdmin);
-
-  const avatarSrc = undefined;
+  const imageUrl = objectPathToUrl(post.imageObjectPath);
 
   function handleDelete() {
     deletePost.mutate(post.id, {
@@ -179,7 +184,6 @@ function PostCard({
           <div className="flex items-center gap-3">
             <Link href={`/profile/${post.authorUserId}`}>
               <Avatar className="w-9 h-9 cursor-pointer">
-                {avatarSrc && <AvatarImage src={avatarSrc} alt={post.authorName} />}
                 <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
                   {post.authorName.charAt(0)}
                 </AvatarFallback>
@@ -210,9 +214,9 @@ function PostCard({
         {post.title && <h3 className="font-semibold text-foreground">{post.title}</h3>}
         <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">{post.body}</p>
 
-        {post.imageObjectPath && (
+        {imageUrl && (
           <img
-            src={`/api/storage/objects${post.imageObjectPath}`}
+            src={imageUrl}
             alt="Post attachment"
             className="rounded-2xl w-full object-cover max-h-80"
           />
@@ -237,13 +241,13 @@ function ComposeDialog({
   circleId: number;
 }) {
   const createPost = useCreateCirclePost(circleId);
+  const circleMediaUpload = useCircleMediaUpload(circleId);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
 
   function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -258,48 +262,36 @@ function ComposeDialog({
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  async function handleCreate() {
+  function handleCreate() {
     if (!body.trim()) return;
 
-    let imageObjectPath: string | undefined;
+    const doCreate = (imageObjectPath?: string) => {
+      createPost.mutate(
+        { title: title.trim() || undefined, body: body.trim(), imageObjectPath },
+        {
+          onSuccess: () => {
+            onOpenChange(false);
+            setTitle("");
+            setBody("");
+            clearImage();
+            toast({ title: "Post shared" });
+          },
+          onError: () => toast({ title: "Could not share post", variant: "destructive" }),
+        },
+      );
+    };
 
     if (imageFile) {
-      setUploading(true);
-      try {
-        const res = await fetch("/api/storage/avatar/request-url", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ name: imageFile.name, size: imageFile.size, contentType: imageFile.type }),
-        });
-        if (!res.ok) throw new Error("Upload URL failed");
-        const { uploadURL, objectPath } = await res.json() as { uploadURL: string; objectPath: string };
-        await fetch(uploadURL, { method: "PUT", body: imageFile, headers: { "Content-Type": imageFile.type } });
-        imageObjectPath = objectPath;
-      } catch {
-        toast({ title: "Could not upload image", variant: "destructive" });
-        setUploading(false);
-        return;
-      }
-      setUploading(false);
+      circleMediaUpload.mutate(imageFile, {
+        onSuccess: (objectPath) => doCreate(objectPath),
+        onError: () => toast({ title: "Could not upload image", variant: "destructive" }),
+      });
+    } else {
+      doCreate();
     }
-
-    createPost.mutate(
-      { title: title.trim() || undefined, body: body.trim(), imageObjectPath },
-      {
-        onSuccess: () => {
-          onOpenChange(false);
-          setTitle("");
-          setBody("");
-          clearImage();
-          toast({ title: "Post shared" });
-        },
-        onError: () => toast({ title: "Could not share post", variant: "destructive" }),
-      },
-    );
   }
 
-  const isBusy = uploading || createPost.isPending;
+  const isBusy = circleMediaUpload.isPending || createPost.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -331,6 +323,7 @@ function ComposeDialog({
                 size="icon"
                 className="absolute top-2 right-2 h-7 w-7 rounded-full"
                 onClick={clearImage}
+                disabled={isBusy}
               >
                 <X className="w-3.5 h-3.5" />
               </Button>
