@@ -10,3 +10,4 @@ export * from "./placeholders";
 export * from "./connections";
 export * from "./attachments";
 export * from "./audit";
+export * from "./messages";

@@ -3,8 +3,8 @@ import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
 import { validateBody, validateParams, validateQuery, paginationQuery } from "../middlewares/validate";
 import { db } from "@workspace/db";
-import { notificationsTable, notificationPreferencesTable } from "@workspace/db";
-import { eq, and, desc, count } from "drizzle-orm";
+import { notificationsTable, notificationPreferencesTable, directMessagesTable } from "@workspace/db";
+import { eq, and, desc, count, isNull } from "drizzle-orm";
 
 const router = Router();
 
@@ -71,12 +71,21 @@ router.get("/notifications", requireAuth, validateQuery(paginationQuery), async 
 router.get("/notifications/unread-count", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
 
-  const rows = await db
-    .select()
-    .from(notificationsTable)
-    .where(and(eq(notificationsTable.userId, userId), eq(notificationsTable.isRead, false)));
+  const [notifRows, msgRows] = await Promise.all([
+    db
+      .select({ cnt: count() })
+      .from(notificationsTable)
+      .where(and(eq(notificationsTable.userId, userId), eq(notificationsTable.isRead, false))),
+    db
+      .select({ cnt: count() })
+      .from(directMessagesTable)
+      .where(and(eq(directMessagesTable.recipientUserId, userId), isNull(directMessagesTable.readAt))),
+  ]);
 
-  res.json({ unreadCount: rows.length });
+  const notifCount = Number(notifRows[0]?.cnt ?? 0);
+  const msgCount = Number(msgRows[0]?.cnt ?? 0);
+
+  res.json({ unreadCount: notifCount + msgCount, unreadMessages: msgCount });
 });
 
 router.post(

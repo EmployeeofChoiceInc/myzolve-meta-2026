@@ -24,6 +24,7 @@ import NotificationsPage from "@/pages/notifications";
 import DiscoverPage from "@/pages/discover";
 import ProfilePage from "@/pages/profile";
 import WallPage from "@/pages/wall";
+import MessagesPage from "@/pages/messages";
 
 const queryClient = new QueryClient();
 
@@ -143,6 +144,8 @@ function ClerkProviderWithRoutes() {
           <Route path="/discover"><ProtectedRoute component={DiscoverPage} /></Route>
           <Route path="/circles/:id/wall"><ProtectedRoute component={WallPage} /></Route>
           <Route path="/profile/:userId"><ProtectedRoute component={ProfilePage} /></Route>
+          <Route path="/messages/:userId"><ProtectedRoute component={MessagesPage} /></Route>
+          <Route path="/messages"><ProtectedRoute component={MessagesPage} /></Route>
           <Route path="/invite/:token" component={InviteAcceptPage} />
           <Route component={NotFound} />
         </Switch>

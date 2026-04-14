@@ -1,6 +1,6 @@
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { useUserProfile, objectPathToUrl } from "@/hooks/use-api";
-import { ArrowLeft, MapPin, Users, Calendar } from "lucide-react";
+import { ArrowLeft, MapPin, Users, Calendar, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -11,6 +11,7 @@ import { format } from "date-fns";
 export default function ProfilePage() {
   const { userId } = useParams<{ userId: string }>();
   const targetUserId = parseInt(userId!);
+  const [, navigate] = useLocation();
   const { data: profile, isLoading, isError } = useUserProfile(isNaN(targetUserId) ? null : targetUserId);
 
   if (isLoading) {
@@ -67,13 +68,21 @@ export default function ProfilePage() {
       <Card className="rounded-3xl border-border/50 shadow-none overflow-hidden">
         <div className="h-20 bg-gradient-to-br from-primary/20 to-secondary/20" />
         <CardContent className="p-6 pt-0">
-          <div className="flex items-end gap-4 -mt-10 mb-4">
+          <div className="flex items-end justify-between gap-4 -mt-10 mb-4">
             <Avatar className="w-20 h-20 border-4 border-background shadow-sm">
               {avatarSrc && <AvatarImage src={avatarSrc} alt={profile.displayName} />}
               <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
                 {initials}
               </AvatarFallback>
             </Avatar>
+            <Button
+              className="rounded-full gap-2 mb-1"
+              variant="outline"
+              onClick={() => navigate(`/messages/${profile.id}`)}
+            >
+              <MessageCircle className="w-4 h-4" />
+              Message
+            </Button>
           </div>
           <div className="space-y-3">
             <div>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Compass, Users, Lock, UserCheck } from "lucide-react";
+import { Compass, Users, Lock, UserCheck, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -103,6 +103,13 @@ function CircleCard({ circle }: { circle: DiscoverableCircle }) {
               Request to Join
             </Button>
           )}
+          <Button
+            className="rounded-full w-full"
+            variant="ghost"
+            onClick={() => navigate(`/messages/${circle.ownerId}`)}
+          >
+            <MessageCircle className="w-4 h-4 mr-2" /> Message Creator
+          </Button>
         </CardContent>
       </Card>
 

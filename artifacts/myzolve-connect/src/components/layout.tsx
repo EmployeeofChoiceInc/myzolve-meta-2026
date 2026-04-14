@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Heart, Home, Users, Bell, Settings, LogOut, Menu, Check, Compass } from "lucide-react";
+import { Heart, Home, Users, Bell, Settings, LogOut, Menu, Check, Compass, MessageCircle } from "lucide-react";
 import { useClerk, useUser } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useUnreadCount, useNotifications, useMarkNotificationRead } from "@/hooks/use-api";
+import { useUnreadCount, useMessageInbox, useNotifications, useMarkNotificationRead } from "@/hooks/use-api";
 import { formatDistanceToNow } from "date-fns";
 
 const notificationTypeLabel: Record<string, string> = {
@@ -100,19 +100,41 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { signOut } = useClerk();
   const { user } = useUser();
+  const { data: inbox } = useMessageInbox();
+  const unreadMessages = (inbox ?? []).reduce((acc, t) => acc + t.unreadCount, 0);
 
-  const navItems = [
+  type NavItem = {
+    icon: typeof Home;
+    label: string;
+    href: string;
+    badge?: number;
+  };
+
+  const navItems: NavItem[] = [
     { icon: Home, label: "Home", href: "/dashboard" },
     { icon: Users, label: "My Circles", href: "/circles" },
     { icon: Compass, label: "Find a Circle", href: "/discover" },
+    { icon: MessageCircle, label: "Messages", href: "/messages", badge: unreadMessages },
   ];
 
   const NavLinks = () => (
     <>
       {navItems.map((item) => (
-        <Link key={item.href} href={item.href} className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-colors ${location === item.href ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
-          <item.icon className="w-5 h-5" />
+        <Link key={item.href} href={item.href} className={`relative flex items-center gap-3 px-3 py-2 rounded-xl transition-colors ${location.startsWith(item.href) && item.href !== "/dashboard" ? "bg-primary/10 text-primary font-medium" : location === item.href ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
+          <div className="relative">
+            <item.icon className="w-5 h-5" />
+            {(item.badge ?? 0) > 0 && (
+              <span className="absolute -top-1 -right-1 h-3.5 min-w-3.5 px-0.5 text-[9px] font-bold flex items-center justify-center rounded-full bg-primary text-primary-foreground">
+                {(item.badge ?? 0) > 9 ? "9+" : item.badge}
+              </span>
+            )}
+          </div>
           {item.label}
+          {(item.badge ?? 0) > 0 && (
+            <Badge className="ml-auto h-4 min-w-4 px-1 text-[10px] rounded-full bg-primary">
+              {(item.badge ?? 0) > 9 ? "9+" : item.badge}
+            </Badge>
+          )}
         </Link>
       ))}
     </>
