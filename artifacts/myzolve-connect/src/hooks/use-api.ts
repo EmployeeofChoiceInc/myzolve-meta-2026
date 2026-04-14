@@ -380,12 +380,12 @@ export function useCreateJoinRequest(circleId: number) {
   });
 }
 
-export function useJoinRequests(circleId: number) {
+export function useJoinRequests(circleId: number, enabled = true) {
   return useQuery({
     queryKey: ["join-requests", circleId],
     queryFn: () =>
       customFetch<JoinRequest[]>(`/api/circles/${circleId}/join-requests`),
-    enabled: !!circleId,
+    enabled: !!circleId && enabled,
   });
 }
 

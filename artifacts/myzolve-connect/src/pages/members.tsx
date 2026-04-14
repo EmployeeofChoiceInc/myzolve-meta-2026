@@ -79,7 +79,7 @@ export default function MembersPage() {
   const myRole = circle?.myRole;
   const isAdminOrOwner = myRole === "owner" || myRole === "admin";
 
-  const { data: joinRequests } = useJoinRequests(circleId);
+  const { data: joinRequests } = useJoinRequests(circleId, isAdminOrOwner);
 
   function handleRevokeInvitation(invitationId: number) {
     revokeInvitation.mutate(

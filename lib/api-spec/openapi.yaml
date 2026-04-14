@@ -289,6 +289,123 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  # ── Discovery & Join Requests ──────────────────────────────────────────────
+  /circles/discover:
+    get:
+      operationId: discoverCircles
+      tags: [circles]
+      summary: List open and community circles the caller can discover
+      security: [{ clerk: [] }]
+      responses:
+        "200":
+          description: List of discoverable circles with caller membership state
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DiscoverableCircle"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /circles/{circleId}/join-request:
+    post:
+      operationId: createJoinRequest
+      tags: [circles]
+      summary: Request to join an open or community circle
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateJoinRequestBody"
+      responses:
+        "201":
+          description: Join request created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JoinRequest"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Already a member or request already pending
+
+  /circles/{circleId}/join-requests:
+    get:
+      operationId: listJoinRequests
+      tags: [circles]
+      summary: List pending join requests for a circle (owner/admin only)
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      responses:
+        "200":
+          description: List of pending join requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JoinRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /circles/{circleId}/join-requests/{requestId}/approve:
+    post:
+      operationId: approveJoinRequest
+      tags: [circles]
+      summary: Approve a pending join request (owner/admin only)
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Request approved and membership created
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /circles/{circleId}/join-requests/{requestId}/decline:
+    post:
+      operationId: declineJoinRequest
+      tags: [circles]
+      summary: Decline a pending join request (owner/admin only)
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Request declined
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   # ── Invitations ────────────────────────────────────────────────────────────
   /circles/{circleId}/invitations:
     get:
@@ -2205,6 +2322,83 @@ components:
         - role
         - status
         - token
+        - createdAt
+
+    DiscoverableCircle:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        circleType:
+          type: string
+          enum: [family, chosen_family, friends, caregiving_circle, neighborhood_circle, other]
+        description:
+          type: ["string", "null"]
+        currency:
+          type: string
+        privacyMode:
+          type: string
+          enum: [open, community]
+        ownerId:
+          type: integer
+        creatorName:
+          type: ["string", "null"]
+        memberCount:
+          type: integer
+        isMember:
+          type: boolean
+        joinRequestStatus:
+          type: ["string", "null"]
+          enum: [pending, approved, declined, null]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - circleType
+        - currency
+        - privacyMode
+        - ownerId
+        - memberCount
+        - isMember
+        - createdAt
+
+    CreateJoinRequestBody:
+      type: object
+      properties:
+        note:
+          type: string
+          maxLength: 500
+
+    JoinRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+        circleId:
+          type: integer
+        userId:
+          type: integer
+        requesterName:
+          type: ["string", "null"]
+        requesterEmail:
+          type: ["string", "null"]
+        note:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, approved, declined]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - circleId
+        - userId
+        - status
         - createdAt
 
     CircleConnection:
