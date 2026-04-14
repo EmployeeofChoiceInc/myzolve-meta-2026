@@ -10,6 +10,7 @@ import {
 } from "@workspace/db";
 import { eq, and, desc, count } from "drizzle-orm";
 import { assertCircleMember } from "../lib/helpers";
+import { validateAndConsumePendingUpload } from "../lib/uploadTokens";
 
 const router = Router();
 
@@ -98,6 +99,16 @@ router.post(
     if (!member) {
       res.status(404).json({ error: "Circle not found" });
       return;
+    }
+
+    if (imageObjectPath !== undefined) {
+      const valid = validateAndConsumePendingUpload(imageObjectPath, userId, circleId);
+      if (!valid) {
+        res.status(400).json({
+          error: "Invalid image: the upload token is missing, expired, or does not belong to this circle. Please re-upload your photo.",
+        });
+        return;
+      }
     }
 
     const [post] = await db
