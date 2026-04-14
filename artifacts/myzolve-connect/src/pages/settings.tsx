@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useForm } from "react-hook-form";
@@ -18,6 +19,8 @@ const profileFormSchema = z.object({
   lastName: z.string().optional(),
   displayName: z.string().min(2, "Display name must be at least 2 characters"),
   timezone: z.string().min(1, "Timezone is required"),
+  bio: z.string().max(500).optional(),
+  location: z.string().max(200).optional(),
 });
 
 const NOTIFICATION_TYPES = [
@@ -104,6 +107,8 @@ export default function SettingsPage() {
       lastName: "",
       displayName: "",
       timezone: "UTC",
+      bio: "",
+      location: "",
     },
   });
 
@@ -114,6 +119,8 @@ export default function SettingsPage() {
         lastName: profile.lastName || "",
         displayName: profile.displayName || "",
         timezone: profile.timezone || "UTC",
+        bio: (profile as unknown as { bio?: string }).bio || "",
+        location: (profile as unknown as { location?: string }).location || "",
       });
       initialized.current = true;
     }
@@ -224,6 +231,41 @@ export default function SettingsPage() {
                 )}
               />
               
+              <FormField
+                control={form.control}
+                name="bio"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Bio <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="A little about yourself..."
+                        className="resize-none rounded-xl"
+                        rows={3}
+                        maxLength={500}
+                        {...field}
+                      />
+                    </FormControl>
+                    <CardDescription className="text-xs mt-1">Visible to circle members who view your profile.</CardDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                    <FormControl>
+                      <Input placeholder="City, Country" {...field} className="rounded-xl" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <div className="pt-4 border-t border-border/50 flex justify-end">
                 <Button type="submit" disabled={updateMe.isPending} className="rounded-full">
                   {updateMe.isPending ? "Saving..." : "Save Changes"}

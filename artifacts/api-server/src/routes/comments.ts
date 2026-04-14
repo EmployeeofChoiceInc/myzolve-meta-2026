@@ -11,6 +11,7 @@ import {
   circleMembersTable,
   supportRequestsTable,
   servicePostsTable,
+  circlePostsTable,
 } from "@workspace/db";
 import { eq, and, desc, isNull, count, inArray } from "drizzle-orm";
 import { assertCircleMember, createNotification } from "../lib/helpers";
@@ -19,7 +20,7 @@ const router = Router();
 
 const entityParams = z.object({
   circleId: z.coerce.number().int().positive(),
-  entityType: z.enum(["support_request", "service_post"]),
+  entityType: z.enum(["support_request", "service_post", "circle_post"]),
   entityId: z.coerce.number().int().positive(),
 });
 
@@ -88,6 +89,16 @@ async function assertEntityInCircle(
       .then((r) => r[0] ?? null);
     if (!row) return null;
     return { ownerId: row.createdByUserId };
+  }
+  if (entityType === "circle_post") {
+    const row = await db
+      .select({ id: circlePostsTable.id, authorUserId: circlePostsTable.authorUserId })
+      .from(circlePostsTable)
+      .where(and(eq(circlePostsTable.id, entityId), eq(circlePostsTable.circleId, circleId)))
+      .limit(1)
+      .then((r) => r[0] ?? null);
+    if (!row) return null;
+    return { ownerId: row.authorUserId };
   }
   return null;
 }

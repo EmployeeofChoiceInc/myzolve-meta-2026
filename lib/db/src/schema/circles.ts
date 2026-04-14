@@ -119,3 +119,32 @@ export type InsertCircleJoinRequest = z.infer<
   typeof insertCircleJoinRequestSchema
 >;
 export type CircleJoinRequest = typeof circleJoinRequestsTable.$inferSelect;
+
+export const circlePostsTable = pgTable("circle_posts", {
+  id: serial("id").primaryKey(),
+  circleId: integer("circle_id")
+    .notNull()
+    .references(() => circlesTable.id, { onDelete: "cascade" }),
+  authorUserId: integer("author_user_id")
+    .notNull()
+    .references(() => usersTable.id, { onDelete: "cascade" }),
+  title: text("title"),
+  body: text("body").notNull(),
+  imageObjectPath: text("image_object_path"),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+export const insertCirclePostSchema = createInsertSchema(circlePostsTable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertCirclePost = z.infer<typeof insertCirclePostSchema>;
+export type CirclePost = typeof circlePostsTable.$inferSelect;

@@ -13,11 +13,13 @@ const updateProfileSchema = z.object({
   firstName: z.string().min(1).max(100).optional(),
   lastName: z.string().min(1).max(100).optional(),
   timezone: z.string().max(100).optional(),
+  bio: z.string().max(500).optional(),
+  location: z.string().max(200).optional(),
+  avatarObjectPath: z.string().max(1000).optional(),
 });
 
-router.get("/me", requireAuth, async (req, res) => {
-  const user = req.dbUser!;
-  res.json({
+function userToApi(user: typeof usersTable.$inferSelect) {
+  return {
     id: user.id,
     clerkId: user.clerkId,
     displayName: user.displayName,
@@ -25,13 +27,20 @@ router.get("/me", requireAuth, async (req, res) => {
     lastName: user.lastName,
     email: user.email,
     timezone: user.timezone,
+    bio: user.bio,
+    location: user.location,
+    avatarObjectPath: user.avatarObjectPath,
     createdAt: user.createdAt,
-  });
+  };
+}
+
+router.get("/me", requireAuth, async (req, res) => {
+  res.json(userToApi(req.dbUser!));
 });
 
 router.patch("/me", requireAuth, validateBody(updateProfileSchema), async (req, res) => {
   const user = req.dbUser!;
-  const { displayName, firstName, lastName, timezone } = req.body;
+  const { displayName, firstName, lastName, timezone, bio, location, avatarObjectPath } = req.body;
 
   const [updated] = await db
     .update(usersTable)
@@ -40,20 +49,14 @@ router.patch("/me", requireAuth, validateBody(updateProfileSchema), async (req, 
       ...(firstName !== undefined && { firstName }),
       ...(lastName !== undefined && { lastName }),
       ...(timezone !== undefined && { timezone }),
+      ...(bio !== undefined && { bio }),
+      ...(location !== undefined && { location }),
+      ...(avatarObjectPath !== undefined && { avatarObjectPath }),
     })
     .where(eq(usersTable.id, user.id))
     .returning();
 
-  res.json({
-    id: updated.id,
-    clerkId: updated.clerkId,
-    displayName: updated.displayName,
-    firstName: updated.firstName,
-    lastName: updated.lastName,
-    email: updated.email,
-    timezone: updated.timezone,
-    createdAt: updated.createdAt,
-  });
+  res.json(userToApi(updated));
 });
 
 export default router;

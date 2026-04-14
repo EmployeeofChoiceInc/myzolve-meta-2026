@@ -10,6 +10,9 @@ export const usersTable = pgTable("users", {
   lastName: text("last_name"),
   email: text("email").notNull(),
   timezone: text("timezone"),
+  bio: text("bio"),
+  location: text("location"),
+  avatarObjectPath: text("avatar_object_path"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
