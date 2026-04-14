@@ -185,7 +185,7 @@ export default function DiscoverPage() {
             <div>
               <p className="font-semibold text-foreground">No open circles yet</p>
               <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-                Circles appear here when their owners choose to make them discoverable. Ask someone to share their invite link, or start your own circle.
+                Circles appear here when their owners set them to "Open" or "Community" mode. Ask someone to share their invite link, or start your own circle.
               </p>
             </div>
           </CardContent>

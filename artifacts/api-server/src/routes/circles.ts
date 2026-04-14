@@ -10,7 +10,7 @@ import {
   usersTable,
   type Circle,
 } from "@workspace/db";
-import { eq, and, count, sql, ne } from "drizzle-orm";
+import { eq, and, count, sql } from "drizzle-orm";
 import { createAuditLog } from "../lib/helpers";
 import {
   supportRequestsTable,
@@ -26,7 +26,7 @@ const createCircleSchema = z.object({
   circleType: z.enum(["family", "chosen_family", "friends", "caregiving_circle", "neighborhood_circle", "other"]).optional().default("family"),
   description: z.string().max(1000).optional(),
   currency: z.string().length(3).optional().default("USD"),
-  privacyMode: z.enum(["private", "hidden", "discoverable"]).optional().default("private"),
+  privacyMode: z.enum(["private", "hidden", "open", "community"]).optional().default("private"),
   ledgerMode: z.enum(["private", "summary", "full", "admin_only"]).optional().default("private"),
 });
 
@@ -35,7 +35,7 @@ const updateCircleSchema = z.object({
   circleType: z.enum(["family", "chosen_family", "friends", "caregiving_circle", "neighborhood_circle", "other"]).optional(),
   description: z.string().max(1000).optional(),
   currency: z.string().length(3).optional(),
-  privacyMode: z.enum(["private", "hidden", "discoverable"]).optional(),
+  privacyMode: z.enum(["private", "hidden", "open", "community"]).optional(),
   ledgerMode: z.enum(["private", "summary", "full", "admin_only"]).optional(),
 });
 
@@ -63,7 +63,7 @@ const createJoinRequestSchema = z.object({
 router.get("/circles/discover", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
 
-  const discoverableCircles = await db
+  const openCircles = await db
     .select({
       circle: circlesTable,
       creatorName: usersTable.displayName,
@@ -78,10 +78,10 @@ router.get("/circles/discover", requireAuth, async (req, res) => {
         eq(circleMembersTable.status, "active"),
       ),
     )
-    .where(eq(circlesTable.privacyMode, "discoverable"))
+    .where(sql`${circlesTable.privacyMode} IN ('open', 'community')`)
     .groupBy(circlesTable.id, usersTable.displayName);
 
-  const circleIds = discoverableCircles.map((c) => c.circle.id);
+  const circleIds = openCircles.map((c) => c.circle.id);
 
   const [myMemberships, myJoinRequests] = await Promise.all([
     circleIds.length > 0
@@ -107,7 +107,7 @@ router.get("/circles/discover", requireAuth, async (req, res) => {
   const joinRequestMap = new Map(myJoinRequests.map((r) => [r.circleId, r.status]));
 
   res.json(
-    discoverableCircles.map(({ circle, creatorName, memberCount }) => ({
+    openCircles.map(({ circle, creatorName, memberCount }) => ({
       id: circle.id,
       name: circle.name,
       circleType: circle.circleType,
@@ -146,7 +146,7 @@ router.post(
       return;
     }
 
-    if (circle.privacyMode !== "discoverable") {
+    if (!["open", "community"].includes(circle.privacyMode)) {
       res.status(403).json({ error: "This circle does not accept join requests" });
       return;
     }

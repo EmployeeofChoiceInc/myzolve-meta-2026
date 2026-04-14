@@ -2030,7 +2030,7 @@ components:
           type: string
         privacyMode:
           type: string
-          enum: [private, hidden, discoverable]
+          enum: [private, hidden, open, community]
         ledgerMode:
           type: string
           enum: [private, summary, full, admin_only]
@@ -2071,7 +2071,7 @@ components:
           default: USD
         privacyMode:
           type: string
-          enum: [private, hidden, discoverable]
+          enum: [private, hidden, open, community]
           default: private
         ledgerMode:
           type: string
@@ -2093,7 +2093,7 @@ components:
           enum: [family, chosen_family, friends, caregiving_circle, neighborhood_circle, other]
         privacyMode:
           type: string
-          enum: [private, hidden, discoverable]
+          enum: [private, hidden, open, community]
         ledgerMode:
           type: string
           enum: [private, summary, full, admin_only]

@@ -67,7 +67,7 @@ export const ListCirclesResponseItem = zod.object({
   description: zod.string().nullish(),
   photoUrl: zod.string().nullish(),
   currency: zod.string(),
-  privacyMode: zod.enum(["private", "hidden", "discoverable"]),
+  privacyMode: zod.enum(["private", "hidden", "open", "community"]),
   ledgerMode: zod.enum(["private", "summary", "full", "admin_only"]),
   ownerId: zod.number(),
   memberCount: zod.number(),
@@ -96,7 +96,7 @@ export const CreateCircleBody = zod.object({
   description: zod.string().optional(),
   currency: zod.string().default(createCircleBodyCurrencyDefault),
   privacyMode: zod
-    .enum(["private", "hidden", "discoverable"])
+    .enum(["private", "hidden", "open", "community"])
     .default(createCircleBodyPrivacyModeDefault),
   ledgerMode: zod
     .enum(["private", "summary", "full", "admin_only"])
@@ -124,7 +124,7 @@ export const GetCircleResponse = zod.object({
   description: zod.string().nullish(),
   photoUrl: zod.string().nullish(),
   currency: zod.string(),
-  privacyMode: zod.enum(["private", "hidden", "discoverable"]),
+  privacyMode: zod.enum(["private", "hidden", "open", "community"]),
   ledgerMode: zod.enum(["private", "summary", "full", "admin_only"]),
   ownerId: zod.number(),
   memberCount: zod.number(),
@@ -152,7 +152,7 @@ export const UpdateCircleBody = zod.object({
       "other",
     ])
     .optional(),
-  privacyMode: zod.enum(["private", "hidden", "discoverable"]).optional(),
+  privacyMode: zod.enum(["private", "hidden", "open", "community"]).optional(),
   ledgerMode: zod.enum(["private", "summary", "full", "admin_only"]).optional(),
   currency: zod.string().optional(),
 });
@@ -171,7 +171,7 @@ export const UpdateCircleResponse = zod.object({
   description: zod.string().nullish(),
   photoUrl: zod.string().nullish(),
   currency: zod.string(),
-  privacyMode: zod.enum(["private", "hidden", "discoverable"]),
+  privacyMode: zod.enum(["private", "hidden", "open", "community"]),
   ledgerMode: zod.enum(["private", "summary", "full", "admin_only"]),
   ownerId: zod.number(),
   memberCount: zod.number(),

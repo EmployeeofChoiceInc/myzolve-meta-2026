@@ -52,7 +52,8 @@ export type CirclePrivacyMode =
 export const CirclePrivacyMode = {
   private: "private",
   hidden: "hidden",
-  discoverable: "discoverable",
+  open: "open",
+  community: "community",
 } as const;
 
 export type CircleLedgerMode =
@@ -109,7 +110,8 @@ export type CreateCircleBodyPrivacyMode =
 export const CreateCircleBodyPrivacyMode = {
   private: "private",
   hidden: "hidden",
-  discoverable: "discoverable",
+  open: "open",
+  community: "community",
 } as const;
 
 export type CreateCircleBodyLedgerMode =
@@ -149,7 +151,8 @@ export type UpdateCircleBodyPrivacyMode =
 export const UpdateCircleBodyPrivacyMode = {
   private: "private",
   hidden: "hidden",
-  discoverable: "discoverable",
+  open: "open",
+  community: "community",
 } as const;
 
 export type UpdateCircleBodyLedgerMode =

@@ -42,6 +42,7 @@ interface DisputeResolution {
 const circleSettingsSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   description: z.string().max(1000).optional(),
+  privacyMode: z.enum(["private", "hidden", "open", "community"]).optional(),
 });
 
 const placeholderSchema = z.object({
@@ -93,7 +94,7 @@ export default function CircleDetailPage() {
 
   const form = useForm<z.infer<typeof circleSettingsSchema>>({
     resolver: zodResolver(circleSettingsSchema),
-    defaultValues: { name: "", description: "" },
+    defaultValues: { name: "", description: "", privacyMode: "private" },
   });
 
   const placeholderForm = useForm<z.infer<typeof placeholderSchema>>({
@@ -111,6 +112,7 @@ export default function CircleDetailPage() {
       form.reset({
         name: circle.name || "",
         description: circle.description || "",
+        privacyMode: (circle.privacyMode as "private" | "hidden" | "open" | "community") || "private",
       });
       initialized.current = true;
     }
@@ -683,6 +685,29 @@ export default function CircleDetailPage() {
                         {...field} 
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="privacyMode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Visibility</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="rounded-xl">
+                          <SelectValue placeholder="Choose visibility" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="private">Private — invite-only, not searchable</SelectItem>
+                        <SelectItem value="hidden">Hidden — link-only, not searchable</SelectItem>
+                        <SelectItem value="open">Open — anyone can find and request to join</SelectItem>
+                        <SelectItem value="community">Community — discoverable, admin reviews requests</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
