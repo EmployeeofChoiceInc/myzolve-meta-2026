@@ -9,8 +9,8 @@ import { logger } from "../lib/logger";
 import { registerPendingUpload } from "../lib/uploadTokens";
 import { requireAuth } from "../middlewares/requireAuth";
 import { db } from "@workspace/db";
-import { attachmentsTable, circleMembersTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { attachmentsTable, circleMembersTable, usersTable, circlePostsTable } from "@workspace/db";
+import { eq, and, inArray } from "drizzle-orm";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -170,16 +170,87 @@ router.post("/storage/circle-media/request-url", requireAuth, async (req: Reques
 /**
  * GET /storage/user-media/*
  *
- * Serve stored objects that are user-profile or circle-media scoped.
- * Requires authentication. No per-circle ACL check — access is governed
- * at the API layer (profile visibility requires shared circle; wall access
- * requires circle membership). Suitable for avatars and wall post images.
+ * Serve user-owned media objects (avatars and wall post images).
+ * Requires authentication. Authorization is enforced by verifying the object path
+ * is associated with a known entity (user avatar or circle post image) and that
+ * the requesting user has access to that entity:
+ *   - Avatar: requesting user is the owner, OR shares at least one active circle with the owner.
+ *   - Wall post image: requesting user is an active member of the circle that owns the post.
  */
 router.get("/storage/user-media/*path", requireAuth, async (req: Request, res: Response) => {
+  const raw = req.params.path;
+  const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
+  const objectPath = `/objects/${wildcardPath}`;
+  const userId = req.dbUser!.id;
+
   try {
-    const raw = req.params.path;
-    const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
-    const objectPath = `/objects/${wildcardPath}`;
+    let authorized = false;
+
+    const avatarOwner = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.avatarObjectPath, objectPath))
+      .limit(1)
+      .then((r) => r[0] ?? null);
+
+    if (avatarOwner) {
+      if (avatarOwner.id === userId) {
+        authorized = true;
+      } else {
+        const myMemberships = await db
+          .select({ circleId: circleMembersTable.circleId })
+          .from(circleMembersTable)
+          .where(and(eq(circleMembersTable.userId, userId), eq(circleMembersTable.status, "active")));
+
+        const myCircleIds = myMemberships.map((m) => m.circleId);
+
+        if (myCircleIds.length > 0) {
+          const sharedMembership = await db
+            .select({ id: circleMembersTable.id })
+            .from(circleMembersTable)
+            .where(
+              and(
+                eq(circleMembersTable.userId, avatarOwner.id),
+                eq(circleMembersTable.status, "active"),
+                inArray(circleMembersTable.circleId, myCircleIds),
+              ),
+            )
+            .limit(1)
+            .then((r) => r[0] ?? null);
+          authorized = !!sharedMembership;
+        }
+      }
+    }
+
+    if (!authorized) {
+      const post = await db
+        .select({ circleId: circlePostsTable.circleId })
+        .from(circlePostsTable)
+        .where(eq(circlePostsTable.imageObjectPath, objectPath))
+        .limit(1)
+        .then((r) => r[0] ?? null);
+
+      if (post) {
+        const membership = await db
+          .select({ id: circleMembersTable.id })
+          .from(circleMembersTable)
+          .where(
+            and(
+              eq(circleMembersTable.circleId, post.circleId),
+              eq(circleMembersTable.userId, userId),
+              eq(circleMembersTable.status, "active"),
+            ),
+          )
+          .limit(1)
+          .then((r) => r[0] ?? null);
+        authorized = !!membership;
+      }
+    }
+
+    if (!authorized) {
+      res.status(403).json({ error: "You do not have access to this media" });
+      return;
+    }
 
     const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
     const response = await objectStorageService.downloadObject(objectFile);
