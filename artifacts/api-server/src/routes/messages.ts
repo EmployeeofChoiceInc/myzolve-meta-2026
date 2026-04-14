@@ -8,6 +8,7 @@ import {
   circleMembersTable,
   circlesTable,
   usersTable,
+  notificationsTable,
 } from "@workspace/db";
 import { eq, and, or, desc, asc, isNull, inArray } from "drizzle-orm";
 import { createNotification } from "../lib/helpers";
@@ -281,22 +282,52 @@ router.post("/messages/:userId", requireAuth, validateParams(userIdParam), valid
 
 /**
  * POST /messages/:userId/read
- * Mark all messages from :userId to me as read.
+ * Mark all messages from :userId to me as read, and clear their notifications.
  */
 router.post("/messages/:userId/read", requireAuth, validateParams(userIdParam), async (req, res) => {
   const myId = req.dbUser!.id;
   const partnerId = parseInt(String(req.params.userId));
+  const now = new Date();
 
-  await db
-    .update(directMessagesTable)
-    .set({ readAt: new Date() })
-    .where(
-      and(
-        eq(directMessagesTable.senderUserId, partnerId),
-        eq(directMessagesTable.recipientUserId, myId),
-        isNull(directMessagesTable.readAt),
+  await Promise.all([
+    // Mark DMs as read
+    db
+      .update(directMessagesTable)
+      .set({ readAt: now })
+      .where(
+        and(
+          eq(directMessagesTable.senderUserId, partnerId),
+          eq(directMessagesTable.recipientUserId, myId),
+          isNull(directMessagesTable.readAt),
+        ),
       ),
-    );
+    // Mark DM notifications from this partner as read.
+    // Partner's message IDs are used to scope the notification update.
+    (async () => {
+      const partnerMsgIds = await db
+        .select({ id: directMessagesTable.id })
+        .from(directMessagesTable)
+        .where(
+          and(
+            eq(directMessagesTable.senderUserId, partnerId),
+            eq(directMessagesTable.recipientUserId, myId),
+          ),
+        );
+      if (partnerMsgIds.length > 0) {
+        await db
+          .update(notificationsTable)
+          .set({ isRead: true, readAt: now })
+          .where(
+            and(
+              eq(notificationsTable.userId, myId),
+              eq(notificationsTable.notificationType, "direct_message"),
+              eq(notificationsTable.isRead, false),
+              inArray(notificationsTable.targetEntityId, partnerMsgIds.map((m) => m.id)),
+            ),
+          );
+      }
+    })(),
+  ]);
 
   res.json({ success: true });
 });

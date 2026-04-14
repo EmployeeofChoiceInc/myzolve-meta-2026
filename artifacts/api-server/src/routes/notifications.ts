@@ -4,7 +4,7 @@ import { requireAuth } from "../middlewares/requireAuth";
 import { validateBody, validateParams, validateQuery, paginationQuery } from "../middlewares/validate";
 import { db } from "@workspace/db";
 import { notificationsTable, notificationPreferencesTable, directMessagesTable } from "@workspace/db";
-import { eq, and, desc, count, isNull } from "drizzle-orm";
+import { eq, and, desc, count, isNull, sql } from "drizzle-orm";
 
 const router = Router();
 
@@ -75,7 +75,14 @@ router.get("/notifications/unread-count", requireAuth, async (req, res) => {
     db
       .select({ cnt: count() })
       .from(notificationsTable)
-      .where(and(eq(notificationsTable.userId, userId), eq(notificationsTable.isRead, false))),
+      .where(
+        and(
+          eq(notificationsTable.userId, userId),
+          eq(notificationsTable.isRead, false),
+          // Exclude DM notifications — those are counted separately via direct_messages
+          sql`${notificationsTable.notificationType} != 'direct_message'`,
+        ),
+      ),
     db
       .select({ cnt: count() })
       .from(directMessagesTable)

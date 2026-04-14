@@ -21,6 +21,7 @@ const notificationTypeLabel: Record<string, string> = {
   member_joined: "Member joined",
   circle_invitation: "Circle invitation",
   ownership_transferred: "Ownership transferred",
+  direct_message: "New message",
 };
 
 function NotificationDrawer() {
