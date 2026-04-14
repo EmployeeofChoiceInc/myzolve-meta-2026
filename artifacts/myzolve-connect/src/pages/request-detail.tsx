@@ -508,10 +508,14 @@ export default function RequestDetailPage() {
                 <Card key={comment.id} className="rounded-2xl border-border/50 shadow-none">
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2 mb-2">
-                      <div className="w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">
-                        {(comment.authorName ?? "?")[0].toUpperCase()}
-                      </div>
-                      <span className="font-medium text-sm">{comment.authorName}</span>
+                      <Link href={`/profile/${comment.authorUserId}`}>
+                        <div className="w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0 cursor-pointer">
+                          {(comment.authorName ?? "?")[0].toUpperCase()}
+                        </div>
+                      </Link>
+                      <Link href={`/profile/${comment.authorUserId}`}>
+                        <span className="font-medium text-sm hover:underline cursor-pointer">{comment.authorName}</span>
+                      </Link>
                       <span className="text-xs text-muted-foreground ml-auto">{format(new Date(comment.createdAt), "MMM d")}</span>
                     </div>
                     <p className="text-sm text-foreground/90 leading-relaxed">{comment.body}</p>
@@ -589,10 +593,14 @@ export default function RequestDetailPage() {
                         {comment.replies.map((reply) => (
                           <div key={reply.id}>
                             <div className="flex items-center gap-2 mb-1">
-                              <div className="w-5 h-5 rounded-full bg-secondary/10 text-secondary text-xs font-bold flex items-center justify-center shrink-0">
-                                {(reply.authorName ?? "?")[0].toUpperCase()}
-                              </div>
-                              <span className="font-medium text-xs">{reply.authorName}</span>
+                              <Link href={`/profile/${reply.authorUserId}`}>
+                                <div className="w-5 h-5 rounded-full bg-secondary/10 text-secondary text-xs font-bold flex items-center justify-center shrink-0 cursor-pointer">
+                                  {(reply.authorName ?? "?")[0].toUpperCase()}
+                                </div>
+                              </Link>
+                              <Link href={`/profile/${reply.authorUserId}`}>
+                                <span className="font-medium text-xs hover:underline cursor-pointer">{reply.authorName}</span>
+                              </Link>
                               <span className="text-xs text-muted-foreground ml-auto">{format(new Date(reply.createdAt), "MMM d")}</span>
                             </div>
                             <p className="text-sm text-foreground/80 leading-relaxed">{reply.body}</p>

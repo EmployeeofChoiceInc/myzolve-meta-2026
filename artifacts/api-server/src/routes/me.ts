@@ -5,6 +5,7 @@ import { validateBody } from "../middlewares/validate";
 import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { validateAndConsumePendingUpload } from "../lib/uploadTokens";
 
 const router = Router();
 
@@ -41,6 +42,19 @@ router.get("/me", requireAuth, async (req, res) => {
 router.patch("/me", requireAuth, validateBody(updateProfileSchema), async (req, res) => {
   const user = req.dbUser!;
   const { displayName, firstName, lastName, timezone, bio, location, avatarObjectPath } = req.body;
+
+  if (
+    avatarObjectPath !== undefined &&
+    avatarObjectPath !== user.avatarObjectPath
+  ) {
+    const valid = validateAndConsumePendingUpload(avatarObjectPath, user.id);
+    if (!valid) {
+      res.status(400).json({
+        error: "Invalid avatar: the upload token is missing, expired, or does not belong to you. Please re-upload your photo.",
+      });
+      return;
+    }
+  }
 
   const [updated] = await db
     .update(usersTable)
