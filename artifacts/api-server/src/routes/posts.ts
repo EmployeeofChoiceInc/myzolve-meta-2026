@@ -7,8 +7,9 @@ import {
   circlePostsTable,
   circleMembersTable,
   usersTable,
+  commentsTable,
 } from "@workspace/db";
-import { eq, and, desc, count } from "drizzle-orm";
+import { eq, and, desc, count, inArray } from "drizzle-orm";
 import { assertCircleMember } from "../lib/helpers";
 import { validateAndConsumePendingUpload } from "../lib/uploadTokens";
 
@@ -77,9 +78,33 @@ router.get(
       .limit(limit)
       .offset(offset);
 
+    const postIds = rows.map((r) => r.post.id);
+    const commentCounts: Record<number, number> = {};
+    if (postIds.length > 0) {
+      const counts = await db
+        .select({ targetEntityId: commentsTable.targetEntityId, cnt: count() })
+        .from(commentsTable)
+        .where(
+          and(
+            eq(commentsTable.targetEntityType, "circle_post"),
+            eq(commentsTable.circleId, circleId),
+            inArray(commentsTable.targetEntityId, postIds),
+          ),
+        )
+        .groupBy(commentsTable.targetEntityId);
+      for (const row of counts) {
+        if (row.targetEntityId !== null) commentCounts[row.targetEntityId] = Number(row.cnt);
+      }
+    }
+
     res.json(
       rows.map((r) =>
-        postToApi(r.post, r.author?.displayName ?? "Someone", 0, r.author?.avatarObjectPath ?? null),
+        postToApi(
+          r.post,
+          r.author?.displayName ?? "Someone",
+          commentCounts[r.post.id] ?? 0,
+          r.author?.avatarObjectPath ?? null,
+        ),
       ),
     );
   },
