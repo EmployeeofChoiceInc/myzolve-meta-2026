@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Modal, Pressable, View } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
@@ -44,26 +44,16 @@ function objectPathToUrl(objectPath: string | null | undefined): string | undefi
   return `${API_BASE}/api/storage/user-media/${stripped}`;
 }
 
-function PostImage({ objectPath }: { objectPath: string }) {
+function PostImage({
+  objectPath,
+  token,
+  onOpen,
+}: {
+  objectPath: string;
+  token: string | null;
+  onOpen: () => void;
+}) {
   const c = useColors();
-  const { getToken } = useAuth();
-  const [token, setToken] = useState<string | null>(null);
-  const [viewerOpen, setViewerOpen] = useState(false);
-
-  useEffect(() => {
-    let alive = true;
-    getToken()
-      .then((t) => {
-        if (alive) setToken(t ?? null);
-      })
-      .catch(() => {
-        if (alive) setToken(null);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [getToken]);
-
   const uri = objectPathToUrl(objectPath);
   if (!uri || !token) {
     return (
@@ -86,32 +76,24 @@ function PostImage({ objectPath }: { objectPath: string }) {
   const headers = { Authorization: `Bearer ${token}` };
 
   return (
-    <>
-      <Pressable
-        onPress={() => setViewerOpen(true)}
-        accessibilityRole="imagebutton"
-        accessibilityLabel="View photo full screen"
-      >
-        <Image
-          source={{ uri, headers }}
-          style={{
-            width: "100%",
-            aspectRatio: 4 / 3,
-            borderRadius: 16,
-            marginTop: 8,
-            backgroundColor: c.muted,
-          }}
-          contentFit="cover"
-          transition={150}
-        />
-      </Pressable>
-      <ImageViewer
-        visible={viewerOpen}
-        uri={uri}
-        headers={headers}
-        onClose={() => setViewerOpen(false)}
+    <Pressable
+      onPress={onOpen}
+      accessibilityRole="imagebutton"
+      accessibilityLabel="View photo full screen"
+    >
+      <Image
+        source={{ uri, headers }}
+        style={{
+          width: "100%",
+          aspectRatio: 4 / 3,
+          borderRadius: 16,
+          marginTop: 8,
+          backgroundColor: c.muted,
+        }}
+        contentFit="cover"
+        transition={150}
       />
-    </>
+    </Pressable>
   );
 }
 
@@ -154,6 +136,45 @@ export default function WallScreen() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [image, setImage] = useState<LocalPostImage | null>(null);
+
+  const { getToken } = useAuth();
+  const [token, setToken] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    getToken()
+      .then((t) => {
+        if (alive) setToken(t ?? null);
+      })
+      .catch(() => {
+        if (alive) setToken(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [getToken]);
+
+  const photoItems = useMemo(() => {
+    if (!posts || !token)
+      return [] as { uri: string; headers: Record<string, string>; postId: number }[];
+    const headers = { Authorization: `Bearer ${token}` };
+    return posts
+      .filter((p) => !!p.imageObjectPath)
+      .map((p) => {
+        const uri = objectPathToUrl(p.imageObjectPath!)!;
+        return { uri, headers, postId: p.id };
+      });
+  }, [posts, token]);
+
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const photoIndexByPostId = useMemo(() => {
+    const map = new Map<number, number>();
+    photoItems.forEach((p, i) => map.set(p.postId, i));
+    return map;
+  }, [photoItems]);
+  const openPhoto = (postId: number) => {
+    const idx = photoIndexByPostId.get(postId);
+    if (idx !== undefined) setViewerIndex(idx);
+  };
 
   function resetComposer() {
     setTitle("");
@@ -278,12 +299,25 @@ export default function WallScreen() {
                   </AppText>
                 ) : null}
                 <AppText>{p.body}</AppText>
-                {p.imageObjectPath ? <PostImage objectPath={p.imageObjectPath} /> : null}
+                {p.imageObjectPath ? (
+                  <PostImage
+                    objectPath={p.imageObjectPath}
+                    token={token}
+                    onOpen={() => openPhoto(p.id)}
+                  />
+                ) : null}
               </Card>
             ))}
           </View>
         )}
       </Screen>
+
+      <ImageViewer
+        visible={viewerIndex !== null}
+        images={photoItems}
+        initialIndex={viewerIndex ?? 0}
+        onClose={() => setViewerIndex(null)}
+      />
 
       <Modal
         visible={open}
