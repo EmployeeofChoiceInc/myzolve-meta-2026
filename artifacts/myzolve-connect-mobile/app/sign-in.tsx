@@ -26,18 +26,63 @@ export default function SignInScreen() {
     }
     setLoading(true);
     try {
-      const attempt = await signIn.create({ identifier: email.trim(), password });
+      // Step 1: initialize the sign-in attempt with both identifier and
+      // password. Depending on the Clerk instance config this may either
+      // immediately complete OR return `needs_first_factor`, which means
+      // the attempt is initialized and we must explicitly verify the
+      // password as the first factor.
+      let attempt = await signIn.create({ identifier: email.trim(), password });
+
+      if (attempt.status === "needs_first_factor") {
+        const passwordFactor = attempt.supportedFirstFactors?.find(
+          (f) => f.strategy === "password"
+        );
+        if (!passwordFactor) {
+          // No password set on this account — most commonly an account
+          // created via Google OAuth.  Tell the user what to do instead.
+          const strategies = attempt.supportedFirstFactors
+            ?.map((f) => String(f.strategy))
+            .join(", ");
+          Alert.alert(
+            "Password sign-in unavailable",
+            strategies
+              ? `This account doesn't have a password. Sign-in methods available: ${strategies}.`
+              : "This account doesn't have a password set up."
+          );
+          return;
+        }
+        attempt = await signIn.attemptFirstFactor({
+          strategy: "password",
+          password,
+        });
+      }
+
       if (attempt.status === "complete") {
         await setActive({ session: attempt.createdSessionId });
         router.replace("/(tabs)");
+      } else if (attempt.status === "needs_second_factor") {
+        Alert.alert(
+          "Two-factor required",
+          "Two-factor authentication is required for this account, but isn't supported in the app yet. Please sign in on the web."
+        );
       } else {
-        Alert.alert("Couldn't sign in", "Please try again.");
+        Alert.alert(
+          "Couldn't sign in",
+          `Sign-in incomplete (status: ${attempt.status ?? "unknown"}). Please try again.`
+        );
       }
     } catch (err: unknown) {
-      const e = err as { errors?: { message?: string }[]; message?: string };
+      const e = err as {
+        errors?: { message?: string; longMessage?: string; code?: string }[];
+        message?: string;
+      };
+      const clerkErr = e.errors?.[0];
       Alert.alert(
         "Couldn't sign in",
-        e.errors?.[0]?.message ?? e.message ?? "Please check your credentials."
+        clerkErr?.longMessage ??
+          clerkErr?.message ??
+          e.message ??
+          "Please check your credentials."
       );
     } finally {
       setLoading(false);
