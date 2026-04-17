@@ -162,9 +162,9 @@ const SCENES = [
       await page.fill('[data-testid="input-email"]', "rosa@example.com").catch(() => {});
       await page.fill('[data-testid="input-password"]', "verysecure!").catch(() => {});
     } },
-  { id: "03-discover",   path: "/discover",   auth: true, settle: 4000,
+  { id: "03-discover",   path: "/discover",   auth: true, settle: 6000,
     waitForText: ["Sunday Suppers", "East Side Helpers", "The Book Five", "Maple Street"] },
-  { id: "04-messages",   path: "/messages",   auth: true, settle: 4000,
+  { id: "04-messages",   path: "/messages",   auth: true, settle: 6000,
     waitForText: ["Alice", "Diego", "Joy", "Tomás", "Carol", "Ben"] },
   { id: "05-profile",    path: null,          auth: true, dynamic: true, settle: 4000,
     waitForText: ["Brooklyn", "Mother of two", "Sunday Suppers"] },
@@ -195,12 +195,22 @@ async function main() {
   });
 
   console.log("→ launching Playwright");
-  const browser = await chromium.launch({ headless: true });
+  // Disable web security so cross-origin /api/* fetches from the Expo dev
+   // domain to the api-server domain succeed in the captured pages.
+  const browser = await chromium.launch({
+    headless: true,
+    args: [
+      "--disable-web-security",
+      "--disable-features=IsolateOrigins,site-per-process",
+    ],
+  });
   const viewport = { width: 440, height: 956 };
   const ctxOpts = {
     viewport,
     deviceScaleFactor: 3,
     userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15",
+    // Block service workers so route() interceptors apply to all fetches.
+    serviceWorkers: "block",
   };
 
   // Resolve dynamic profile path
@@ -227,6 +237,10 @@ async function main() {
       try { await scene.prep(page); } catch (e) { console.warn("prep failed:", e.message); }
       await page.waitForTimeout(500);
     }
+    if (scene.auth) {
+      const txt = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " ").slice(0, 400));
+      console.log("    text:", txt);
+    }
     await page.screenshot({ path: join(OUT, `${scene.id}.png`), fullPage: false });
   }
 
@@ -243,7 +257,49 @@ async function main() {
   // Pass 2: signed-in scenes in a separate context
   {
     const ctx = await browser.newContext(ctxOpts);
+    // The page is loaded from the Expo dev domain (.expo.janeway.replit.dev)
+    // but customFetch's baseURL points the in-app /api/* calls at the
+    // api-server's domain (.janeway.replit.dev). That's a cross-origin
+    // request, and the api-server doesn't whitelist the Expo origin, so
+    // the browser blocks the responses with a CORS error and the React
+    // Query layer never receives data. Intercept those calls and proxy
+    // them through Playwright's request layer (which is not subject to
+    // browser CORS), then add a permissive ACAO header on the way back.
+    console.log("→ registering route interceptor");
+    let routeHits = 0;
+    await ctx.route("**/*", async (route) => {
+      routeHits++;
+      const u = route.request().url();
+      if (u.includes("/api/")) console.log("    [route API]", u.slice(-80));
+      if (!u.includes("/api/")) { await route.continue(); return; }
+      const reqUrl = route.request().url();
+      try {
+        const response = await route.fetch();
+        const headers = { ...response.headers() };
+        headers["access-control-allow-origin"] = "*";
+        headers["access-control-allow-credentials"] = "true";
+        headers["access-control-allow-headers"] = "*";
+        headers["access-control-allow-methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS";
+        console.log("    [route]", response.status(), reqUrl.split("?")[0].slice(-60));
+        await route.fulfill({ response, headers });
+      } catch (e) {
+        console.log("    [route ERR]", reqUrl.slice(-60), String(e).slice(0, 100));
+        await route.continue();
+      }
+    });
     const page = await ctx.newPage();
+    page.on("request", (req) => {
+      const u = req.url();
+      if (u.includes("/api/")) console.log("    [request]", req.method(), u.slice(-80));
+    });
+    page.on("requestfailed", (req) => {
+      const u = req.url();
+      if (u.includes("/api/")) console.log("    [reqfail ]", req.method(), u.slice(-80), req.failure()?.errorText);
+    });
+    page.on("response", (resp) => {
+      const u = resp.url();
+      if (u.includes("/api/")) console.log("    [response]", resp.status(), u.slice(-60));
+    });
     console.log("→ signing in via Clerk ticket");
     await page.goto(`${EXPO_URL}/sign-in`, { waitUntil: "networkidle" });
     await page.waitForFunction(() => !!window.Clerk && window.Clerk.loaded === true, { timeout: 30000 });
@@ -258,10 +314,45 @@ async function main() {
       console.error("Clerk sign-in did not complete:", result);
       await browser.close(); process.exit(1);
     }
+    page.on("console", (msg) => {
+      const t = msg.text();
+      if (t.includes("[authTokenGetter]") || t.includes("Error") || t.includes("error")) {
+        console.log("  [console]", t.slice(0, 200));
+      }
+    });
+    page.on("pageerror", (err) => console.log("  [pageerror]", err.message));
     // Wait for app to recognize signed-in state.
     await page.waitForFunction(() => !!window.Clerk?.session, { timeout: 15000 });
     await page.waitForTimeout(2000);
     console.log("  signed in");
+
+    // Bypass the in-app auth bridge at the network layer: intercept every
+    // /api/* request from this page and inject Authorization: Bearer <jwt>
+    // pulled fresh from window.Clerk.session.getToken(). The app's own
+    // useAuth().getToken() hangs on web after ticket sign-in, which prevents
+    // customFetch from ever firing the underlying fetch. This interceptor
+    // sidesteps that entirely.
+    let cachedToken = null;
+    let tokenFetchedAt = 0;
+    async function getFreshToken() {
+      // Reuse a token for up to 30s to avoid hammering Clerk on every request.
+      if (cachedToken && Date.now() - tokenFetchedAt < 30_000) return cachedToken;
+      cachedToken = await page.evaluate(async () => {
+        try { return await window.Clerk.session.getToken(); }
+        catch { return null; }
+      });
+      tokenFetchedAt = Date.now();
+      return cachedToken;
+    }
+    await page.route("**/api/**", async (route) => {
+      const req = route.request();
+      const headers = { ...req.headers() };
+      if (!headers["authorization"]) {
+        const t = await getFreshToken();
+        if (t) headers["authorization"] = `Bearer ${t}`;
+      }
+      await route.continue({ headers });
+    });
 
     for (const scene of SCENES.filter((s) => s.auth)) {
       await captureScene(page, scene);
