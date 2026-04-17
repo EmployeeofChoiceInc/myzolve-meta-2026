@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from "react";
 import {
+  ActionSheetIOS,
   ActivityIndicator,
+  Alert,
   Dimensions,
   Modal,
+  Platform,
   Pressable,
   StatusBar,
   StyleSheet,
@@ -22,6 +25,9 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
+import * as FileSystem from "expo-file-system/legacy";
+import * as MediaLibrary from "expo-media-library";
+import * as Sharing from "expo-sharing";
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 
@@ -36,6 +42,30 @@ type Props = {
   initialIndex?: number;
   onClose: () => void;
 };
+
+function extensionFromUri(uri: string): string {
+  const clean = uri.split("?")[0].split("#")[0];
+  const tail = clean.split("/").pop() ?? "";
+  const ext = tail.includes(".") ? tail.split(".").pop()! : "jpg";
+  const lower = ext.toLowerCase();
+  if (["jpg", "jpeg", "png", "gif", "webp", "heic", "heif"].includes(lower)) {
+    return lower === "jpeg" ? "jpg" : lower;
+  }
+  return "jpg";
+}
+
+async function downloadToCache(
+  uri: string,
+  headers?: Record<string, string>,
+): Promise<string> {
+  const ext = extensionFromUri(uri);
+  const target = `${FileSystem.cacheDirectory}wall-photo-${Date.now()}.${ext}`;
+  const result = await FileSystem.downloadAsync(uri, target, { headers });
+  if (result.status < 200 || result.status >= 300) {
+    throw new Error(`Download failed (${result.status})`);
+  }
+  return result.uri;
+}
 
 export function ImageViewer({ visible, images, initialIndex = 0, onClose }: Props) {
   const insets = useSafeAreaInsets();
@@ -52,6 +82,7 @@ export function ImageViewer({ visible, images, initialIndex = 0, onClose }: Prop
   const [index, setIndex] = useState(clampedInitial);
   const [loading, setLoading] = useState(true);
   const [errored, setErrored] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   // Pager (absolute strip translateX, negative)
   const pagerX = useSharedValue(-clampedInitial * screenW);
@@ -266,6 +297,88 @@ export function ImageViewer({ visible, images, initialIndex = 0, onClose }: Prop
     opacity: backdropOpacity.value,
   }));
 
+  const currentImage = images[index];
+
+  async function saveToLibrary() {
+    if (!currentImage || busy) return;
+    setBusy(true);
+    try {
+      const perm = await MediaLibrary.requestPermissionsAsync(true);
+      if (!perm.granted) {
+        Alert.alert(
+          "Photo access needed",
+          "Allow photo library access in Settings to save photos.",
+        );
+        return;
+      }
+      const localUri = await downloadToCache(currentImage.uri, currentImage.headers);
+      await MediaLibrary.saveToLibraryAsync(localUri);
+      try {
+        await FileSystem.deleteAsync(localUri, { idempotent: true });
+      } catch {
+        // ignore cleanup failure
+      }
+      Alert.alert("Saved", "Photo saved to your library.");
+    } catch (err) {
+      Alert.alert(
+        "Couldn't save photo",
+        err instanceof Error ? err.message : "Please try again.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function sharePhoto() {
+    if (!currentImage || busy) return;
+    setBusy(true);
+    try {
+      const available = await Sharing.isAvailableAsync();
+      if (!available) {
+        Alert.alert("Sharing unavailable", "Sharing isn't available on this device.");
+        return;
+      }
+      const localUri = await downloadToCache(currentImage.uri, currentImage.headers);
+      await Sharing.shareAsync(localUri, { dialogTitle: "Share photo" });
+      try {
+        await FileSystem.deleteAsync(localUri, { idempotent: true });
+      } catch {
+        // ignore cleanup failure
+      }
+    } catch (err) {
+      Alert.alert(
+        "Couldn't share photo",
+        err instanceof Error ? err.message : "Please try again.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function openSaveMenu() {
+    if (!currentImage || busy || errored) return;
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ["Cancel", "Save to Photos", "Share…"],
+          cancelButtonIndex: 0,
+        },
+        (idx) => {
+          if (idx === 1) saveToLibrary();
+          else if (idx === 2) sharePhoto();
+        },
+      );
+    } else {
+      Alert.alert("Photo", undefined, [
+        { text: "Save to Photos", onPress: saveToLibrary },
+        { text: "Share…", onPress: sharePhoto },
+        { text: "Cancel", style: "cancel" },
+      ]);
+    }
+  }
+
+  const canAct = !!currentImage && !errored;
+
   return (
     <Modal
       visible={visible && total > 0}
@@ -344,11 +457,30 @@ export function ImageViewer({ visible, images, initialIndex = 0, onClose }: Prop
         <Pressable
           accessibilityLabel="Close photo"
           onPress={onClose}
-          style={[styles.closeBtn, { top: insets.top + 8 }]}
+          style={[styles.iconBtn, styles.closeBtn, { top: insets.top + 8 }]}
           hitSlop={12}
         >
           <Feather name="x" size={22} color="#fff" />
         </Pressable>
+        {canAct ? (
+          <Pressable
+            accessibilityLabel="Save or share photo"
+            onPress={openSaveMenu}
+            disabled={busy}
+            style={[
+              styles.iconBtn,
+              styles.saveBtn,
+              { top: insets.top + 8, opacity: busy ? 0.6 : 1 },
+            ]}
+            hitSlop={12}
+          >
+            {busy ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Feather name="share" size={20} color="#fff" />
+            )}
+          </Pressable>
+        ) : null}
       </GestureHandlerRootView>
     </Modal>
   );
@@ -378,14 +510,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
   },
-  closeBtn: {
+  iconBtn: {
     position: "absolute",
-    right: 16,
     width: 38,
     height: 38,
     borderRadius: 19,
     backgroundColor: "rgba(0,0,0,0.45)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  closeBtn: {
+    right: 16,
+  },
+  saveBtn: {
+    left: 16,
   },
 });

@@ -30,6 +30,14 @@
       "expo-font",
       "expo-web-browser",
       [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow MyZolve Connect to save photos from your circle to your photo library.",
+          "savePhotosPermission": "Allow MyZolve Connect to save photos from your circle to your photo library.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ],
+      [
         "expo-notifications",
         {
           "icon": "./assets/images/icon.png",
