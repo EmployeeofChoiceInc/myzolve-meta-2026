@@ -50,7 +50,7 @@ export default function MembersScreen() {
     }
     invite.mutate(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      { circleId, data: { email: email.trim(), role: "member" as any } },
+      { circleId, data: { invitedEmail: email.trim(), role: "member" as any } },
       {
         onSuccess: () => {
           qc.invalidateQueries({ queryKey: getListCircleInvitationsQueryKey(circleId) });
@@ -140,7 +140,7 @@ export default function MembersScreen() {
                       <Row gap={8} align="center">
                         <Feather name="mail" size={14} color={c.mutedForeground} />
                         <AppText weight="medium" numberOfLines={1}>
-                          {inv.email ?? "—"}
+                          {inv.invitedEmail ?? "—"}
                         </AppText>
                       </Row>
                     </View>

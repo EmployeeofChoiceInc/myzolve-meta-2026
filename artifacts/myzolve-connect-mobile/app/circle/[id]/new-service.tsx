@@ -25,8 +25,9 @@ const LOCATIONS = [
 
 const EXCHANGES = [
   { value: "free", label: "Free" },
-  { value: "trade", label: "Trade" },
-  { value: "paid", label: "Paid" },
+  { value: "barter", label: "Barter" },
+  { value: "paid_later", label: "Pay later" },
+  { value: "open_to_discuss", label: "Open" },
 ];
 
 export default function NewServiceScreen() {

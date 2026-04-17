@@ -3,8 +3,8 @@ import { Stack } from "expo-router";
 import React from "react";
 import { Switch, View } from "react-native";
 import {
-  getListNotificationPreferencesQueryKey,
-  useListNotificationPreferences,
+  getGetNotificationPreferencesQueryKey,
+  useGetNotificationPreferences,
   useUpdateNotificationPreferences,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -31,7 +31,7 @@ const LABELS: Record<string, string> = {
 export default function SettingsScreen() {
   const c = useColors();
   const qc = useQueryClient();
-  const { data, isLoading } = useListNotificationPreferences();
+  const { data, isLoading } = useGetNotificationPreferences();
   const update = useUpdateNotificationPreferences();
 
   function toggle(notificationType: string, enabled: boolean) {
@@ -40,7 +40,7 @@ export default function SettingsScreen() {
       { data: { preferences: [{ notificationType: notificationType as any, enabled }] } },
       {
         onSuccess: () =>
-          qc.invalidateQueries({ queryKey: getListNotificationPreferencesQueryKey() }),
+          qc.invalidateQueries({ queryKey: getGetNotificationPreferencesQueryKey() }),
       }
     );
   }

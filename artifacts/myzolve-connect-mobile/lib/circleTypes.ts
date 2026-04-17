@@ -9,20 +9,35 @@ export const CIRCLE_TYPE_LABELS: Record<string, string> = {
 
 export const URGENCY_LABELS: Record<string, string> = {
   low: "Low",
-  medium: "Medium",
-  high: "High",
-  critical: "Urgent",
+  normal: "Normal",
+  important: "Important",
+  urgent: "Urgent",
+  emergency: "Emergency",
 };
 
 export const URGENCY_COLORS: Record<string, { bg: string; fg: string }> = {
   low: { bg: "#E3EDE2", fg: "#3F6749" },
-  medium: { bg: "#F1E5D2", fg: "#7A5226" },
-  high: { bg: "#FBE9E0", fg: "#A8421C" },
-  critical: { bg: "#FBE5E2", fg: "#902F2C" },
+  normal: { bg: "#EAEEF3", fg: "#3D5266" },
+  important: { bg: "#F1E5D2", fg: "#7A5226" },
+  urgent: { bg: "#FBE9E0", fg: "#A8421C" },
+  emergency: { bg: "#FBE5E2", fg: "#902F2C" },
+};
+
+export const STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
+  draft: { bg: "#EEEDEA", fg: "#5C5953" },
+  open: { bg: "#EAEEF3", fg: "#3D5266" },
+  partial: { bg: "#F1E5D2", fg: "#7A5226" },
+  funded: { bg: "#E3EDE2", fg: "#3F6749" },
+  in_progress: { bg: "#E3EDE2", fg: "#3F6749" },
+  completed: { bg: "#DDE7DC", fg: "#2F5237" },
+  archived: { bg: "#EEEDEA", fg: "#5C5953" },
+  canceled: { bg: "#F4DCD9", fg: "#80302D" },
+  expired: { bg: "#F4DCD9", fg: "#80302D" },
 };
 
 export const REQUEST_STATUS_LABELS: Record<string, string> = {
   open: "Open",
+  partial: "Partial",
   funded: "Funded",
   in_progress: "In progress",
   completed: "Completed",

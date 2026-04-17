@@ -3,7 +3,7 @@ import { Stack, useLocalSearchParams } from "expo-router";
 import React from "react";
 import { View } from "react-native";
 import { formatDistanceToNow } from "date-fns";
-import { useListCircleActivity } from "@workspace/api-client-react";
+import { useGetCircleActivity } from "@workspace/api-client-react";
 
 import { AppText, Card, Empty, Row, Skeleton } from "@/components/UI";
 import { Screen } from "@/components/Screen";
@@ -26,7 +26,7 @@ export default function ActivityScreen() {
   const c = useColors();
   const params = useLocalSearchParams<{ id: string }>();
   const circleId = Number(params.id);
-  const { data, isLoading, refetch, isRefetching } = useListCircleActivity(circleId);
+  const { data, isLoading, refetch, isRefetching } = useGetCircleActivity(circleId);
 
   return (
     <>

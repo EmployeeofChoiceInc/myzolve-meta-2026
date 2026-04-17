@@ -70,8 +70,8 @@ export default function RequestsScreen() {
                 req.amountRequested > 0
                   ? Math.round(((req.amountFunded ?? 0) / req.amountRequested) * 100)
                   : 0;
-              const urg = URGENCY_COLORS[req.urgencyLevel] ?? URGENCY_COLORS.medium;
-              const sc = STATUS_COLORS[req.status] ?? STATUS_COLORS.open;
+              const urg = URGENCY_COLORS[req.urgencyLevel] ?? URGENCY_COLORS.normal;
+              const sc = STATUS_COLORS[req.status] ?? { bg: c.muted, fg: c.foreground };
               return (
                 <PressableCard
                   key={req.id}

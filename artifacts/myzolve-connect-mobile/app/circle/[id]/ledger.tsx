@@ -6,7 +6,7 @@ import { format } from "date-fns";
 import {
   useGetCircle,
   useGetCircleLedgerSummary,
-  useListCircleLedger,
+  useGetCircleLedger,
 } from "@workspace/api-client-react";
 
 import { AppText, Card, Empty, Row, Skeleton } from "@/components/UI";
@@ -40,7 +40,7 @@ export default function LedgerScreen() {
   const circleId = Number(params.id);
   const { data: circle } = useGetCircle(circleId);
   const { data: summary } = useGetCircleLedgerSummary(circleId);
-  const { data: entries, isLoading, refetch, isRefetching } = useListCircleLedger(circleId);
+  const { data: entries, isLoading, refetch, isRefetching } = useGetCircleLedger(circleId);
 
   const currency = circle?.currency ?? "USD";
 

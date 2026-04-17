@@ -23,7 +23,7 @@ export default function InviteAcceptScreen() {
 
   function onAccept() {
     accept.mutate(
-      { data: { token } },
+      { token },
       {
         onSuccess: (res) => {
           qc.invalidateQueries({ queryKey: getListCirclesQueryKey() });

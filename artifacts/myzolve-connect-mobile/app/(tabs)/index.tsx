@@ -38,10 +38,12 @@ export default function HomeScreen() {
   const { data: circles, isLoading, refetch, isRefetching } = useListCircles();
   const firstCircle = circles?.[0];
   const dashboardQuery = useGetCircleDashboard(firstCircle?.id ?? 0, {
-    query: { enabled: !!firstCircle },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    query: { enabled: !!firstCircle } as any,
   });
   const requestsQuery = useListSupportRequests(firstCircle?.id ?? 0, undefined, {
-    query: { enabled: !!firstCircle },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    query: { enabled: !!firstCircle } as any,
   });
 
   useEffect(() => {
@@ -186,7 +188,7 @@ export default function HomeScreen() {
                   req.amountRequested > 0
                     ? Math.round(((req.amountFunded ?? 0) / req.amountRequested) * 100)
                     : 0;
-                const urg = URGENCY_COLORS[req.urgencyLevel] ?? URGENCY_COLORS.medium;
+                const urg = URGENCY_COLORS[req.urgencyLevel] ?? URGENCY_COLORS.normal;
                 return (
                   <PressableCard
                     key={req.id}

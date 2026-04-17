@@ -15,15 +15,14 @@ import { useColors } from "@/hooks/useColors";
 const URGENCIES: { value: string; label: string }[] = [
   { value: "low", label: "Low" },
   { value: "normal", label: "Normal" },
-  { value: "high", label: "High" },
+  { value: "important", label: "Important" },
   { value: "urgent", label: "Urgent" },
 ];
 
 const TYPES: { value: string; label: string }[] = [
   { value: "money", label: "Money" },
   { value: "service", label: "Service" },
-  { value: "moral_support", label: "Moral support" },
-  { value: "items", label: "Items" },
+  { value: "emergency", label: "Emergency" },
 ];
 
 export default function NewRequestScreen() {

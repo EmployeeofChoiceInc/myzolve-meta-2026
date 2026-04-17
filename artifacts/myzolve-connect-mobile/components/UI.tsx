@@ -379,10 +379,12 @@ export function Empty({
   icon = "inbox",
   title,
   subtitle,
+  action,
 }: {
   icon?: keyof typeof Feather.glyphMap;
   title: string;
   subtitle?: string;
+  action?: React.ReactNode;
 }) {
   const c = useColors();
   return (
