@@ -29,7 +29,7 @@ export default function ProfileScreen() {
     {
       icon: "user",
       label: "Edit profile",
-      onPress: () => me && router.push(`/profile/${me.id}`),
+      onPress: () => router.push("/profile/edit"),
     },
     {
       icon: "log-out",
