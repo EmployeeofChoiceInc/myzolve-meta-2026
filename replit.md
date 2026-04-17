@@ -16,7 +16,7 @@ pnpm workspace monorepo using TypeScript. **MyZolve Connect** — "For families 
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
 - **Frontend**: React + Vite + Tailwind CSS + shadcn/ui
-- **Auth**: Clerk (@clerk/react + @clerk/express)
+- **Auth**: Clerk (@clerk/react + @clerk/express) — **shared identity across the MyZolve ecosystem**: this Clerk instance is canonical for both connect.myzolve.com and myzolve.com. See `docs/shared-auth.md`.
 - **Routing**: Wouter (frontend), Express (backend)
 - **API client**: React Query + generated hooks from Orval
 

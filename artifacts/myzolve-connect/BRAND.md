@@ -6,6 +6,16 @@ intimate, family/trusted-circle context where cold "fintech" energy would
 undermine trust. This document captures the small set of tokens that make
 that warmth feel consistent so future contributors don't drift.
 
+## Shared identity with MyZolve
+
+Sign-in is shared across the MyZolve ecosystem. Both
+`connect.myzolve.com` and `myzolve.com` are backed by the **same**
+Clerk instance, so a single MyZolve account carries the user into
+Connect (and the mobile app) seamlessly. Connect's Clerk instance is
+the canonical one. See `docs/shared-auth.md` for the architecture and
+the Clerk Dashboard checklist; do not introduce a second Clerk
+instance or alternative auth provider for Connect.
+
 ## The "by MyZolve" mark
 
 Every public surface (landing, sign-in, sign-up, invite, 404, privacy,
