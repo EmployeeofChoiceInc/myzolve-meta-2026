@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -13,10 +13,23 @@ import {
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
+import { useAuth } from "@clerk/clerk-expo";
 
 import { useColors } from "@/hooks/useColors";
 import { fonts } from "@/constants/colors";
 import { initialsOf } from "@/lib/circleTypes";
+
+const AVATAR_API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+  : "";
+
+function avatarObjectPathToUrl(objectPath: string | null | undefined): string | undefined {
+  if (!objectPath) return undefined;
+  const stripped = objectPath.startsWith("/objects/")
+    ? objectPath.slice("/objects/".length)
+    : objectPath;
+  return `${AVATAR_API_BASE}/api/storage/user-media/${stripped}`;
+}
 
 export function Card({
   style,
@@ -287,15 +300,20 @@ export function Pill({
 export function Avatar({
   name,
   uri,
+  objectPath,
   size = 40,
   bg,
 }: {
   name?: string | null;
   uri?: string | null;
+  objectPath?: string | null;
   size?: number;
   bg?: string;
 }) {
   const c = useColors();
+  const resolvedUri = uri ?? avatarObjectPathToUrl(objectPath);
+  const needsAuth = !uri && !!objectPath;
+
   return (
     <View
       style={{
@@ -308,28 +326,79 @@ export function Avatar({
         overflow: "hidden",
       }}
     >
-      {uri ? (
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        <ExpoImageWrapper uri={uri} size={size} />
+      {resolvedUri ? (
+        needsAuth ? (
+          <AuthedAvatarImage uri={resolvedUri} size={size} fallbackName={name} />
+        ) : (
+          <ExpoImageWrapper uri={resolvedUri} size={size} />
+        )
       ) : (
-        <Text
-          style={{
-            color: c.primary,
-            fontFamily: fonts.semibold,
-            fontSize: size * 0.4,
-          }}
-        >
-          {initialsOf(name)}
-        </Text>
+        <AvatarInitials name={name} size={size} />
       )}
     </View>
   );
 }
 
+function AvatarInitials({ name, size }: { name?: string | null; size: number }) {
+  const c = useColors();
+  return (
+    <Text
+      style={{
+        color: c.primary,
+        fontFamily: fonts.semibold,
+        fontSize: size * 0.4,
+      }}
+    >
+      {initialsOf(name)}
+    </Text>
+  );
+}
+
 function ExpoImageWrapper({ uri, size }: { uri: string; size: number }) {
   // Lazy require to avoid SSR issues
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { Image } = require("expo-image") as typeof import("expo-image");
   return <Image source={{ uri }} style={{ width: size, height: size }} />;
+}
+
+function AuthedAvatarImage({
+  uri,
+  size,
+  fallbackName,
+}: {
+  uri: string;
+  size: number;
+  fallbackName?: string | null;
+}) {
+  const { getToken } = useAuth();
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    getToken()
+      .then((t) => {
+        if (alive) setToken(t ?? null);
+      })
+      .catch(() => {
+        if (alive) setToken(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [getToken]);
+
+  if (!token) {
+    return <AvatarInitials name={fallbackName} size={size} />;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { Image } = require("expo-image") as typeof import("expo-image");
+  return (
+    <Image
+      source={{ uri, headers: { Authorization: `Bearer ${token}` } }}
+      style={{ width: size, height: size }}
+    />
+  );
 }
 
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {

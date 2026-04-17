@@ -95,7 +95,11 @@ export default function MembersScreen() {
                 onPress={() => m.userId && router.push(`/profile/${m.userId}`)}
               >
                 <Row gap={12} align="center">
-                  <Avatar name={m.displayName} size={44} />
+                  <Avatar
+                    name={m.displayName}
+                    objectPath={m.avatarObjectPath}
+                    size={44}
+                  />
                   <View style={{ flex: 1 }}>
                     <AppText weight="semibold">{m.displayName}</AppText>
                     {m.email ? (

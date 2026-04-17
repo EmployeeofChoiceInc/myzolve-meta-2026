@@ -260,7 +260,11 @@ export default function WallScreen() {
             {posts.map((p) => (
               <Card key={p.id}>
                 <Row gap={10} align="center" style={{ marginBottom: 8 }}>
-                  <Avatar name={p.authorName} size={36} />
+                  <Avatar
+                    name={p.authorName}
+                    objectPath={p.authorAvatarObjectPath}
+                    size={36}
+                  />
                   <View style={{ flex: 1 }}>
                     <AppText weight="semibold">{p.authorName}</AppText>
                     <AppText variant="caption" color={c.mutedForeground}>

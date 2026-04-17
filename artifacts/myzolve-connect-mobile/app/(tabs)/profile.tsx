@@ -62,6 +62,7 @@ export default function ProfileScreen() {
         <Row gap={14}>
           <Avatar
             name={me?.displayName ?? user?.firstName ?? user?.emailAddresses[0]?.emailAddress}
+            objectPath={me?.avatarObjectPath}
             size={64}
           />
           <View style={{ flex: 1 }}>

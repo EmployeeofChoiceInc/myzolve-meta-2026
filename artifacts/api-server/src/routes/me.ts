@@ -30,7 +30,7 @@ function userToApi(user: typeof usersTable.$inferSelect) {
     timezone: user.timezone,
     bio: user.bio,
     location: user.location,
-    avatarObjectPath: user.avatarObjectPath,
+    avatarObjectPath: user.avatarObjectPath ?? null,
     createdAt: user.createdAt,
   };
 }

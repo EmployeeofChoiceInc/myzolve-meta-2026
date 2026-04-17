@@ -75,7 +75,11 @@ export default function MessageThreadScreen() {
               style={{ flex: 1 }}
             >
               <Row gap={10} align="center">
-                <Avatar name={partner.displayName} size={36} />
+                <Avatar
+                  name={partner.displayName}
+                  objectPath={partner.avatarObjectPath}
+                  size={36}
+                />
                 <View style={{ flex: 1 }}>
                   <AppText weight="semibold" numberOfLines={1}>
                     {partner.displayName}

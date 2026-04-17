@@ -26,6 +26,7 @@ export const GetMeResponse = zod.object({
   lastName: zod.string().nullish(),
   email: zod.string(),
   timezone: zod.string().nullish(),
+  avatarObjectPath: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 
@@ -47,6 +48,7 @@ export const UpdateMeResponse = zod.object({
   lastName: zod.string().nullish(),
   email: zod.string(),
   timezone: zod.string().nullish(),
+  avatarObjectPath: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 
@@ -217,6 +219,7 @@ export const ListCircleMembersResponseItem = zod.object({
   userId: zod.number().nullish(),
   displayName: zod.string(),
   email: zod.string().nullish(),
+  avatarObjectPath: zod.string().nullish(),
   role: zod.enum(["owner", "admin", "member", "guest"]),
   status: zod.enum(["active", "pending", "removed"]),
   joinedAt: zod.coerce.date().nullish(),
@@ -244,6 +247,7 @@ export const UpdateCircleMemberResponse = zod.object({
   userId: zod.number().nullish(),
   displayName: zod.string(),
   email: zod.string().nullish(),
+  avatarObjectPath: zod.string().nullish(),
   role: zod.enum(["owner", "admin", "member", "guest"]),
   status: zod.enum(["active", "pending", "removed"]),
   joinedAt: zod.coerce.date().nullish(),
@@ -392,6 +396,7 @@ export const AcceptInvitationResponse = zod.object({
   userId: zod.number().nullish(),
   displayName: zod.string(),
   email: zod.string().nullish(),
+  avatarObjectPath: zod.string().nullish(),
   role: zod.enum(["owner", "admin", "member", "guest"]),
   status: zod.enum(["active", "pending", "removed"]),
   joinedAt: zod.coerce.date().nullish(),
@@ -530,6 +535,7 @@ export const TransferCircleOwnershipResponse = zod.object({
   userId: zod.number().nullish(),
   displayName: zod.string(),
   email: zod.string().nullish(),
+  avatarObjectPath: zod.string().nullish(),
   role: zod.enum(["owner", "admin", "member", "guest"]),
   status: zod.enum(["active", "pending", "removed"]),
   joinedAt: zod.coerce.date().nullish(),

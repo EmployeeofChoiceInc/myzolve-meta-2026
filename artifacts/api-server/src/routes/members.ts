@@ -31,7 +31,7 @@ const updateMemberSchema = z.object({
 
 function memberToApi(
   member: CircleMember,
-  user: { displayName: string; email: string } | null,
+  user: { displayName: string; email: string; avatarObjectPath: string | null } | null,
 ) {
   return {
     id: member.id,
@@ -39,6 +39,7 @@ function memberToApi(
     userId: member.userId,
     displayName: user?.displayName ?? "Unknown",
     email: user?.email ?? null,
+    avatarObjectPath: user?.avatarObjectPath ?? null,
     role: member.role,
     status: member.status,
     joinedAt: member.joinedAt,
@@ -84,7 +85,16 @@ router.get("/circles/:circleId/members", requireAuth, validateParams(circleIdPar
 
   res.json(
     members.map((row) =>
-      memberToApi(row.member, row.user ? { displayName: row.user.displayName, email: row.user.email } : null),
+      memberToApi(
+        row.member,
+        row.user
+          ? {
+              displayName: row.user.displayName,
+              email: row.user.email,
+              avatarObjectPath: row.user.avatarObjectPath ?? null,
+            }
+          : null,
+      ),
     ),
   );
 });
@@ -187,7 +197,7 @@ router.patch(
       });
     }
 
-    res.json(memberToApi(updated, user ? { displayName: user.displayName, email: user.email } : null));
+    res.json(memberToApi(updated, user ? { displayName: user.displayName, email: user.email, avatarObjectPath: user.avatarObjectPath ?? null } : null));
   },
 );
 
@@ -454,7 +464,7 @@ router.post("/invitations/:token/accept", requireAuth, validateParams(invitation
     metadata: { role: invitation.role },
   });
 
-  res.json(memberToApi(member, { displayName: user.displayName, email: user.email }));
+  res.json(memberToApi(member, { displayName: user.displayName, email: user.email, avatarObjectPath: user.avatarObjectPath ?? null }));
 });
 
 router.delete("/invitations/:invitationId", requireAuth, validateParams(invitationIdParam), async (req, res) => {
@@ -599,13 +609,13 @@ router.post(
     });
 
     const ownerUser = await db
-      .select({ displayName: usersTable.displayName, email: usersTable.email })
+      .select({ displayName: usersTable.displayName, email: usersTable.email, avatarObjectPath: usersTable.avatarObjectPath })
       .from(usersTable)
       .where(eq(usersTable.id, userId))
       .limit(1)
       .then((r) => r[0] ?? null);
 
-    res.json(memberToApi(demoted, ownerUser));
+    res.json(memberToApi(demoted, ownerUser ? { ...ownerUser, avatarObjectPath: ownerUser.avatarObjectPath ?? null } : null));
   },
 );
 
@@ -780,13 +790,24 @@ router.post(
     });
 
     const requesterUser = await db
-      .select({ displayName: usersTable.displayName, email: usersTable.email })
+      .select({
+        displayName: usersTable.displayName,
+        email: usersTable.email,
+        avatarObjectPath: usersTable.avatarObjectPath,
+      })
       .from(usersTable)
       .where(eq(usersTable.id, joinRequest.userId))
       .limit(1)
       .then((r) => r[0] ?? null);
 
-    res.json(memberToApi(member, requesterUser));
+    res.json(
+      memberToApi(
+        member,
+        requesterUser
+          ? { ...requesterUser, avatarObjectPath: requesterUser.avatarObjectPath ?? null }
+          : null,
+      ),
+    );
   },
 );
 

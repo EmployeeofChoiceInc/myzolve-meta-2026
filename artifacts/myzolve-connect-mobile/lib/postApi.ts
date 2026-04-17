@@ -6,6 +6,7 @@ export interface CirclePost {
   circleId: number;
   authorUserId: number;
   authorName: string;
+  authorAvatarObjectPath: string | null;
   title: string | null;
   body: string;
   imageObjectPath: string | null;

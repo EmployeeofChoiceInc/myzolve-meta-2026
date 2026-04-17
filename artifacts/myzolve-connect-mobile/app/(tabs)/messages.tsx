@@ -48,7 +48,11 @@ export default function MessagesScreen() {
                 onPress={() => router.push(`/messages/${thread.partnerId}`)}
               >
                 <Row gap={12} align="center">
-                  <Avatar name={thread.partnerName} size={44} />
+                  <Avatar
+                    name={thread.partnerName}
+                    objectPath={thread.partnerAvatarObjectPath}
+                    size={44}
+                  />
                   <View style={{ flex: 1 }}>
                     <Row justify="space-between" align="center">
                       <AppText weight={unread ? "bold" : "semibold"} numberOfLines={1}>

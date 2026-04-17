@@ -24,6 +24,8 @@ export interface UserProfile {
   email: string;
   /** @nullable */
   timezone?: string | null;
+  /** @nullable */
+  avatarObjectPath?: string | null;
   createdAt: string;
 }
 
@@ -212,6 +214,8 @@ export interface CircleMember {
   displayName: string;
   /** @nullable */
   email?: string | null;
+  /** @nullable */
+  avatarObjectPath?: string | null;
   role: CircleMemberRole;
   status: CircleMemberStatus;
   /** @nullable */
@@ -1440,6 +1444,11 @@ export interface UploadUrlResponse {
   objectPath: string;
   metadata?: UploadUrlRequest;
 }
+
+/**
+ * Bad request
+ */
+export type BadRequestResponse = ErrorResponse;
 
 /**
  * Unauthorized

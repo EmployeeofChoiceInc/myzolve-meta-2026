@@ -44,7 +44,11 @@ export default function ProfileDetailScreen() {
           ) : (
             <>
               <View style={{ alignItems: "center", marginBottom: 20 }}>
-                <Avatar name={profile.displayName} size={88} />
+                <Avatar
+                  name={profile.displayName}
+                  objectPath={profile.avatarObjectPath}
+                  size={88}
+                />
                 <AppText variant="h1" style={{ marginTop: 12 }}>
                   {profile.displayName}
                 </AppText>
