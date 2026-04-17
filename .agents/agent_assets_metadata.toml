@@ -1,8 +1,79 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "OOw3WEGlwTh1jut4ulhP_"
 uri = "file://artifacts/myzolve-connect-mobile/assets/images/icon.png"
 type = "image"
 title = "generated_image"
+
+[[outputs]]
+id = "dHXnu7TW8seIluGsfhFFS"
+uri = "file://exports/app-store/iphone-6.9/01-onboarding.png"
+type = "image"
+title = "iPhone 6.9\" — 01 Onboarding"
+
+[[outputs]]
+id = "yfOAKc53e_wCWvQ2OS57Y"
+uri = "file://exports/app-store/iphone-6.9/02-sign-in.png"
+type = "image"
+title = "iPhone 6.9\" — 02 Sign in"
+
+[[outputs]]
+id = "vSYK7UzvmtozaAJ91WzKP"
+uri = "file://exports/app-store/iphone-6.9/03-discover.png"
+type = "image"
+title = "iPhone 6.9\" — 03 Discover"
+
+[[outputs]]
+id = "vXlkte_4RNOsWDl4AEv7e"
+uri = "file://exports/app-store/iphone-6.9/04-messages.png"
+type = "image"
+title = "iPhone 6.9\" — 04 Messages"
+
+[[outputs]]
+id = "B6OiQAJWrI2guhPGT-l9u"
+uri = "file://exports/app-store/iphone-6.9/05-profile.png"
+type = "image"
+title = "iPhone 6.9\" — 05 Profile"
+
+[[outputs]]
+id = "W-9MMVlOhwZf2FYEqZjE8"
+uri = "file://exports/app-store/iphone-6.9/06-settings.png"
+type = "image"
+title = "iPhone 6.9\" — 06 Settings"
+
+[[outputs]]
+id = "ReERBStJz8qZsvXIViihk"
+uri = "file://exports/app-store/iphone-6.5/01-onboarding.png"
+type = "image"
+title = "iPhone 6.5\" — 01 Onboarding"
+
+[[outputs]]
+id = "zwtZRfmkhwdKuh-VGxyqX"
+uri = "file://exports/app-store/iphone-6.5/02-sign-in.png"
+type = "image"
+title = "iPhone 6.5\" — 02 Sign in"
+
+[[outputs]]
+id = "s4fpxPVIO0y1ghOXU2smg"
+uri = "file://exports/app-store/iphone-6.5/03-discover.png"
+type = "image"
+title = "iPhone 6.5\" — 03 Discover"
+
+[[outputs]]
+id = "ggTJBQ4NIvcPNbM8Asmap"
+uri = "file://exports/app-store/iphone-6.5/04-messages.png"
+type = "image"
+title = "iPhone 6.5\" — 04 Messages"
+
+[[outputs]]
+id = "HMmzDA2ljy0715Ai1gI6C"
+uri = "file://exports/app-store/iphone-6.5/05-profile.png"
+type = "image"
+title = "iPhone 6.5\" — 05 Profile"
+
+[[outputs]]
+id = "mbQwqg6i9nXCKHvCvpyfs"
+uri = "file://exports/app-store/iphone-6.5/06-settings.png"
+type = "image"
+title = "iPhone 6.5\" — 06 Settings"
