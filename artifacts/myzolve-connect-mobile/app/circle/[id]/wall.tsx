@@ -22,6 +22,7 @@ import {
   Skeleton,
 } from "@/components/UI";
 import { Screen } from "@/components/Screen";
+import { ImageViewer } from "@/components/ImageViewer";
 import { useColors } from "@/hooks/useColors";
 import {
   useCirclePosts,
@@ -47,6 +48,7 @@ function PostImage({ objectPath }: { objectPath: string }) {
   const c = useColors();
   const { getToken } = useAuth();
   const [token, setToken] = useState<string | null>(null);
+  const [viewerOpen, setViewerOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -81,19 +83,35 @@ function PostImage({ objectPath }: { objectPath: string }) {
     );
   }
 
+  const headers = { Authorization: `Bearer ${token}` };
+
   return (
-    <Image
-      source={{ uri, headers: { Authorization: `Bearer ${token}` } }}
-      style={{
-        width: "100%",
-        aspectRatio: 4 / 3,
-        borderRadius: 16,
-        marginTop: 8,
-        backgroundColor: c.muted,
-      }}
-      contentFit="cover"
-      transition={150}
-    />
+    <>
+      <Pressable
+        onPress={() => setViewerOpen(true)}
+        accessibilityRole="imagebutton"
+        accessibilityLabel="View photo full screen"
+      >
+        <Image
+          source={{ uri, headers }}
+          style={{
+            width: "100%",
+            aspectRatio: 4 / 3,
+            borderRadius: 16,
+            marginTop: 8,
+            backgroundColor: c.muted,
+          }}
+          contentFit="cover"
+          transition={150}
+        />
+      </Pressable>
+      <ImageViewer
+        visible={viewerOpen}
+        uri={uri}
+        headers={headers}
+        onClose={() => setViewerOpen(false)}
+      />
+    </>
   );
 }
 
