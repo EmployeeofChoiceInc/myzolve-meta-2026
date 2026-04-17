@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/mobile/"
+title = "MyZolve Connect Mobile"
+version = "1.0.0"
+id = "artifacts/myzolve-connect-mobile"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/mobile/" ]
+localPort = 24315
+
+[services.development]
+run = "pnpm --filter @workspace/myzolve-connect-mobile run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/myzolve-connect-mobile", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/myzolve-connect-mobile", "run", "serve" ]
+
+[services.env]
+PORT = "24315"
+BASE_PATH = "/mobile/"
