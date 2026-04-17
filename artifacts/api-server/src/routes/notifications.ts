@@ -28,6 +28,7 @@ const updatePrefsSchema = z.object({
         "dispute_resolved",
         "member_joined",
         "circle_update",
+        "mention_received",
       ]),
       enabled: z.boolean(),
     }),

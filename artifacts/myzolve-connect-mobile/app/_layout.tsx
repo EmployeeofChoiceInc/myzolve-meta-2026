@@ -19,6 +19,13 @@ import { setBaseUrl, setAuthTokenGetter } from "@workspace/api-client-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { tokenCache } from "@/lib/clerkTokenCache";
 import { useColors } from "@/hooks/useColors";
+import {
+  configureNotificationHandler,
+  registerForPushNotificationsAsync,
+  unregisterPushToken,
+} from "@/lib/pushNotifications";
+
+configureNotificationHandler();
 
 SplashScreen.preventAutoHideAsync();
 
@@ -39,6 +46,7 @@ function AuthBridge({ children }: { children: React.ReactNode }) {
   const { getToken, isSignedIn, userId } = useAuth();
   const qc = useQueryClient();
   const prevUser = useRef<string | null | undefined>(undefined);
+  const registeredToken = useRef<string | null>(null);
 
   useEffect(() => {
     setAuthTokenGetter(async () => {
@@ -60,6 +68,35 @@ function AuthBridge({ children }: { children: React.ReactNode }) {
     }
     prevUser.current = current;
   }, [isSignedIn, userId, qc]);
+
+  useEffect(() => {
+    if (isSignedIn) {
+      let cancelled = false;
+      const t = setTimeout(() => {
+        if (cancelled) return;
+        registerForPushNotificationsAsync()
+          .then((result) => {
+            if (result) registeredToken.current = result.token;
+          })
+          .catch(() => {
+            // best-effort; ignore failures
+          });
+      }, 500);
+      return () => {
+        cancelled = true;
+        clearTimeout(t);
+      };
+    }
+
+    const tokenToClear = registeredToken.current;
+    if (tokenToClear) {
+      registeredToken.current = null;
+      unregisterPushToken(tokenToClear).catch(() => {
+        // best-effort; ignore failures
+      });
+    }
+    return undefined;
+  }, [isSignedIn, userId]);
 
   return <>{children}</>;
 }

@@ -20,6 +20,7 @@ import type {
   ActivityItem,
   Attachment,
   AuditEntry,
+  BadRequestResponse,
   Circle,
   CircleConnection,
   CircleInvitation,
@@ -35,12 +36,15 @@ import type {
   CreateDisputeBody,
   CreateGratitudeNoteBody,
   CreateInvitationBody,
+  CreateJoinRequestBody,
   CreatePlaceholderBody,
   CreateRepaymentBody,
   CreateRepaymentPlanBody,
   CreateServicePostBody,
   CreateSupportRequestBody,
   DashboardSummary,
+  DeviceToken,
+  DiscoverableCircle,
   Dispute,
   ErrorResponse,
   ForbiddenResponse,
@@ -49,6 +53,7 @@ import type {
   GetNotificationUnreadCount200,
   GratitudeNote,
   HealthStatus,
+  JoinRequest,
   LedgerEntry,
   LedgerSummary,
   ListAuditLogParams,
@@ -66,6 +71,7 @@ import type {
   PlaceholderMember,
   ReactionSummary,
   ReactionToggleResult,
+  RegisterDeviceTokenBody,
   Repayment,
   RepaymentPlan,
   ResolveDisputeBody,
@@ -77,6 +83,7 @@ import type {
   ToggleReactionBody,
   TransferOwnershipBody,
   UnauthorizedResponse,
+  UnregisterDeviceToken200,
   UpdateCircleBody,
   UpdateCircleMemberBody,
   UpdateCommentBody,
@@ -1146,6 +1153,452 @@ export const useRemoveCircleMember = <
   TContext
 > => {
   return useMutation(getRemoveCircleMemberMutationOptions(options));
+};
+
+/**
+ * @summary List open and community circles the caller can discover
+ */
+export const getDiscoverCirclesUrl = () => {
+  return `/api/circles/discover`;
+};
+
+export const discoverCircles = async (
+  options?: RequestInit,
+): Promise<DiscoverableCircle[]> => {
+  return customFetch<DiscoverableCircle[]>(getDiscoverCirclesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getDiscoverCirclesQueryKey = () => {
+  return [`/api/circles/discover`] as const;
+};
+
+export const getDiscoverCirclesQueryOptions = <
+  TData = Awaited<ReturnType<typeof discoverCircles>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof discoverCircles>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getDiscoverCirclesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof discoverCircles>>> = ({
+    signal,
+  }) => discoverCircles({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof discoverCircles>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type DiscoverCirclesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof discoverCircles>>
+>;
+export type DiscoverCirclesQueryError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary List open and community circles the caller can discover
+ */
+
+export function useDiscoverCircles<
+  TData = Awaited<ReturnType<typeof discoverCircles>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof discoverCircles>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getDiscoverCirclesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Request to join an open or community circle
+ */
+export const getCreateJoinRequestUrl = (circleId: number) => {
+  return `/api/circles/${circleId}/join-request`;
+};
+
+export const createJoinRequest = async (
+  circleId: number,
+  createJoinRequestBody?: CreateJoinRequestBody,
+  options?: RequestInit,
+): Promise<JoinRequest> => {
+  return customFetch<JoinRequest>(getCreateJoinRequestUrl(circleId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createJoinRequestBody),
+  });
+};
+
+export const getCreateJoinRequestMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | NotFoundResponse | void
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createJoinRequest>>,
+    TError,
+    { circleId: number; data: BodyType<CreateJoinRequestBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createJoinRequest>>,
+  TError,
+  { circleId: number; data: BodyType<CreateJoinRequestBody> },
+  TContext
+> => {
+  const mutationKey = ["createJoinRequest"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createJoinRequest>>,
+    { circleId: number; data: BodyType<CreateJoinRequestBody> }
+  > = (props) => {
+    const { circleId, data } = props ?? {};
+
+    return createJoinRequest(circleId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateJoinRequestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createJoinRequest>>
+>;
+export type CreateJoinRequestMutationBody = BodyType<CreateJoinRequestBody>;
+export type CreateJoinRequestMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | NotFoundResponse | void
+>;
+
+/**
+ * @summary Request to join an open or community circle
+ */
+export const useCreateJoinRequest = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | NotFoundResponse | void
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createJoinRequest>>,
+    TError,
+    { circleId: number; data: BodyType<CreateJoinRequestBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createJoinRequest>>,
+  TError,
+  { circleId: number; data: BodyType<CreateJoinRequestBody> },
+  TContext
+> => {
+  return useMutation(getCreateJoinRequestMutationOptions(options));
+};
+
+/**
+ * @summary List pending join requests for a circle (owner/admin only)
+ */
+export const getListJoinRequestsUrl = (circleId: number) => {
+  return `/api/circles/${circleId}/join-requests`;
+};
+
+export const listJoinRequests = async (
+  circleId: number,
+  options?: RequestInit,
+): Promise<JoinRequest[]> => {
+  return customFetch<JoinRequest[]>(getListJoinRequestsUrl(circleId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListJoinRequestsQueryKey = (circleId: number) => {
+  return [`/api/circles/${circleId}/join-requests`] as const;
+};
+
+export const getListJoinRequestsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listJoinRequests>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(
+  circleId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listJoinRequests>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListJoinRequestsQueryKey(circleId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listJoinRequests>>
+  > = ({ signal }) => listJoinRequests(circleId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!circleId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listJoinRequests>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListJoinRequestsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listJoinRequests>>
+>;
+export type ListJoinRequestsQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary List pending join requests for a circle (owner/admin only)
+ */
+
+export function useListJoinRequests<
+  TData = Awaited<ReturnType<typeof listJoinRequests>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(
+  circleId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listJoinRequests>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListJoinRequestsQueryOptions(circleId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Approve a pending join request (owner/admin only)
+ */
+export const getApproveJoinRequestUrl = (
+  circleId: number,
+  requestId: number,
+) => {
+  return `/api/circles/${circleId}/join-requests/${requestId}/approve`;
+};
+
+export const approveJoinRequest = async (
+  circleId: number,
+  requestId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getApproveJoinRequestUrl(circleId, requestId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getApproveJoinRequestMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof approveJoinRequest>>,
+    TError,
+    { circleId: number; requestId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof approveJoinRequest>>,
+  TError,
+  { circleId: number; requestId: number },
+  TContext
+> => {
+  const mutationKey = ["approveJoinRequest"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof approveJoinRequest>>,
+    { circleId: number; requestId: number }
+  > = (props) => {
+    const { circleId, requestId } = props ?? {};
+
+    return approveJoinRequest(circleId, requestId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ApproveJoinRequestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof approveJoinRequest>>
+>;
+
+export type ApproveJoinRequestMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Approve a pending join request (owner/admin only)
+ */
+export const useApproveJoinRequest = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof approveJoinRequest>>,
+    TError,
+    { circleId: number; requestId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof approveJoinRequest>>,
+  TError,
+  { circleId: number; requestId: number },
+  TContext
+> => {
+  return useMutation(getApproveJoinRequestMutationOptions(options));
+};
+
+/**
+ * @summary Decline a pending join request (owner/admin only)
+ */
+export const getDeclineJoinRequestUrl = (
+  circleId: number,
+  requestId: number,
+) => {
+  return `/api/circles/${circleId}/join-requests/${requestId}/decline`;
+};
+
+export const declineJoinRequest = async (
+  circleId: number,
+  requestId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeclineJoinRequestUrl(circleId, requestId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getDeclineJoinRequestMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof declineJoinRequest>>,
+    TError,
+    { circleId: number; requestId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof declineJoinRequest>>,
+  TError,
+  { circleId: number; requestId: number },
+  TContext
+> => {
+  const mutationKey = ["declineJoinRequest"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof declineJoinRequest>>,
+    { circleId: number; requestId: number }
+  > = (props) => {
+    const { circleId, requestId } = props ?? {};
+
+    return declineJoinRequest(circleId, requestId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeclineJoinRequestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof declineJoinRequest>>
+>;
+
+export type DeclineJoinRequestMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Decline a pending join request (owner/admin only)
+ */
+export const useDeclineJoinRequest = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof declineJoinRequest>>,
+    TError,
+    { circleId: number; requestId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof declineJoinRequest>>,
+  TError,
+  { circleId: number; requestId: number },
+  TContext
+> => {
+  return useMutation(getDeclineJoinRequestMutationOptions(options));
 };
 
 /**
@@ -7361,3 +7814,177 @@ export function useGetCircleDashboard<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Register a device push token for the current user
+ */
+export const getRegisterDeviceTokenUrl = () => {
+  return `/api/device-tokens`;
+};
+
+export const registerDeviceToken = async (
+  registerDeviceTokenBody: RegisterDeviceTokenBody,
+  options?: RequestInit,
+): Promise<DeviceToken> => {
+  return customFetch<DeviceToken>(getRegisterDeviceTokenUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(registerDeviceTokenBody),
+  });
+};
+
+export const getRegisterDeviceTokenMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof registerDeviceToken>>,
+    TError,
+    { data: BodyType<RegisterDeviceTokenBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof registerDeviceToken>>,
+  TError,
+  { data: BodyType<RegisterDeviceTokenBody> },
+  TContext
+> => {
+  const mutationKey = ["registerDeviceToken"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof registerDeviceToken>>,
+    { data: BodyType<RegisterDeviceTokenBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return registerDeviceToken(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RegisterDeviceTokenMutationResult = NonNullable<
+  Awaited<ReturnType<typeof registerDeviceToken>>
+>;
+export type RegisterDeviceTokenMutationBody = BodyType<RegisterDeviceTokenBody>;
+export type RegisterDeviceTokenMutationError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Register a device push token for the current user
+ */
+export const useRegisterDeviceToken = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof registerDeviceToken>>,
+    TError,
+    { data: BodyType<RegisterDeviceTokenBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof registerDeviceToken>>,
+  TError,
+  { data: BodyType<RegisterDeviceTokenBody> },
+  TContext
+> => {
+  return useMutation(getRegisterDeviceTokenMutationOptions(options));
+};
+
+/**
+ * @summary Unregister a device push token for the current user
+ */
+export const getUnregisterDeviceTokenUrl = (token: string) => {
+  return `/api/device-tokens/${token}`;
+};
+
+export const unregisterDeviceToken = async (
+  token: string,
+  options?: RequestInit,
+): Promise<UnregisterDeviceToken200> => {
+  return customFetch<UnregisterDeviceToken200>(
+    getUnregisterDeviceTokenUrl(token),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
+};
+
+export const getUnregisterDeviceTokenMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unregisterDeviceToken>>,
+    TError,
+    { token: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof unregisterDeviceToken>>,
+  TError,
+  { token: string },
+  TContext
+> => {
+  const mutationKey = ["unregisterDeviceToken"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof unregisterDeviceToken>>,
+    { token: string }
+  > = (props) => {
+    const { token } = props ?? {};
+
+    return unregisterDeviceToken(token, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UnregisterDeviceTokenMutationResult = NonNullable<
+  Awaited<ReturnType<typeof unregisterDeviceToken>>
+>;
+
+export type UnregisterDeviceTokenMutationError =
+  ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Unregister a device push token for the current user
+ */
+export const useUnregisterDeviceToken = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unregisterDeviceToken>>,
+    TError,
+    { token: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof unregisterDeviceToken>>,
+  TError,
+  { token: string },
+  TContext
+> => {
+  return useMutation(getUnregisterDeviceTokenMutationOptions(options));
+};

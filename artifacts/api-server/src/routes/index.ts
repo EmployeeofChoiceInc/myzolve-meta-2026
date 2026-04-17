@@ -17,6 +17,7 @@ import attachmentsRouter from "./attachments";
 import storageRouter from "./storage";
 import postsRouter from "./posts";
 import messagesRouter from "./messages";
+import deviceTokensRouter from "./deviceTokens";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(attachmentsRouter);
 router.use(storageRouter);
 router.use(postsRouter);
 router.use(messagesRouter);
+router.use(deviceTokensRouter);
 
 export default router;

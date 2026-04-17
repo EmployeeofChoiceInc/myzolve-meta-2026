@@ -259,6 +259,87 @@ export const RemoveCircleMemberParams = zod.object({
 });
 
 /**
+ * @summary List open and community circles the caller can discover
+ */
+export const DiscoverCirclesResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  circleType: zod.enum([
+    "family",
+    "chosen_family",
+    "friends",
+    "caregiving_circle",
+    "neighborhood_circle",
+    "other",
+  ]),
+  description: zod.string().nullish(),
+  currency: zod.string(),
+  privacyMode: zod.enum(["open", "community"]),
+  ownerId: zod.number(),
+  creatorName: zod.string().nullish(),
+  memberCount: zod.number(),
+  isMember: zod.boolean(),
+  joinRequestStatus: zod
+    .union([
+      zod.literal("pending"),
+      zod.literal("approved"),
+      zod.literal("declined"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const DiscoverCirclesResponse = zod.array(DiscoverCirclesResponseItem);
+
+/**
+ * @summary Request to join an open or community circle
+ */
+export const CreateJoinRequestParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const createJoinRequestBodyNoteMax = 500;
+
+export const CreateJoinRequestBody = zod.object({
+  note: zod.string().max(createJoinRequestBodyNoteMax).optional(),
+});
+
+/**
+ * @summary List pending join requests for a circle (owner/admin only)
+ */
+export const ListJoinRequestsParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const ListJoinRequestsResponseItem = zod.object({
+  id: zod.number(),
+  circleId: zod.number(),
+  userId: zod.number(),
+  requesterName: zod.string().nullish(),
+  requesterEmail: zod.string().nullish(),
+  note: zod.string().nullish(),
+  status: zod.enum(["pending", "approved", "declined"]),
+  createdAt: zod.coerce.date(),
+});
+export const ListJoinRequestsResponse = zod.array(ListJoinRequestsResponseItem);
+
+/**
+ * @summary Approve a pending join request (owner/admin only)
+ */
+export const ApproveJoinRequestParams = zod.object({
+  circleId: zod.coerce.number(),
+  requestId: zod.coerce.number(),
+});
+
+/**
+ * @summary Decline a pending join request (owner/admin only)
+ */
+export const DeclineJoinRequestParams = zod.object({
+  circleId: zod.coerce.number(),
+  requestId: zod.coerce.number(),
+});
+
+/**
  * @summary List pending invitations for a circle
  */
 export const ListCircleInvitationsParams = zod.object({
@@ -1624,6 +1705,7 @@ export const UpdateNotificationPreferencesBody = zod.object({
         "dispute_resolved",
         "member_joined",
         "circle_update",
+        "mention_received",
       ]),
       enabled: zod.boolean(),
     }),
@@ -2151,4 +2233,31 @@ export const GetCircleDashboardResponse = zod.object({
   activeServices: zod.number(),
   myOpenRequests: zod.number(),
   circleHealth: zod.enum(["quiet", "active", "busy"]),
+});
+
+/**
+ * @summary Register a device push token for the current user
+ */
+export const registerDeviceTokenBodyTokenMax = 500;
+
+export const RegisterDeviceTokenBody = zod.object({
+  token: zod.string().min(1).max(registerDeviceTokenBodyTokenMax),
+  platform: zod.enum(["ios", "android", "web"]),
+});
+
+export const RegisterDeviceTokenResponse = zod.object({
+  id: zod.number(),
+  token: zod.string(),
+  platform: zod.enum(["ios", "android", "web"]),
+});
+
+/**
+ * @summary Unregister a device push token for the current user
+ */
+export const UnregisterDeviceTokenParams = zod.object({
+  token: zod.coerce.string(),
+});
+
+export const UnregisterDeviceTokenResponse = zod.object({
+  success: zod.boolean(),
 });

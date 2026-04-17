@@ -14,7 +14,7 @@ import {
   circlePostsTable,
 } from "@workspace/db";
 import { eq, and, desc, isNull, count, inArray } from "drizzle-orm";
-import { assertCircleMember, createNotification } from "../lib/helpers";
+import { assertCircleMember, createNotification, notifyMentions } from "../lib/helpers";
 
 const router = Router();
 
@@ -288,6 +288,17 @@ router.post(
         targetEntityId: entityId,
       });
     }
+
+    await notifyMentions({
+      circleId,
+      body,
+      actorUserId: userId,
+      actorName: authorName,
+      targetEntityType: entityType,
+      targetEntityId: entityId,
+      excludeUserIds: entity.ownerId ? [entity.ownerId] : [],
+      context: entityType === "circle_post" ? "in a wall comment" : "in a comment",
+    });
 
     res.status(201).json(commentToApi(comment, authorName));
   },

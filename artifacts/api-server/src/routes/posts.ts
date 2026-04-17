@@ -10,7 +10,7 @@ import {
   commentsTable,
 } from "@workspace/db";
 import { eq, and, desc, count, inArray } from "drizzle-orm";
-import { assertCircleMember } from "../lib/helpers";
+import { assertCircleMember, notifyMentions } from "../lib/helpers";
 import { validateAndConsumePendingUpload } from "../lib/uploadTokens";
 
 const router = Router();
@@ -147,6 +147,16 @@ router.post(
         status: "active",
       })
       .returning();
+
+    await notifyMentions({
+      circleId,
+      body,
+      actorUserId: userId,
+      actorName: req.dbUser!.displayName,
+      targetEntityType: "circle_post",
+      targetEntityId: post.id,
+      context: "in a wall post",
+    });
 
     res.status(201).json(postToApi(post, req.dbUser!.displayName, 0, req.dbUser!.avatarObjectPath));
   },

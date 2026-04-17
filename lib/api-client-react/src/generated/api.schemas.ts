@@ -268,6 +268,85 @@ export interface CircleInvitation {
   createdAt: string;
 }
 
+export type DiscoverableCircleCircleType =
+  (typeof DiscoverableCircleCircleType)[keyof typeof DiscoverableCircleCircleType];
+
+export const DiscoverableCircleCircleType = {
+  family: "family",
+  chosen_family: "chosen_family",
+  friends: "friends",
+  caregiving_circle: "caregiving_circle",
+  neighborhood_circle: "neighborhood_circle",
+  other: "other",
+} as const;
+
+export type DiscoverableCirclePrivacyMode =
+  (typeof DiscoverableCirclePrivacyMode)[keyof typeof DiscoverableCirclePrivacyMode];
+
+export const DiscoverableCirclePrivacyMode = {
+  open: "open",
+  community: "community",
+} as const;
+
+/**
+ * @nullable
+ */
+export type DiscoverableCircleJoinRequestStatus =
+  | (typeof DiscoverableCircleJoinRequestStatus)[keyof typeof DiscoverableCircleJoinRequestStatus]
+  | null;
+
+export const DiscoverableCircleJoinRequestStatus = {
+  pending: "pending",
+  approved: "approved",
+  declined: "declined",
+} as const;
+
+export interface DiscoverableCircle {
+  id: number;
+  name: string;
+  circleType: DiscoverableCircleCircleType;
+  /** @nullable */
+  description?: string | null;
+  currency: string;
+  privacyMode: DiscoverableCirclePrivacyMode;
+  ownerId: number;
+  /** @nullable */
+  creatorName?: string | null;
+  memberCount: number;
+  isMember: boolean;
+  /** @nullable */
+  joinRequestStatus?: DiscoverableCircleJoinRequestStatus;
+  createdAt: string;
+}
+
+export interface CreateJoinRequestBody {
+  /** @maxLength 500 */
+  note?: string;
+}
+
+export type JoinRequestStatus =
+  (typeof JoinRequestStatus)[keyof typeof JoinRequestStatus];
+
+export const JoinRequestStatus = {
+  pending: "pending",
+  approved: "approved",
+  declined: "declined",
+} as const;
+
+export interface JoinRequest {
+  id: number;
+  circleId: number;
+  userId: number;
+  /** @nullable */
+  requesterName?: string | null;
+  /** @nullable */
+  requesterEmail?: string | null;
+  /** @nullable */
+  note?: string | null;
+  status: JoinRequestStatus;
+  createdAt: string;
+}
+
 export type CircleConnectionPermissionScope =
   (typeof CircleConnectionPermissionScope)[keyof typeof CircleConnectionPermissionScope];
 
@@ -1056,6 +1135,7 @@ export const UpdateNotificationPreferencesBodyPreferencesItemNotificationType =
     dispute_resolved: "dispute_resolved",
     member_joined: "member_joined",
     circle_update: "circle_update",
+    mention_received: "mention_received",
   } as const;
 
 export type UpdateNotificationPreferencesBodyPreferencesItem = {
@@ -1065,6 +1145,39 @@ export type UpdateNotificationPreferencesBodyPreferencesItem = {
 
 export interface UpdateNotificationPreferencesBody {
   preferences: UpdateNotificationPreferencesBodyPreferencesItem[];
+}
+
+export type DeviceTokenPlatform =
+  (typeof DeviceTokenPlatform)[keyof typeof DeviceTokenPlatform];
+
+export const DeviceTokenPlatform = {
+  ios: "ios",
+  android: "android",
+  web: "web",
+} as const;
+
+export interface DeviceToken {
+  id: number;
+  token: string;
+  platform: DeviceTokenPlatform;
+}
+
+export type RegisterDeviceTokenBodyPlatform =
+  (typeof RegisterDeviceTokenBodyPlatform)[keyof typeof RegisterDeviceTokenBodyPlatform];
+
+export const RegisterDeviceTokenBodyPlatform = {
+  ios: "ios",
+  android: "android",
+  web: "web",
+} as const;
+
+export interface RegisterDeviceTokenBody {
+  /**
+   * @minLength 1
+   * @maxLength 500
+   */
+  token: string;
+  platform: RegisterDeviceTokenBodyPlatform;
 }
 
 export interface Comment {
@@ -1420,4 +1533,8 @@ export type ListDisputesParams = {
 export type ListAuditLogParams = {
   limit?: number;
   offset?: number;
+};
+
+export type UnregisterDeviceToken200 = {
+  success: boolean;
 };

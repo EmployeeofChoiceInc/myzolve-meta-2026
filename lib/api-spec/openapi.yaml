@@ -46,6 +46,8 @@ tags:
     description: File attachments
   - name: storage
     description: Object storage upload and serving
+  - name: device-tokens
+    description: Push notification device token registration
 
 paths:
   /healthz:
@@ -2016,6 +2018,59 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  # ── Device Tokens ────────────────────────────────────────────────────────────
+  /device-tokens:
+    post:
+      operationId: registerDeviceToken
+      tags: [device-tokens]
+      summary: Register a device push token for the current user
+      security: [{ clerk: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterDeviceTokenBody"
+      responses:
+        "200":
+          description: Device token updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceToken"
+        "201":
+          description: Device token created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceToken"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /device-tokens/{token}:
+    delete:
+      operationId: unregisterDeviceToken
+      tags: [device-tokens]
+      summary: Unregister a device push token for the current user
+      security: [{ clerk: [] }]
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Device token removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                required: [success]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
 components:
   securitySchemes:
     clerk:
@@ -3254,11 +3309,37 @@ components:
                   - dispute_resolved
                   - member_joined
                   - circle_update
+                  - mention_received
               enabled:
                 type: boolean
             required: [notificationType, enabled]
       required:
         - preferences
+
+    # ── Device Tokens ─────────────────────────────────────────────────────────
+    DeviceToken:
+      type: object
+      properties:
+        id:
+          type: integer
+        token:
+          type: string
+        platform:
+          type: string
+          enum: [ios, android, web]
+      required: [id, token, platform]
+
+    RegisterDeviceTokenBody:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 500
+        platform:
+          type: string
+          enum: [ios, android, web]
+      required: [token, platform]
 
     # ── Comments ──────────────────────────────────────────────────────────────
     Comment:
