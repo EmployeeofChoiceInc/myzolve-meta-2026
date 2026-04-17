@@ -26,6 +26,7 @@ export interface UserProfile {
 }
 
 export const MAX_POST_IMAGE_BYTES = 10 * 1024 * 1024;
+export const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
 export function useCirclePosts(circleId: number) {
   return useQuery({
@@ -70,6 +71,50 @@ export interface LocalPostImage {
   name: string;
   size: number;
   contentType: string;
+}
+
+export interface LocalAvatarImage {
+  uri: string;
+  name: string;
+  size: number;
+  contentType: string;
+}
+
+export function useAvatarUpload() {
+  return useMutation({
+    mutationFn: async (file: LocalAvatarImage): Promise<string> => {
+      const blob = await (await fetch(file.uri)).blob();
+      const size = file.size > 0 ? file.size : blob.size;
+      if (!size) {
+        throw new Error("Could not determine image size");
+      }
+      if (size > MAX_AVATAR_BYTES) {
+        throw new Error("Image is larger than 5 MB");
+      }
+
+      const { uploadURL, objectPath } = await customFetch<{
+        uploadURL: string;
+        objectPath: string;
+      }>("/api/storage/avatar/request-url", {
+        method: "POST",
+        body: JSON.stringify({
+          name: file.name,
+          size,
+          contentType: file.contentType,
+        }),
+      });
+
+      const putRes = await fetch(uploadURL, {
+        method: "PUT",
+        body: blob,
+        headers: { "Content-Type": file.contentType },
+      });
+      if (!putRes.ok) {
+        throw new Error(`Upload failed (${putRes.status})`);
+      }
+      return objectPath;
+    },
+  });
 }
 
 export function useCircleMediaUpload(circleId: number) {

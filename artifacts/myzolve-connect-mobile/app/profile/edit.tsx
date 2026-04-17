@@ -1,7 +1,8 @@
 import { Feather } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
 import React, { useEffect, useState } from "react";
-import { Alert, Pressable, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
@@ -13,6 +14,7 @@ import {
 
 import {
   AppText,
+  Avatar,
   Button,
   Field,
   IconButton,
@@ -20,6 +22,11 @@ import {
   Row,
 } from "@/components/UI";
 import { useColors } from "@/hooks/useColors";
+import {
+  MAX_AVATAR_BYTES,
+  useAvatarUpload,
+  type LocalAvatarImage,
+} from "@/lib/postApi";
 
 const TIMEZONES = [
   { value: "UTC", label: "UTC" },
@@ -47,7 +54,32 @@ type MeResponse = {
   timezone?: string | null;
   bio?: string | null;
   location?: string | null;
+  avatarObjectPath?: string | null;
 };
+
+function inferContentType(asset: ImagePicker.ImagePickerAsset): string {
+  if (asset.mimeType) return asset.mimeType;
+  const ext = (asset.fileName ?? asset.uri).split(".").pop()?.toLowerCase();
+  switch (ext) {
+    case "png":
+      return "image/png";
+    case "webp":
+      return "image/webp";
+    case "heic":
+      return "image/heic";
+    case "heif":
+      return "image/heif";
+    default:
+      return "image/jpeg";
+  }
+}
+
+function inferFileName(asset: ImagePicker.ImagePickerAsset, contentType: string): string {
+  if (asset.fileName) return asset.fileName;
+  const extFromType = contentType.split("/")[1] ?? "jpg";
+  const tail = asset.uri.split("/").pop() ?? `avatar.${extFromType}`;
+  return tail.includes(".") ? tail : `${tail}.${extFromType}`;
+}
 
 export default function EditProfileScreen() {
   const c = useColors();
@@ -55,6 +87,8 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const qc = useQueryClient();
   const { data: me, isLoading } = useGetMe();
+  const avatarUpload = useAvatarUpload();
+  const [avatarPreviewUri, setAvatarPreviewUri] = useState<string | null>(null);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -77,7 +111,7 @@ export default function EditProfileScreen() {
   }, [me, initialized]);
 
   const updateMe = useMutation({
-    mutationFn: (data: ProfileUpdatePayload) =>
+    mutationFn: (data: ProfileUpdatePayload & { avatarObjectPath?: string }) =>
       customFetch<MeResponse>("/api/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -88,6 +122,62 @@ export default function EditProfileScreen() {
       qc.invalidateQueries({ queryKey: getGetMeQueryKey() });
     },
   });
+
+  async function pickAvatar() {
+    if (avatarUpload.isPending || updateMe.isPending) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert(
+        "Photo access needed",
+        "Allow photo library access in Settings to change your photo.",
+      );
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.85,
+      allowsEditing: true,
+      aspect: [1, 1],
+      exif: false,
+    });
+    if (result.canceled || result.assets.length === 0) return;
+    const asset = result.assets[0];
+    const contentType = inferContentType(asset);
+    if (!contentType.startsWith("image/")) {
+      Alert.alert("Unsupported file", "Please pick an image.");
+      return;
+    }
+    const size = asset.fileSize ?? 0;
+    if (size && size > MAX_AVATAR_BYTES) {
+      Alert.alert("Image too large", "Profile photos must be 5 MB or smaller.");
+      return;
+    }
+    const file: LocalAvatarImage = {
+      uri: asset.uri,
+      name: inferFileName(asset, contentType),
+      size,
+      contentType,
+    };
+    setAvatarPreviewUri(asset.uri);
+    avatarUpload.mutate(file, {
+      onSuccess: (objectPath) => {
+        updateMe.mutate(
+          { avatarObjectPath: objectPath },
+          {
+            onError: () => {
+              setAvatarPreviewUri(null);
+              Alert.alert("Couldn't save", "Photo upload failed. Please try again.");
+            },
+          },
+        );
+      },
+      onError: (err: unknown) => {
+        setAvatarPreviewUri(null);
+        const msg = err instanceof Error ? err.message : "Please try again.";
+        Alert.alert("Couldn't upload photo", msg);
+      },
+    });
+  }
 
   function submit() {
     const trimmedDisplay = displayName.trim();
@@ -148,6 +238,65 @@ export default function EditProfileScreen() {
             <AppText color={c.mutedForeground}>Loading…</AppText>
           ) : (
             <>
+              <View style={{ alignItems: "center", marginBottom: 24 }}>
+                <Pressable
+                  onPress={pickAvatar}
+                  testID="button-pick-avatar"
+                  disabled={avatarUpload.isPending || updateMe.isPending}
+                  style={({ pressed }) => ({
+                    opacity: pressed ? 0.85 : 1,
+                    position: "relative",
+                  })}
+                >
+                  <Avatar
+                    name={me?.displayName}
+                    uri={avatarPreviewUri}
+                    objectPath={avatarPreviewUri ? null : (me as MeResponse | undefined)?.avatarObjectPath}
+                    size={96}
+                  />
+                  <View
+                    style={{
+                      position: "absolute",
+                      right: 0,
+                      bottom: 0,
+                      width: 32,
+                      height: 32,
+                      borderRadius: 16,
+                      backgroundColor: c.primary,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderWidth: 2,
+                      borderColor: c.background,
+                    }}
+                  >
+                    <Feather name="camera" size={16} color={c.primaryForeground} />
+                  </View>
+                  {avatarUpload.isPending ? (
+                    <View
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: 96,
+                        height: 96,
+                        borderRadius: 48,
+                        backgroundColor: "rgba(0,0,0,0.4)",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <ActivityIndicator color="#fff" />
+                    </View>
+                  ) : null}
+                </Pressable>
+                <AppText
+                  color={c.mutedForeground}
+                  style={{ marginTop: 10, fontSize: 13 }}
+                >
+                  Tap to change your photo
+                </AppText>
+              </View>
+
               <Field label="Display name">
                 <Input
                   value={displayName}
