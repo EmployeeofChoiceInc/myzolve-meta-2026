@@ -6,6 +6,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/landing";
+import PrivacyPage from "@/pages/privacy";
+import TermsPage from "@/pages/terms";
+import SiteFooter from "@/components/site-footer";
+import { initAnalytics, trackPageview } from "@/lib/analytics";
 import DashboardPage from "@/pages/dashboard";
 import Layout from "@/components/layout";
 import CirclesPage from "@/pages/circles";
@@ -46,8 +50,11 @@ function SignInPage() {
   // To update login providers, app branding, or OAuth settings use the Auth
   // pane in the workspace toolbar. More information can be found in the Replit docs.
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center bg-background p-4">
-      <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
+    <div className="min-h-[100dvh] flex flex-col bg-background">
+      <div className="flex-1 flex items-center justify-center p-4">
+        <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
+      </div>
+      <SiteFooter />
     </div>
   );
 }
@@ -56,10 +63,24 @@ function SignUpPage() {
   // To update login providers, app branding, or OAuth settings use the Auth
   // pane in the workspace toolbar. More information can be found in the Replit docs.
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center bg-background p-4">
-      <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
+    <div className="min-h-[100dvh] flex flex-col bg-background">
+      <div className="flex-1 flex items-center justify-center p-4">
+        <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
+      </div>
+      <SiteFooter />
     </div>
   );
+}
+
+function AnalyticsTracker() {
+  const [location] = useLocation();
+  useEffect(() => {
+    initAnalytics();
+  }, []);
+  useEffect(() => {
+    trackPageview();
+  }, [location]);
+  return null;
 }
 
 function ClerkQueryClientCacheInvalidator() {
@@ -124,10 +145,13 @@ function ClerkProviderWithRoutes() {
     >
       <QueryClientProvider client={queryClient}>
         <ClerkQueryClientCacheInvalidator />
+        <AnalyticsTracker />
         <Switch>
           <Route path="/" component={HomeRedirect} />
           <Route path="/sign-in/*?" component={SignInPage} />
           <Route path="/sign-up/*?" component={SignUpPage} />
+          <Route path="/privacy" component={PrivacyPage} />
+          <Route path="/terms" component={TermsPage} />
           <Route path="/dashboard"><ProtectedRoute component={DashboardPage} /></Route>
           <Route path="/circles"><ProtectedRoute component={CirclesPage} /></Route>
           <Route path="/circles/:id"><ProtectedRoute component={CircleDetailPage} /></Route>

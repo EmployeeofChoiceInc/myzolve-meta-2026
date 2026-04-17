@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { Heart, Users, Shield, ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import SiteFooter from "@/components/site-footer";
 
 export default function LandingPage() {
   return (
@@ -69,6 +70,8 @@ export default function LandingPage() {
           </div>
         </div>
       </main>
+
+      <SiteFooter />
     </div>
   );
 }

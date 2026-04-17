@@ -5,6 +5,7 @@ import { useUser } from "@clerk/react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { HandHeart, CheckCircle2, AlertCircle } from "lucide-react";
+import SiteFooter from "@/components/site-footer";
 
 export default function InviteAcceptPage() {
   const { token } = useParams<{ token: string }>();
@@ -50,7 +51,8 @@ export default function InviteAcceptPage() {
 
   if (!isSignedIn) {
     return (
-      <div className="min-h-[100dvh] flex items-center justify-center bg-background p-4">
+      <div className="min-h-[100dvh] flex flex-col bg-background">
+      <div className="flex-1 flex items-center justify-center p-4">
         <Card className="w-full max-w-md rounded-3xl shadow-sm">
           <CardHeader className="text-center pb-4">
             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -69,11 +71,14 @@ export default function InviteAcceptPage() {
           </CardContent>
         </Card>
       </div>
+        <SiteFooter />
+      </div>
     );
   }
 
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center bg-background p-4">
+    <div className="min-h-[100dvh] flex flex-col bg-background">
+      <div className="flex-1 flex items-center justify-center p-4">
       <Card className="w-full max-w-md rounded-3xl shadow-sm">
         <CardHeader className="text-center pb-4">
           <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
@@ -126,6 +131,8 @@ export default function InviteAcceptPage() {
           </CardContent>
         )}
       </Card>
+      </div>
+      <SiteFooter />
     </div>
   );
 }

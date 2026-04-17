@@ -125,3 +125,48 @@ All endpoints prefixed with `/api`.
 - Mobile-first design
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+
+## Public-Launch Notes
+
+### Analytics (Plausible)
+The web app loads Plausible Analytics in production builds only, gated on a
+build-time env var. Page views fire on every wouter location change.
+
+- **Implementation**: `artifacts/myzolve-connect/src/lib/analytics.ts`,
+  invoked from `App.tsx` via `<AnalyticsTracker />`.
+- **Env vars** (set as build-time secrets on the web artifact):
+  - `VITE_PLAUSIBLE_DOMAIN` — the site domain registered in Plausible
+    (e.g. `connect.myzolve.com`). When unset, no analytics script is
+    injected — safe in dev and during initial deploys.
+  - `VITE_PLAUSIBLE_API_HOST` *(optional)* — override for self-hosted
+    Plausible. Defaults to `https://plausible.io`.
+- **Dashboard**: `https://plausible.io/<VITE_PLAUSIBLE_DOMAIN>` once the
+  site is added to the team Plausible account
+  (e.g. `https://plausible.io/connect.myzolve.com`). For self-hosted,
+  swap in the value of `VITE_PLAUSIBLE_API_HOST`.
+- Plausible is cookieless, so no GDPR consent banner is required.
+
+### Waitlist references in the production bundle
+A previous review flagged `"/waitlist"` appearing in the JS bundle. The
+project itself contains zero waitlist code paths — Connect intentionally
+does not mount Clerk's waitlist UI. The only remaining `"/waitlist"`
+occurrences come from the Clerk SDK's internal waitlist feature
+(`mountWaitlist`, `redirectToWaitlist`,
+`waitlist:{pathRoot:"/waitlist"`, …) and are inert.
+
+To prove this stays true on every build, an audit script enforces the
+rule with an explicit allowlist of Clerk-internal contexts. Any *new*
+`"/waitlist"` literal that does not match the allowlist (i.e. any
+app-owned waitlist link or route) fails the audit:
+
+```bash
+pnpm --filter ./artifacts/myzolve-connect run build
+pnpm --filter ./artifacts/myzolve-connect run audit:waitlist
+```
+
+The audit lives at `artifacts/myzolve-connect/scripts/audit-waitlist.mjs`
+and is intended to be wired into CI before public launch.
+
+### Brand tokens
+See `artifacts/myzolve-connect/BRAND.md` for palette, typography, shape,
+voice, and "by MyZolve" sub-brand mark guidance.
