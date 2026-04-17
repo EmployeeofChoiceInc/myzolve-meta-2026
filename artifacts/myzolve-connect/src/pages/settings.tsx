@@ -22,10 +22,10 @@ import {
 import { Camera } from "lucide-react";
 
 const profileFormSchema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().optional(),
-  displayName: z.string().min(2, "Display name must be at least 2 characters"),
-  timezone: z.string().min(1, "Timezone is required"),
+  firstName: z.string().max(100).optional(),
+  lastName: z.string().max(100).optional(),
+  displayName: z.string().min(2, "Display name must be at least 2 characters").max(100),
+  timezone: z.string().min(1, "Please pick a timezone"),
   bio: z.string().max(500).optional(),
   location: z.string().max(200).optional(),
 });
@@ -160,7 +160,15 @@ export default function SettingsPage() {
   }
 
   function onSubmit(values: z.infer<typeof profileFormSchema>) {
-    updateMe.mutate(values, {
+    const payload = {
+      displayName: values.displayName,
+      timezone: values.timezone,
+      ...(values.firstName ? { firstName: values.firstName } : {}),
+      ...(values.lastName ? { lastName: values.lastName } : {}),
+      ...(values.bio !== undefined ? { bio: values.bio } : {}),
+      ...(values.location !== undefined ? { location: values.location } : {}),
+    };
+    updateMe.mutate(payload, {
       onSuccess: () => {
         toast({ title: "Profile updated", description: "Your changes have been saved successfully." });
       },
@@ -237,7 +245,7 @@ export default function SettingsPage() {
                   name="firstName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>First Name</FormLabel>
+                      <FormLabel>First Name (Optional)</FormLabel>
                       <FormControl>
                         <Input placeholder="Jane" {...field} className="rounded-xl" />
                       </FormControl>

@@ -36,10 +36,14 @@ export async function requireAuth(
       claims?.["email"] ?? `${clerkId}@unknown.com`;
     const firstName = claims?.["first_name"] ?? "";
     const lastName = claims?.["last_name"] ?? "";
-    const displayName =
+    let displayName =
       firstName && lastName
         ? `${firstName} ${lastName}`
-        : firstName || lastName || email.split("@")[0];
+        : firstName || lastName || "";
+    if (!displayName) {
+      const emailLocal = email.split("@")[0] ?? "";
+      displayName = emailLocal && !emailLocal.startsWith("user_") ? emailLocal : "New friend";
+    }
 
     const [inserted] = await db
       .insert(usersTable)
