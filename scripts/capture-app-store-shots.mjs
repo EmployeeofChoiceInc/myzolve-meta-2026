@@ -210,12 +210,6 @@ async function main() {
 
   async function captureScene(page, scene) {
     console.log("→ capturing", scene.id, scene.path);
-    const reqs = [];
-    const onResp = (resp) => {
-      const u = resp.url();
-      reqs.push(`${resp.status()} ${u.split("?")[0].slice(-80)}`);
-    };
-    page.on("response", onResp);
     await page.goto(`${EXPO_URL}${scene.path}`, { waitUntil: "networkidle" });
     if (scene.waitForText) {
       try {
@@ -234,9 +228,6 @@ async function main() {
       await page.waitForTimeout(500);
     }
     await page.screenshot({ path: join(OUT, `${scene.id}.png`), fullPage: false });
-    page.off("response", onResp);
-    if (reqs.length) console.log("    api:", reqs.slice(0, 6).join(" | "));
-    else console.log("    api: (no /api requests captured)");
   }
 
   // Pass 1: unauthenticated scenes in a fresh context
@@ -267,41 +258,10 @@ async function main() {
       console.error("Clerk sign-in did not complete:", result);
       await browser.close(); process.exit(1);
     }
-    // Wait for app to recognize signed-in state and react query token to attach
+    // Wait for app to recognize signed-in state.
     await page.waitForFunction(() => !!window.Clerk?.session, { timeout: 15000 });
     await page.waitForTimeout(2000);
-    // Diagnostic: verify Clerk has a valid token + that /api/me works
-    const diag = await page.evaluate(async () => {
-      try {
-        const token = await window.Clerk.session.getToken();
-        return { hasToken: !!token, tokenLen: token?.length ?? 0 };
-      } catch (e) { return { error: String(e) }; }
-    });
-    console.log("  diag:", JSON.stringify(diag));
     console.log("  signed in");
-
-    // Inject a fetch interceptor that auto-attaches Bearer token to /api/* calls.
-    // The app's AuthBridge token getter appears to hang on web after Clerk ticket
-    // sign-in, so we bypass it at the network layer for capture purposes.
-    await ctx.addInitScript(() => {
-      const origFetch = window.fetch;
-      window.fetch = async (input, init = {}) => {
-        try {
-          const url = typeof input === "string" ? input : input.url ?? String(input);
-          if (url.includes("/api/") && window.Clerk?.session) {
-            const headers = new Headers(init.headers || (typeof input !== "string" ? input.headers : undefined));
-            if (!headers.has("authorization")) {
-              const t = await window.Clerk.session.getToken();
-              if (t) headers.set("authorization", `Bearer ${t}`);
-            }
-            init = { ...init, headers };
-          }
-        } catch {}
-        return origFetch(input, init);
-      };
-    });
-    // Reload current page so the init script attaches before any /api/* calls.
-    await page.reload({ waitUntil: "networkidle" });
 
     for (const scene of SCENES.filter((s) => s.auth)) {
       await captureScene(page, scene);
