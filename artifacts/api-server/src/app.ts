@@ -47,6 +47,7 @@ function isOriginAllowed(origin: string): boolean {
   try {
     const url = new URL(origin);
     if (url.hostname.endsWith(".replit.app") || url.hostname.endsWith(".replit.dev") || url.hostname.endsWith(".repl.co")) return true;
+    if (url.hostname === "myzolve.com" || url.hostname.endsWith(".myzolve.com")) return true;
   } catch {
     // ignore malformed origin
   }
