@@ -136,14 +136,32 @@ async function startMetro(expoPublicDomain, expoPublicReplId) {
 
   console.log("Starting Metro...");
   console.log(`Setting EXPO_PUBLIC_DOMAIN=${expoPublicDomain}`);
+
+  const clerkProxyUrl = process.env.CLERK_PROXY_URL
+    ? `https://${expoPublicDomain}${process.env.CLERK_PROXY_URL}`
+    : `https://${expoPublicDomain}/api/__clerk`;
+
   const env = {
     ...process.env,
     EXPO_PUBLIC_DOMAIN: expoPublicDomain,
     EXPO_PUBLIC_REPL_ID: expoPublicReplId,
+    EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.CLERK_PUBLISHABLE_KEY || "",
+    EXPO_PUBLIC_CLERK_PROXY_URL: clerkProxyUrl,
   };
 
   if (expoPublicReplId) {
     console.log(`Setting EXPO_PUBLIC_REPL_ID=${expoPublicReplId}`);
+  }
+  console.log(
+    `Setting EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=${env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ? "[present]" : "[MISSING]"}`
+  );
+  console.log(`Setting EXPO_PUBLIC_CLERK_PROXY_URL=${clerkProxyUrl}`);
+
+  if (!env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+    exitWithError(
+      "ERROR: CLERK_PUBLISHABLE_KEY is not set in the build environment. " +
+        "Without it, the production app will crash on launch (ClerkProvider requires a publishableKey)."
+    );
   }
 
   metroProcess = spawn(
