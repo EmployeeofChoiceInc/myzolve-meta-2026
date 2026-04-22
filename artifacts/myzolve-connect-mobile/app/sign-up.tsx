@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import { AppText, Button, Field, Input } from "@/components/UI";
+import { OAuthButtons } from "@/components/OAuthButtons";
 import { useColors } from "@/hooks/useColors";
 
 type ClerkApiError = {
@@ -139,6 +140,8 @@ export default function SignUpScreen() {
             <Button title="Create account" onPress={onCreate} loading={loading} testID="button-signup" />
             {/* Required for sign-up; Clerk's bot protection is on by default */}
             <View nativeID="clerk-captcha" />
+
+            <OAuthButtons />
           </>
         ) : (
           <>

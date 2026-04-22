@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import { AppText, Button, Field, Input } from "@/components/UI";
+import { OAuthButtons } from "@/components/OAuthButtons";
 import { useColors } from "@/hooks/useColors";
 
 type ClerkApiError = {
@@ -47,9 +48,19 @@ export default function SignInScreen() {
       });
 
       if (error) {
+        // Common case for users who signed up with Google / Apple on web —
+        // their account has no password, so the password strategy is "not
+        // valid" for the account. Steer them toward the OAuth buttons.
+        const code = (error as { errors?: { code?: string }[] })?.errors?.[0]?.code;
+        const msg = describeError(error, "Please check your credentials.");
+        const looksLikeNoPassword =
+          code === "strategy_for_user_invalid" ||
+          /verification strategy is not valid/i.test(msg);
         Alert.alert(
           "Couldn't sign in",
-          describeError(error, "Please check your credentials.")
+          looksLikeNoPassword
+            ? "This account doesn't have a password set. Try \"Continue with Google\" or \"Continue with Apple\" below, or reset your password on the web."
+            : msg
         );
         return;
       }
@@ -139,6 +150,8 @@ export default function SignInScreen() {
         </Field>
 
         <Button title="Sign in" onPress={onSubmit} loading={loading} testID="button-signin" />
+
+        <OAuthButtons />
 
         <View style={{ flexDirection: "row", justifyContent: "center", marginTop: 24 }}>
           <AppText color={c.mutedForeground}>New here? </AppText>
