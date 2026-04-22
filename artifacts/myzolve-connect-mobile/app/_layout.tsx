@@ -39,6 +39,9 @@ const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
 const apiBase = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
   : "";
+const clerkProxyUrl =
+  process.env.EXPO_PUBLIC_CLERK_PROXY_URL ||
+  (apiBase ? `${apiBase}/api/__clerk` : undefined);
 
 if (apiBase) setBaseUrl(apiBase);
 
@@ -158,7 +161,11 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ErrorBoundary>
-        <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+        <ClerkProvider
+          publishableKey={publishableKey}
+          proxyUrl={clerkProxyUrl}
+          tokenCache={tokenCache}
+        >
           <QueryClientProvider client={queryClient}>
             <AuthBridge>
               <GestureHandlerRootView style={{ flex: 1 }}>
