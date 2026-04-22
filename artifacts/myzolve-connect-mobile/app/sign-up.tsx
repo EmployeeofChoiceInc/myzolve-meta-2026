@@ -1,4 +1,4 @@
-import { useSignUp } from "@clerk/clerk-expo";
+import { useSignUp } from "@clerk/expo";
 import { Feather } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -9,8 +9,24 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { AppText, Button, Field, Input } from "@/components/UI";
 import { useColors } from "@/hooks/useColors";
 
+type ClerkApiError = {
+  message?: string;
+  longMessage?: string;
+  code?: string;
+};
+type ClerkErrorLike = {
+  errors?: ClerkApiError[];
+  message?: string;
+};
+
+function describeError(err: unknown, fallback: string): string {
+  const e = err as ClerkErrorLike | undefined;
+  const first = e?.errors?.[0];
+  return first?.longMessage ?? first?.message ?? e?.message ?? fallback;
+}
+
 export default function SignUpScreen() {
-  const { signUp, setActive, isLoaded } = useSignUp();
+  const { signUp } = useSignUp();
   const router = useRouter();
   const c = useColors();
   const insets = useSafeAreaInsets();
@@ -21,41 +37,45 @@ export default function SignUpScreen() {
   const [loading, setLoading] = useState(false);
 
   async function onCreate() {
-    if (!isLoaded) return;
     if (!email || !password) {
       Alert.alert("Missing info", "Please enter an email and password.");
       return;
     }
     setLoading(true);
     try {
-      await signUp.create({ emailAddress: email.trim(), password });
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      const { error } = await signUp.password({
+        emailAddress: email.trim(),
+        password,
+      });
+      if (error) {
+        Alert.alert("Couldn't sign up", describeError(error, "Please try again."));
+        return;
+      }
+      await signUp.verifications.sendEmailCode();
       setStage("verify");
     } catch (err: unknown) {
-      const e = err as { errors?: { message?: string }[]; message?: string };
-      Alert.alert(
-        "Couldn't sign up",
-        e.errors?.[0]?.message ?? e.message ?? "Please try again."
-      );
+      Alert.alert("Couldn't sign up", describeError(err, "Please try again."));
     } finally {
       setLoading(false);
     }
   }
 
   async function onVerify() {
-    if (!isLoaded) return;
     setLoading(true);
     try {
-      const result = await signUp.attemptEmailAddressVerification({ code: code.trim() });
-      if (result.status === "complete") {
-        await setActive({ session: result.createdSessionId });
-        router.replace("/(tabs)");
+      await signUp.verifications.verifyEmailCode({ code: code.trim() });
+      if (signUp.status === "complete") {
+        await signUp.finalize({
+          navigate: ({ session }) => {
+            if (session?.currentTask) return;
+            router.replace("/(tabs)");
+          },
+        });
       } else {
         Alert.alert("Verification incomplete", "Please try again.");
       }
     } catch (err: unknown) {
-      const e = err as { errors?: { message?: string }[]; message?: string };
-      Alert.alert("Couldn't verify", e.errors?.[0]?.message ?? e.message ?? "Wrong code.");
+      Alert.alert("Couldn't verify", describeError(err, "Wrong code."));
     } finally {
       setLoading(false);
     }
@@ -117,6 +137,8 @@ export default function SignUpScreen() {
               />
             </Field>
             <Button title="Create account" onPress={onCreate} loading={loading} testID="button-signup" />
+            {/* Required for sign-up; Clerk's bot protection is on by default */}
+            <View nativeID="clerk-captcha" />
           </>
         ) : (
           <>

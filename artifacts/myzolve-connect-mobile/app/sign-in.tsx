@@ -1,4 +1,4 @@
-import { useSignIn } from "@clerk/clerk-expo";
+import { useSignIn } from "@clerk/expo";
 import { Feather } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -9,8 +9,24 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { AppText, Button, Field, Input } from "@/components/UI";
 import { useColors } from "@/hooks/useColors";
 
+type ClerkApiError = {
+  message?: string;
+  longMessage?: string;
+  code?: string;
+};
+type ClerkErrorLike = {
+  errors?: ClerkApiError[];
+  message?: string;
+};
+
+function describeError(err: unknown, fallback: string): string {
+  const e = err as ClerkErrorLike | undefined;
+  const first = e?.errors?.[0];
+  return first?.longMessage ?? first?.message ?? e?.message ?? fallback;
+}
+
 export default function SignInScreen() {
-  const { signIn, setActive, isLoaded } = useSignIn();
+  const { signIn } = useSignIn();
   const router = useRouter();
   const c = useColors();
   const insets = useSafeAreaInsets();
@@ -19,48 +35,37 @@ export default function SignInScreen() {
   const [loading, setLoading] = useState(false);
 
   async function onSubmit() {
-    if (!isLoaded) return;
     if (!email || !password) {
       Alert.alert("Missing info", "Please enter your email and password.");
       return;
     }
     setLoading(true);
     try {
-      // Step 1: initialize the sign-in attempt with both identifier and
-      // password. Depending on the Clerk instance config this may either
-      // immediately complete OR return `needs_first_factor`, which means
-      // the attempt is initialized and we must explicitly verify the
-      // password as the first factor.
-      let attempt = await signIn.create({ identifier: email.trim(), password });
+      const { error } = await signIn.password({
+        emailAddress: email.trim(),
+        password,
+      });
 
-      if (attempt.status === "needs_first_factor") {
-        const passwordFactor = attempt.supportedFirstFactors?.find(
-          (f) => f.strategy === "password"
+      if (error) {
+        Alert.alert(
+          "Couldn't sign in",
+          describeError(error, "Please check your credentials.")
         );
-        if (!passwordFactor) {
-          // No password set on this account — most commonly an account
-          // created via Google OAuth.  Tell the user what to do instead.
-          const strategies = attempt.supportedFirstFactors
-            ?.map((f) => String(f.strategy))
-            .join(", ");
-          Alert.alert(
-            "Password sign-in unavailable",
-            strategies
-              ? `This account doesn't have a password. Sign-in methods available: ${strategies}.`
-              : "This account doesn't have a password set up."
-          );
-          return;
-        }
-        attempt = await signIn.attemptFirstFactor({
-          strategy: "password",
-          password,
-        });
+        return;
       }
 
-      if (attempt.status === "complete") {
-        await setActive({ session: attempt.createdSessionId });
-        router.replace("/(tabs)");
-      } else if (attempt.status === "needs_second_factor") {
+      if (signIn.status === "complete") {
+        await signIn.finalize({
+          navigate: ({ session }) => {
+            if (session?.currentTask) {
+              // Pending session task (e.g. accept org invite). Stay put;
+              // app will route on next render.
+              return;
+            }
+            router.replace("/(tabs)");
+          },
+        });
+      } else if (signIn.status === "needs_second_factor") {
         Alert.alert(
           "Two-factor required",
           "Two-factor authentication is required for this account, but isn't supported in the app yet. Please sign in on the web."
@@ -68,21 +73,13 @@ export default function SignInScreen() {
       } else {
         Alert.alert(
           "Couldn't sign in",
-          `Sign-in incomplete (status: ${attempt.status ?? "unknown"}). Please try again.`
+          `Sign-in incomplete (status: ${signIn.status ?? "unknown"}). Please try again.`
         );
       }
     } catch (err: unknown) {
-      const e = err as {
-        errors?: { message?: string; longMessage?: string; code?: string }[];
-        message?: string;
-      };
-      const clerkErr = e.errors?.[0];
       Alert.alert(
         "Couldn't sign in",
-        clerkErr?.longMessage ??
-          clerkErr?.message ??
-          e.message ??
-          "Please check your credentials."
+        describeError(err, "Please check your credentials.")
       );
     } finally {
       setLoading(false);

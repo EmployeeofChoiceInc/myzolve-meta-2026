@@ -1,4 +1,4 @@
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth } from "@clerk/expo";
 import { Feather } from "@expo/vector-icons";
 import { Redirect, Tabs } from "expo-router";
 import React from "react";

@@ -5,7 +5,8 @@ import {
   PlusJakartaSans_700Bold,
   useFonts,
 } from "@expo-google-fonts/plus-jakarta-sans";
-import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
+import { ClerkProvider, useAuth } from "@clerk/expo";
+import { tokenCache } from "@clerk/expo/token-cache";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -17,7 +18,6 @@ import { StatusBar } from "expo-status-bar";
 import { setBaseUrl, setAuthTokenGetter } from "@workspace/api-client-react";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { tokenCache } from "@/lib/clerkTokenCache";
 import { useColors } from "@/hooks/useColors";
 import {
   configureNotificationHandler,

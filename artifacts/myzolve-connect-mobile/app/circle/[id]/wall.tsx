@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Modal, Pressable, View } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth } from "@clerk/expo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { formatDistanceToNow } from "date-fns";

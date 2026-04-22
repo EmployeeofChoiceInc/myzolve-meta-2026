@@ -13,7 +13,7 @@ import {
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth } from "@clerk/expo";
 
 import { useColors } from "@/hooks/useColors";
 import { fonts } from "@/constants/colors";
