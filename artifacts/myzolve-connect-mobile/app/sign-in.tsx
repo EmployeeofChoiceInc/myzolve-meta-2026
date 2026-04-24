@@ -69,15 +69,21 @@ export default function SignInScreen() {
   }
 
   async function prepareIfNeeded(chosen: SecondFactorStrategy, supported: SupportedSecondFactor[]) {
-    // TOTP and backup_code don't need a prepare round-trip; email_code and
-    // phone_code do (Clerk has to send the code first).
+    // TOTP and backup_code don't need a send round-trip; email_code and
+    // phone_code do (Clerk has to send the code first). The Clerk Expo v3
+    // SDK exposes these on `signIn.mfa.*` (replaces the older
+    // prepareSecondFactor / attemptSecondFactor API).
     if (chosen !== "email_code" && chosen !== "phone_code") return;
-    const prepare = (
+    const mfa = (
       signIn as unknown as {
-        prepareSecondFactor: (args: { strategy: SecondFactorStrategy }) => Promise<{ error?: unknown }>;
+        mfa: {
+          sendEmailCode: () => Promise<{ error?: unknown }>;
+          sendPhoneCode: () => Promise<{ error?: unknown }>;
+        };
       }
-    ).prepareSecondFactor;
-    const { error } = await prepare({ strategy: chosen });
+    ).mfa;
+    const { error } =
+      chosen === "email_code" ? await mfa.sendEmailCode() : await mfa.sendPhoneCode();
     if (error) {
       throw error;
     }
@@ -208,17 +214,27 @@ export default function SignInScreen() {
     }
     setLoading(true);
     try {
-      // Clerk Expo SDK exposes attemptSecondFactor on the signIn resource.
-      // Strategy is either "totp" or "backup_code".
-      const attempt = (
+      // Clerk Expo v3 exposes second-factor verification under signIn.mfa.*
+      // with one method per strategy.
+      const mfa = (
         signIn as unknown as {
-          attemptSecondFactor: (args: {
-            strategy: SecondFactorStrategy;
-            code: string;
-          }) => Promise<{ error?: unknown }>;
+          mfa: {
+            verifyEmailCode: (args: { code: string }) => Promise<{ error?: unknown }>;
+            verifyPhoneCode: (args: { code: string }) => Promise<{ error?: unknown }>;
+            verifyTOTP: (args: { code: string }) => Promise<{ error?: unknown }>;
+            verifyBackupCode: (args: { code: string }) => Promise<{ error?: unknown }>;
+          };
         }
-      ).attemptSecondFactor;
-      const { error } = await attempt({ strategy, code: trimmed });
+      ).mfa;
+      const verify =
+        strategy === "email_code"
+          ? mfa.verifyEmailCode
+          : strategy === "phone_code"
+            ? mfa.verifyPhoneCode
+            : strategy === "backup_code"
+              ? mfa.verifyBackupCode
+              : mfa.verifyTOTP;
+      const { error } = await verify({ code: trimmed });
 
       if (error) {
         Alert.alert(
