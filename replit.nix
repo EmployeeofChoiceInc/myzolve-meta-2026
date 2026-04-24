@@ -1,5 +1,6 @@
 {pkgs}: {
   deps = [
+    pkgs.eas-cli
     pkgs.freetype
     pkgs.fontconfig
     pkgs.xorg.libxshmfence
