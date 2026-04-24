@@ -8,6 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useUnreadCount, useMessageInbox, useNotifications, useMarkNotificationRead } from "@/hooks/use-api";
+import { displayEmail } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 
 const notificationTypeLabel: Record<string, string> = {
@@ -196,9 +197,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">{user?.fullName}</p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      {user?.primaryEmailAddress?.emailAddress}
-                    </p>
+                    {displayEmail(user?.primaryEmailAddress?.emailAddress) ? (
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {displayEmail(user?.primaryEmailAddress?.emailAddress)}
+                      </p>
+                    ) : null}
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />

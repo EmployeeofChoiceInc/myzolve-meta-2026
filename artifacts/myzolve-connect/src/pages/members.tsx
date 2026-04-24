@@ -28,6 +28,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { displayEmail } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const inviteFormSchema = z.object({
@@ -315,7 +316,9 @@ export default function MembersPage() {
                           <Link href={`/profile/${member.userId}`}>
                             <p className="font-medium text-foreground hover:underline cursor-pointer">{member.displayName}</p>
                           </Link>
-                          <p className="text-sm text-muted-foreground">{member.email}</p>
+                          {displayEmail(member.email) ? (
+                            <p className="text-sm text-muted-foreground">{displayEmail(member.email)}</p>
+                          ) : null}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
