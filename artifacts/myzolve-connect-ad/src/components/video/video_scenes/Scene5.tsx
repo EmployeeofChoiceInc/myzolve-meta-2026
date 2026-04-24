@@ -27,12 +27,18 @@ export function Scene5({ cut = 'master' }: { cut?: 'master' | '15s' | '6s' }) {
     return () => timers.forEach(t => clearTimeout(t));
   }, [cut]);
 
+  const exitDuration = cut === '6s' ? 0.2 : 0.8;
+
   return (
     <motion.div 
       className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--color-bg-light)] z-10"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0, scale: 1.1 }}
+      exit={{
+        opacity: 0,
+        scale: 1.1,
+        transition: { duration: exitDuration },
+      }}
       transition={{ duration: 0.8 }}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,var(--color-accent),transparent_70%)] opacity-50" />
