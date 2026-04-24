@@ -44,10 +44,19 @@ export default function CircleHomeScreen() {
       <Screen contentStyle={{ paddingTop: insets.top + 12 }}>
         <Row justify="space-between" align="center" style={{ marginBottom: 16 }}>
           <IconButton icon="arrow-left" onPress={() => router.back()} />
-          <IconButton
-            icon="user-plus"
-            onPress={() => router.push(`/circle/${id}/members`)}
-          />
+          <Row gap={4} align="center">
+            {(circle?.myRole === "owner" || circle?.myRole === "admin") && (
+              <IconButton
+                icon="settings"
+                testID="button-circle-settings"
+                onPress={() => router.push(`/circle/${id}/settings`)}
+              />
+            )}
+            <IconButton
+              icon="user-plus"
+              onPress={() => router.push(`/circle/${id}/members`)}
+            />
+          </Row>
         </Row>
 
         {isLoading || !circle ? (
