@@ -332,6 +332,92 @@ export const useUpdateMe = <
 };
 
 /**
+ * Deletes the user's identity from the auth provider (so they can no
+longer sign in) and anonymizes their profile in our database.
+Cascading data (messages, notifications, device tokens, circle
+memberships) is removed. Authored content (requests, services,
+comments, posts) is retained but attributed to a "Deleted user"
+placeholder so circle history remains intact for other members.
+
+ * @summary Permanently delete the current user's account
+ */
+export const getDeleteMeUrl = () => {
+  return `/api/me`;
+};
+
+export const deleteMe = async (options?: RequestInit): Promise<void> => {
+  return customFetch<void>(getDeleteMeUrl(), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteMeMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteMe>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteMe>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["deleteMe"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteMe>>,
+    void
+  > = () => {
+    return deleteMe(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteMeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteMe>>
+>;
+
+export type DeleteMeMutationError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Permanently delete the current user's account
+ */
+export const useDeleteMe = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteMe>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteMe>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getDeleteMeMutationOptions(options));
+};
+
+/**
  * @summary List circles the current user belongs to
  */
 export const getListCirclesUrl = () => {

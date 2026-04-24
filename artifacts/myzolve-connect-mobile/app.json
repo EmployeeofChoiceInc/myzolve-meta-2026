@@ -2,7 +2,7 @@
   "expo": {
     "name": "MyZolve Connect Mobile",
     "slug": "myzolve-connect-mobile",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myzolve-connect-mobile",
@@ -15,11 +15,11 @@
     },
     "ios": {
       "supportsTablet": false,
-      "buildNumber": "6",
+      "buildNumber": "7",
       "usesAppleSignIn": true
     },
     "android": {
-      "versionCode": 6
+      "versionCode": 7
     },
     "web": {
       "favicon": "./assets/images/icon.png"

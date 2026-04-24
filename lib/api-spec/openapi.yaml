@@ -100,6 +100,23 @@ paths:
                 $ref: "#/components/schemas/UserProfile"
         "401":
           $ref: "#/components/responses/Unauthorized"
+    delete:
+      operationId: deleteMe
+      tags: [me]
+      summary: Permanently delete the current user's account
+      description: |
+        Deletes the user's identity from the auth provider (so they can no
+        longer sign in) and anonymizes their profile in our database.
+        Cascading data (messages, notifications, device tokens, circle
+        memberships) is removed. Authored content (requests, services,
+        comments, posts) is retained but attributed to a "Deleted user"
+        placeholder so circle history remains intact for other members.
+      security: [{ clerk: [] }]
+      responses:
+        "204":
+          description: Account deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   # ── Circles ──────────────────────────────────────────────────────────────────
   /circles:
