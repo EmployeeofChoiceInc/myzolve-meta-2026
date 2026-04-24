@@ -43,7 +43,21 @@ export default function CircleHomeScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <Screen contentStyle={{ paddingTop: insets.top + 12 }}>
         <Row justify="space-between" align="center" style={{ marginBottom: 16 }}>
-          <IconButton icon="arrow-left" onPress={() => router.back()} />
+          <IconButton
+            icon="arrow-left"
+            onPress={() => {
+              // Defensive: if this screen was reached via a navigation
+              // that left an empty stack (e.g. landing here straight
+              // after onboarding, or a future deep-link flow),
+              // router.back() silently no-ops. Fall back to Home so
+              // the user is never trapped on this screen.
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace("/(tabs)");
+              }
+            }}
+          />
           <Row gap={4} align="center">
             {(circle?.myRole === "owner" || circle?.myRole === "admin") && (
               <IconButton

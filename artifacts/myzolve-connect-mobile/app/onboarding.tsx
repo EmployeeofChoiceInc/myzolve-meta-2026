@@ -51,7 +51,12 @@ export default function OnboardingScreen() {
         onSuccess: async (newCircle) => {
           await setOnboardingAcknowledged(userId);
           qc.invalidateQueries({ queryKey: getListCirclesQueryKey() });
-          router.replace(`/circle/${newCircle.id}`);
+          // Land on Home first, then push into the new circle so the
+          // navigation stack has somewhere meaningful to back-arrow to.
+          // Previously we used router.replace() straight to the circle,
+          // which left an empty stack and stranded the user.
+          router.replace("/(tabs)");
+          router.push(`/circle/${newCircle.id}`);
         },
         onError: () => Alert.alert("Couldn't create", "Please try again."),
       }
