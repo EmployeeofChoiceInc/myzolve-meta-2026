@@ -77,3 +77,15 @@ id = "mbQwqg6i9nXCKHvCvpyfs"
 uri = "file://exports/app-store/iphone-6.5/06-settings.png"
 type = "image"
 title = "iPhone 6.5\" — 06 Settings"
+
+[[outputs]]
+id = "PZQsuyAnLOTaAbKoJ-ncS"
+uri = "file://artifacts/myzolve-connect-ad/public/images/family.jpg"
+type = "image"
+title = "diverse multi-generational family laughing together in a warm sunlit home, natural, candid"
+
+[[outputs]]
+id = "caZr7ax61fdKpwzUrUnnS"
+uri = "file://artifacts/myzolve-connect-ad/public/images/friends.jpg"
+type = "image"
+title = "diverse group of close friends sharing a meal and laughing together warmly, natural candid photography"
