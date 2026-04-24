@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
-export function Scene4() {
+export function Scene4(_props: { cut?: 'master' | '15s' | '6s' } = {}) {
   const [phase, setPhase] = useState(0);
 
   useEffect(() => {

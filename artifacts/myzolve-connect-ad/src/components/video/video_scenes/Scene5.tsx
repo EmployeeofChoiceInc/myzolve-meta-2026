@@ -1,17 +1,31 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
-export function Scene5() {
+export function Scene5({ cut = 'master' }: { cut?: 'master' | '15s' | '6s' }) {
   const [phase, setPhase] = useState(0);
 
   useEffect(() => {
-    const timers = [
-      setTimeout(() => setPhase(1), 600),
-      setTimeout(() => setPhase(2), 1500),
-      setTimeout(() => setPhase(3), 2200),
-    ];
+    const is6s = cut === '6s';
+    const is15s = cut === '15s';
+    const timers = is6s
+      ? [
+          setTimeout(() => setPhase(1), 200),
+          setTimeout(() => setPhase(2), 600),
+          setTimeout(() => setPhase(3), 1000),
+        ]
+      : is15s
+      ? [
+          setTimeout(() => setPhase(1), 400),
+          setTimeout(() => setPhase(2), 1200),
+          setTimeout(() => setPhase(3), 1800),
+        ]
+      : [
+          setTimeout(() => setPhase(1), 600),
+          setTimeout(() => setPhase(2), 1500),
+          setTimeout(() => setPhase(3), 2200),
+        ];
     return () => timers.forEach(t => clearTimeout(t));
-  }, []);
+  }, [cut]);
 
   return (
     <motion.div 

@@ -3,19 +3,28 @@ import { useEffect, useState } from 'react';
 
 import iconImg from '../../../../../../artifacts/myzolve-connect-mobile/assets/images/icon.png';
 
-export function Scene3() {
+export function Scene3({ cut = 'master' }: { cut?: 'master' | '15s' | '6s' }) {
   const [phase, setPhase] = useState(0);
 
   useEffect(() => {
-    const timers = [
-      setTimeout(() => setPhase(1), 500),   // Phone appears
-      setTimeout(() => setPhase(2), 1500),  // Request card pops
-      setTimeout(() => setPhase(3), 2800),  // Contribution 1
-      setTimeout(() => setPhase(4), 3800),  // Contribution 2
-      setTimeout(() => setPhase(5), 5000),  // Success state
-    ];
+    const is6s = cut === '6s';
+    const timers = is6s
+      ? [
+          setTimeout(() => setPhase(1), 200),   // Phone appears
+          setTimeout(() => setPhase(2), 800),  // Request card pops
+          setTimeout(() => setPhase(3), 1500),  // Contribution 1
+          setTimeout(() => setPhase(4), 2200),  // Contribution 2
+          setTimeout(() => setPhase(5), 2800),  // Success state
+        ]
+      : [
+          setTimeout(() => setPhase(1), 500),   // Phone appears
+          setTimeout(() => setPhase(2), 1500),  // Request card pops
+          setTimeout(() => setPhase(3), 2800),  // Contribution 1
+          setTimeout(() => setPhase(4), 3800),  // Contribution 2
+          setTimeout(() => setPhase(5), 5000),  // Success state
+        ];
     return () => timers.forEach(t => clearTimeout(t));
-  }, []);
+  }, [cut]);
 
   return (
     <motion.div 

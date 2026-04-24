@@ -1,10 +1,11 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
-export function Scene1() {
+export function Scene1({ cut = 'master' }: { cut?: 'master' | '15s' | '6s' }) {
   const [phase, setPhase] = useState(0);
 
   useEffect(() => {
+    // The hook scene is 4000ms in both master and 15s cuts.
     const timers = [
       setTimeout(() => setPhase(1), 100),
       setTimeout(() => setPhase(2), 1200),
@@ -12,7 +13,7 @@ export function Scene1() {
       setTimeout(() => setPhase(4), 3000),
     ];
     return () => timers.forEach(t => clearTimeout(t));
-  }, []);
+  }, [cut]);
 
   return (
     <motion.div 

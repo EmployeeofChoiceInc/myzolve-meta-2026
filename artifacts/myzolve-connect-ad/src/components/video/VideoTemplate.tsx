@@ -7,7 +7,7 @@ import { Scene3 } from './video_scenes/Scene3';
 import { Scene4 } from './video_scenes/Scene4';
 import { Scene5 } from './video_scenes/Scene5';
 
-export const SCENE_DURATIONS = {
+export const SCENE_DURATIONS_MASTER = {
   hook: 4000,
   problem: 5000,
   product: 7000,
@@ -15,7 +15,28 @@ export const SCENE_DURATIONS = {
   outro: 4500,
 };
 
-const SCENE_COMPONENTS: Record<string, React.ComponentType> = {
+export const SCENE_DURATIONS_15S = {
+  hook: 4000,
+  product: 7000,
+  outro: 4000,
+};
+
+export const SCENE_DURATIONS_6S = {
+  product: 4000,
+  outro: 2000,
+};
+
+export const SCENE_DURATIONS = SCENE_DURATIONS_MASTER;
+
+export type CutVariant = 'master' | '15s' | '6s';
+
+export interface SceneComponentProps {
+  cut?: CutVariant;
+}
+
+export type SceneComponent = React.ComponentType<SceneComponentProps>;
+
+const DEFAULT_SCENE_COMPONENTS: Record<string, SceneComponent> = {
   hook: Scene1,
   problem: Scene2,
   product: Scene3,
@@ -27,12 +48,16 @@ interface VideoTemplateProps {
   durations?: Record<string, number>;
   loop?: boolean;
   onSceneChange?: (sceneKey: string) => void;
+  sceneComponents?: Record<string, SceneComponent>;
+  cut?: CutVariant;
 }
 
 export default function VideoTemplate({
   durations = SCENE_DURATIONS,
   loop = true,
   onSceneChange,
+  sceneComponents = DEFAULT_SCENE_COMPONENTS,
+  cut = 'master',
 }: VideoTemplateProps = {}) {
   const { currentSceneKey } = useVideoPlayer({ durations, loop });
 
@@ -41,7 +66,7 @@ export default function VideoTemplate({
   }, [currentSceneKey, onSceneChange]);
 
   const baseSceneKey = currentSceneKey.replace(/_r[12]$/, '');
-  const SceneComponent = SCENE_COMPONENTS[baseSceneKey];
+  const SceneComponent = sceneComponents[baseSceneKey];
 
   return (
     <div className="relative w-full h-screen bg-[#1A1A1A] flex items-center justify-center overflow-hidden">
@@ -96,7 +121,7 @@ export default function VideoTemplate({
 
         {/* Scenes — key MUST be currentSceneKey (with _r suffix) so scene-lock loop re-mounts properly */}
         <AnimatePresence initial={false} mode="wait">
-          {SceneComponent && <SceneComponent key={currentSceneKey} />}
+          {SceneComponent && <SceneComponent key={currentSceneKey} cut={cut} />}
         </AnimatePresence>
       </div>
     </div>
