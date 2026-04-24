@@ -23,27 +23,27 @@ export function Scene1() {
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
     >
       <div className="absolute inset-0 w-full h-full">
-        {/* Photo 1: Family */}
-        <motion.img 
-          src={`${import.meta.env.BASE_URL}images/family.jpg`}
+        {/* Photo 1: Trusted circle handing support across the table */}
+        <motion.img
+          src={`${import.meta.env.BASE_URL}images/circle-handoff.png`}
           className="absolute inset-0 w-full h-full object-cover"
           initial={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
-          animate={{ 
-            opacity: phase >= 1 && phase < 3 ? 0.7 : 0, 
+          animate={{
+            opacity: phase >= 1 && phase < 3 ? 0.7 : 0,
             scale: phase >= 1 ? 1 : 1.1,
-            filter: phase >= 1 ? 'blur(0px)' : 'blur(10px)'
+            filter: phase >= 1 ? 'blur(0px)' : 'blur(10px)',
           }}
           transition={{ duration: 1.5, ease: 'easeOut' }}
         />
-        {/* Photo 2: Friends */}
-        <motion.img 
-          src={`${import.meta.env.BASE_URL}images/friends.jpg`}
+        {/* Photo 2: Friends exchanging support around a shared table */}
+        <motion.img
+          src={`${import.meta.env.BASE_URL}images/circle-exchange.png`}
           className="absolute inset-0 w-full h-full object-cover"
           initial={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
-          animate={{ 
-            opacity: phase >= 3 ? 0.7 : 0, 
+          animate={{
+            opacity: phase >= 3 ? 0.7 : 0,
             scale: phase >= 3 ? 1 : 1.1,
-            filter: phase >= 3 ? 'blur(0px)' : 'blur(10px)'
+            filter: phase >= 3 ? 'blur(0px)' : 'blur(10px)',
           }}
           transition={{ duration: 1.5, ease: 'easeOut' }}
         />
