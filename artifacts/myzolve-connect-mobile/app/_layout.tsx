@@ -67,17 +67,16 @@ function AuthBridge({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const current = isSignedIn ? userId ?? null : null;
     if (prevUser.current !== undefined && prevUser.current !== current) {
-      // User changed (sign-in, sign-out, or account switch).  Wipe stale
-      // cache, then ask any active queries to refetch so the first
-      // post-sign-in screen doesn't get stuck on a request that fired
-      // before Clerk's token getter was ready.
-      qc.clear();
-      if (current) {
-        // Defer one tick so the new auth token has fully propagated
-        // through the Clerk reactive store before queries refetch.
-        setTimeout(() => {
-          qc.invalidateQueries();
-        }, 0);
+      // User identity changed.  Only WIPE the cache when we're
+      // transitioning AWAY from a previous user (sign-out, or
+      // switching accounts) — never on a fresh sign-in from a clean
+      // slate, because doing so cancels in-flight requests that just
+      // started on the post-sign-in landing screen and leaves the UI
+      // stuck on its loading skeleton (Apple's 2.1(a) rejection).
+      const transitioningFromUser =
+        prevUser.current !== undefined && prevUser.current !== null;
+      if (transitioningFromUser) {
+        qc.clear();
       }
     }
     prevUser.current = current;

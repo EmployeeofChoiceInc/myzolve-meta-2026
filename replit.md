@@ -175,17 +175,30 @@ voice, and "by MyZolve" sub-brand mark guidance.
 Apple App Review repeatedly rejected MyZolve Connect Mobile because the
 Home tab stayed on its loading skeleton forever after the very first
 sign-in (`useListCircles` never resolved). Closing and reopening the app
-made it work, so it was a cold-start vs. post-`signIn.finalize` race —
-the Home query fired before Clerk's session was fully active, so
-`getToken()` either hung or returned null. Fix lives in three places:
+made it work, so it was a cold-start vs. post-`signIn.finalize` race.
 
+**Confirmed root cause** (from `connect.myzolve.com` deployment logs of
+build 1.0.5(9)): immediately after Clerk's `POST /v1/client/sessions/.../touch`
+returned, the Home tab mounted and fired `GET /api/circles` only ~334 ms
+later. Clerk's local token cache still held the pre-sign-in anonymous JWT
+at that moment, so the server returned `401` in 2 ms — and React Query
+never recovered because `qc.clear()` in `AuthBridge` was racing the
+in-flight retry and canceling it. Result: a perma-pending query, the
+exact "skeleton forever" bug Apple flagged.
+
+Fix lives in four places:
+
+- `artifacts/myzolve-connect-mobile/app/sign-in.tsx` — after
+  `signIn.finalize`, **awaits `getToken({ skipCache: true })`** (capped
+  at 4 s) before navigating to `/(tabs)`, so the very first
+  authenticated request leaves with a freshly-minted JWT.
+- `artifacts/myzolve-connect-mobile/app/_layout.tsx` `AuthBridge` — only
+  `qc.clear()`s when transitioning AWAY from a previous user
+  (sign-out / account switch), never on a fresh sign-in, so it can't
+  cancel the just-started post-sign-in queries.
 - `artifacts/myzolve-connect-mobile/app/(tabs)/index.tsx` — gates
-  `useListCircles`, `useGetCircleDashboard`, `useListSupportRequests`
-  with `enabled: !!isLoaded && !!isSignedIn` from `useAuth()`.
-- `artifacts/myzolve-connect-mobile/app/_layout.tsx` `AuthBridge` — when
-  `userId` transitions to a value, `qc.clear()` then
-  `setTimeout(() => qc.invalidateQueries(), 0)` to force a refetch with
-  the fresh token.
+  `useListCircles` etc. with `enabled: !!isLoaded && !!isSignedIn`.
 - `lib/api-client-react/src/custom-fetch.ts` — `getTokenWithTimeout`
-  caps the auth getter at 5 s so a hanging Clerk getter can never
-  freeze a fetch (request fast-fails 401, React Query retries).
+  caps the token getter at 5 s, AND a 401-safety-net force-refreshes
+  the token and retries the request once if the server rejects it
+  (handles any future stale-token race the same way).

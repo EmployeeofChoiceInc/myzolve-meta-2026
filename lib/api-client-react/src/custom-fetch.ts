@@ -374,13 +374,10 @@ export async function customFetch<T = unknown>(
   // React Native, immediately after sign-in) have been observed to leave
   // their getToken() promise pending while session activation completes.
   // If we awaited that forever, the entire fetch would hang and the
-  // calling React Query would stay in `isLoading` indefinitely — which
-  // is exactly what stranded the Home screen on its loading skeleton on
-  // initial sign-in.  After the timeout we proceed without a header so
-  // the request fails fast (401) and React Query can surface an error
-  // or refetch when auth eventually catches up.
-  if (_authTokenGetter && !headers.has("authorization")) {
-    const token = await getTokenWithTimeout(_authTokenGetter, 5_000);
+  // calling React Query would stay in `isLoading` indefinitely.
+  const hasAuthGetter = !!_authTokenGetter && !headers.has("authorization");
+  if (hasAuthGetter) {
+    const token = await getTokenWithTimeout(_authTokenGetter!, 5_000);
     if (token) {
       headers.set("authorization", `Bearer ${token}`);
     }
@@ -388,7 +385,23 @@ export async function customFetch<T = unknown>(
 
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, { ...init, method, headers });
+  let response = await fetch(input, { ...init, method, headers });
+
+  // 401 safety net: if we have an auth getter configured and the
+  // server rejected this request as unauthenticated, the most likely
+  // cause is a stale or just-rotated token (very common immediately
+  // after sign-in on Clerk + React Native, where the cached JWT is
+  // briefly the pre-sign-in anonymous one).  Force the auth getter to
+  // fetch a fresh token and retry exactly once.  This prevents the
+  // permanent "stuck on loading skeleton" state that React Query
+  // otherwise locks in after a single failed authenticated request.
+  if (response.status === 401 && hasAuthGetter) {
+    const freshToken = await getTokenWithTimeout(_authTokenGetter!, 5_000);
+    if (freshToken && freshToken !== headers.get("authorization")?.replace(/^Bearer\s+/i, "")) {
+      headers.set("authorization", `Bearer ${freshToken}`);
+      response = await fetch(input, { ...init, method, headers });
+    }
+  }
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);

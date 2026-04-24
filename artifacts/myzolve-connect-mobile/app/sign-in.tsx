@@ -1,4 +1,4 @@
-import { useSignIn } from "@clerk/expo";
+import { useAuth, useSignIn } from "@clerk/expo";
 import { Feather } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -44,6 +44,7 @@ function pickPrimaryStrategy(supported: SupportedSecondFactor[]): SecondFactorSt
 
 export default function SignInScreen() {
   const { signIn } = useSignIn();
+  const { getToken } = useAuth();
   const router = useRouter();
   const c = useColors();
   const insets = useSafeAreaInsets();
@@ -93,11 +94,32 @@ export default function SignInScreen() {
 
   async function finalizeAndGo() {
     await signIn.finalize({
-      navigate: ({ session }) => {
+      navigate: async ({ session }) => {
         if (session?.currentTask) {
           // Pending session task (e.g. accept org invite). Stay put;
           // app will route on next render.
           return;
+        }
+        // CRITICAL: force Clerk to mint a fresh session JWT *before* we
+        // navigate to /(tabs). Without this, the Home tab mounts and
+        // fires `GET /api/circles` ~300ms after Clerk's session.touch
+        // call returns — at which point Clerk's token cache may still
+        // hold the stale anonymous-session JWT. The server returns 401,
+        // React Query caches the failure, and the user is stuck on a
+        // skeleton until they kill+relaunch the app (which is exactly
+        // what Apple App Review keeps flagging under Guideline 2.1(a)).
+        //
+        // `skipCache: true` forces a round-trip to Clerk's API to mint
+        // a fresh JWT for the new session, so the very first
+        // authenticated request after navigation has a valid token.
+        try {
+          await Promise.race([
+            getToken({ skipCache: true }),
+            new Promise((resolve) => setTimeout(resolve, 4_000)),
+          ]);
+        } catch {
+          // Best-effort: if Clerk can't mint a token, the customFetch
+          // 401-retry safety net in lib/api-client-react will recover.
         }
         router.replace("/(tabs)");
       },
