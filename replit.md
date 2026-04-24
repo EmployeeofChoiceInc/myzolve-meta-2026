@@ -202,3 +202,40 @@ Fix lives in four places:
   caps the token getter at 5 s, AND a 401-safety-net force-refreshes
   the token and retries the request once if the server rejects it
   (handles any future stale-token race the same way).
+
+### Onboarding redirect loop & post-create dead-end (build 1.0.5(10+))
+
+After 1.0.5(9) finally let users sign in, two follow-up bugs blocked App
+Review for accounts that have zero circles:
+
+1. **Redirect loop.** `(tabs)/index.tsx` had an unconditional
+   `useEffect` that called `router.replace("/onboarding")` whenever the
+   circles list came back empty.  The Onboarding screen's "Skip for
+   now" button routed back to `/(tabs)`, where the same effect
+   re-fired within ~50 ms, so Skip looked broken (it wasn't — it just
+   got undone instantly).  Fix: a per-user "onboarding acknowledged"
+   flag is persisted in AsyncStorage by `lib/onboardingFlag.ts`, set
+   by the Skip button **and** by a successful create, and read by
+   Home.  Home only auto-redirects when `circles.length === 0` AND the
+   flag is unset — so brand-new sign-ups still get the guided Welcome
+   screen exactly once, and skipping it sticks.  Home's empty state
+   also got an explicit "Create your first circle" button so the user
+   can always reach onboarding voluntarily.
+2. **Stranded after create.** Onboarding's success handler did
+   `router.replace("/circle/${id}")`, leaving the navigation stack
+   with only that one screen — the back arrow then silently no-op'd
+   because there was nowhere to back to.  Fix: replace to `/(tabs)`
+   first then `push` the new circle, so the stack is `[tabs,
+   circle/[id]]` and back works.  As a defense in depth, the back
+   arrow in `circle/[id]/index.tsx` now falls through to
+   `router.replace("/(tabs)")` whenever `router.canGoBack()` is false.
+3. **"circle/[id]" shown as the screen title.**  Because
+   `circle/[id]/_layout.tsx` is a nested Stack, the outer
+   `app/_layout.tsx` sees the whole folder as a single screen named
+   `circle/[id]` — none of the per-subscreen registrations
+   (`circle/[id]/index`, `circle/[id]/requests`, …) ever matched, so
+   the outer Stack fell back to its default header and showed the
+   literal route name.  Fixed by replacing all of those broken
+   registrations with one `<Stack.Screen name="circle/[id]"
+   options={{ headerShown: false }} />`; every subscreen already
+   draws its own header.

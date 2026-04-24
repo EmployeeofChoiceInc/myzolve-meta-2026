@@ -134,15 +134,18 @@ function RootLayoutNav() {
       <Stack.Screen name="onboarding" options={{ title: "Welcome" }} />
       <Stack.Screen name="discover" options={{ title: "Discover" }} />
       <Stack.Screen name="settings" options={{ title: "Settings" }} />
-      <Stack.Screen name="circle/[id]/index" options={{ title: "" }} />
-      <Stack.Screen name="circle/[id]/requests" options={{ title: "Requests" }} />
-      <Stack.Screen name="circle/[id]/services" options={{ title: "Services" }} />
-      <Stack.Screen name="circle/[id]/members" options={{ title: "Members" }} />
-      <Stack.Screen name="circle/[id]/activity" options={{ title: "Activity" }} />
-      <Stack.Screen name="circle/[id]/ledger" options={{ title: "Ledger" }} />
-      <Stack.Screen name="circle/[id]/wall" options={{ title: "Wall" }} />
-      <Stack.Screen name="circle/[id]/new-request" options={{ title: "New request", presentation: "modal" }} />
-      <Stack.Screen name="circle/[id]/new-service" options={{ title: "New service", presentation: "modal" }} />
+      {/*
+        circle/[id] has its own _layout.tsx (a nested Stack), so from
+        this outer Stack's perspective the entire folder is a single
+        screen named "circle/[id]" — NOT "circle/[id]/index".  The
+        previous per-subscreen registrations here never matched and
+        the outer Stack fell back to its default header, which showed
+        the literal route name "circle/[id]" as the title (visible at
+        the top of every circle detail screenshot).  Registering the
+        folder once and hiding the parent header lets each subscreen
+        draw its own custom header (which they all already do).
+      */}
+      <Stack.Screen name="circle/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="request/[id]" options={{ title: "Request" }} />
       <Stack.Screen name="service/[id]" options={{ title: "Service" }} />
       <Stack.Screen name="profile/[userId]" options={{ title: "Profile" }} />
