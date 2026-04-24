@@ -22,12 +22,16 @@ export default function DiscoverScreen() {
   const c = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { data, isLoading } = useDiscoverCircles();
+  const { data, isLoading, refetch, isRefetching } = useDiscoverCircles();
 
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <Screen contentStyle={{ paddingTop: insets.top + 12 }}>
+      <Screen
+        contentStyle={{ paddingTop: insets.top + 12 }}
+        refreshing={isRefetching}
+        onRefresh={refetch}
+      >
         <Row align="center" gap={6} style={{ marginBottom: 16 }}>
           <IconButton icon="arrow-left" onPress={() => router.back()} />
         </Row>
@@ -45,7 +49,7 @@ export default function DiscoverScreen() {
           <Empty
             icon="compass"
             title="Nothing to discover yet"
-            subtitle="When people open up their circles, they'll show up here."
+            subtitle="Pull down to refresh. Circles set to Open or Community will show up here once their owners save the change."
           />
         ) : (
           <View style={{ gap: 12 }}>
