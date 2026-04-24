@@ -35,7 +35,14 @@ export default function HomeScreen() {
   const c = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { data: circles, isLoading, refetch, isRefetching } = useListCircles();
+  const {
+    data: circles,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isRefetching,
+  } = useListCircles();
   const firstCircle = circles?.[0];
   const dashboardQuery = useGetCircleDashboard(firstCircle?.id ?? 0, {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -110,6 +117,31 @@ export default function HomeScreen() {
             </View>
           ))}
         </View>
+      ) : isError ? (
+        <Card
+          style={{
+            paddingVertical: 24,
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <Feather name="wifi-off" size={28} color={c.mutedForeground} />
+          <AppText weight="semibold">Couldn't reach the server</AppText>
+          <AppText
+            color={c.mutedForeground}
+            variant="caption"
+            style={{ textAlign: "center", maxWidth: 280 }}
+          >
+            {(error as Error | undefined)?.message ?? "Please check your connection and try again."}
+          </AppText>
+          <Button
+            title="Try again"
+            variant="outline"
+            size="sm"
+            onPress={() => refetch()}
+            style={{ marginTop: 4 }}
+          />
+        </Card>
       ) : circles && circles.length > 0 ? (
         <View style={{ gap: 12 }}>
           {circles.slice(0, 4).map((circle) => (
