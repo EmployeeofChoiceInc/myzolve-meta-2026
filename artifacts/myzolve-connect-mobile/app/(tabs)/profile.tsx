@@ -18,6 +18,10 @@ export default function ProfileScreen() {
   const { signOut } = useAuth();
   const { data: me } = useGetMe();
 
+  const rawEmail = me?.email ?? user?.emailAddresses[0]?.emailAddress ?? "";
+  const isPlaceholderEmail = rawEmail.endsWith("@unknown.com");
+  const emailToShow = isPlaceholderEmail ? null : rawEmail;
+
   const items: {
     icon: keyof typeof Feather.glyphMap;
     label: string;
@@ -69,9 +73,25 @@ export default function ProfileScreen() {
             <AppText variant="title">
               {me?.displayName ?? user?.firstName ?? "There"}
             </AppText>
-            <AppText variant="caption" color={c.mutedForeground} style={{ marginTop: 4 }}>
-              {me?.email ?? user?.emailAddresses[0]?.emailAddress}
-            </AppText>
+            {emailToShow ? (
+              <AppText
+                variant="caption"
+                color={c.mutedForeground}
+                style={{ marginTop: 4 }}
+                numberOfLines={1}
+              >
+                {emailToShow}
+              </AppText>
+            ) : me?.firstName || me?.lastName ? (
+              <AppText
+                variant="caption"
+                color={c.mutedForeground}
+                style={{ marginTop: 4 }}
+                numberOfLines={1}
+              >
+                {[me.firstName, me.lastName].filter(Boolean).join(" ")}
+              </AppText>
+            ) : null}
           </View>
         </Row>
       </Card>

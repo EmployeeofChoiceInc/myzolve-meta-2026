@@ -35,25 +35,26 @@ const PRIVACY_OPTIONS: {
   {
     value: "private",
     label: "Private",
-    description: "Invite-only. Not searchable.",
+    description: "Invite only. Won't appear in Discover.",
     icon: "lock",
   },
   {
     value: "hidden",
     label: "Hidden",
-    description: "Link-only. Not searchable.",
+    description: "Anyone with the link can join. Won't appear in Discover.",
     icon: "eye-off",
   },
   {
     value: "open",
     label: "Open",
-    description: "Anyone can find and request to join.",
+    description: "Listed in Discover. Anyone can ask to join.",
     icon: "globe",
   },
   {
     value: "community",
     label: "Community",
-    description: "Discoverable. Admins review join requests.",
+    description:
+      "Listed in Discover. Best for larger groups — admins review join requests.",
     icon: "users",
   },
 ];
@@ -197,6 +198,14 @@ export default function CircleSettingsScreen() {
               </Field>
 
               <Field label="Visibility">
+                <AppText
+                  variant="caption"
+                  color={c.mutedForeground}
+                  style={{ marginTop: -6, marginBottom: 10 }}
+                >
+                  Open and Community circles show up under Profile → Discover so
+                  others can find them.
+                </AppText>
                 <View style={{ gap: 10 }}>
                   {PRIVACY_OPTIONS.map((opt) => {
                     const active = privacyMode === opt.value;

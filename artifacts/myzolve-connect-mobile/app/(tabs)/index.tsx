@@ -91,7 +91,25 @@ export default function HomeScreen() {
         Your circles
       </AppText>
       {isLoading ? (
-        <Skeleton height={120} />
+        <View style={{ gap: 12 }}>
+          {[0, 1].map((i) => (
+            <View
+              key={i}
+              style={{
+                backgroundColor: c.card,
+                borderColor: c.border,
+                borderWidth: 1,
+                borderRadius: 16,
+                padding: 16,
+                gap: 10,
+              }}
+            >
+              <Skeleton height={18} width={90} />
+              <Skeleton height={20} width={220} />
+              <Skeleton height={14} width={80} />
+            </View>
+          ))}
+        </View>
       ) : circles && circles.length > 0 ? (
         <View style={{ gap: 12 }}>
           {circles.slice(0, 4).map((circle) => (
