@@ -17,7 +17,7 @@
       "supportsTablet": false,
       "buildNumber": "7",
       "usesAppleSignIn": true,
-      "bundleIdentifier": "com.myzolve.myzolveconnectmobile",
+      "bundleIdentifier": "app.replit.myzolveconnectmobile",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
