@@ -26,7 +26,21 @@ function describeError(err: unknown, fallback: string): string {
   return first?.longMessage ?? first?.message ?? e?.message ?? fallback;
 }
 
-type SecondFactorStrategy = "totp" | "backup_code";
+type SecondFactorStrategy = "totp" | "backup_code" | "email_code" | "phone_code";
+
+type SupportedSecondFactor = {
+  strategy?: string;
+  safeIdentifier?: string | null;
+};
+
+function pickPrimaryStrategy(supported: SupportedSecondFactor[]): SecondFactorStrategy {
+  // Prefer in this order: TOTP (no round-trip), then email_code, then phone_code,
+  // and finally backup_code as a manual opt-in only.
+  if (supported.some((f) => f?.strategy === "totp")) return "totp";
+  if (supported.some((f) => f?.strategy === "email_code")) return "email_code";
+  if (supported.some((f) => f?.strategy === "phone_code")) return "phone_code";
+  return "totp";
+}
 
 export default function SignInScreen() {
   const { signIn } = useSignIn();
@@ -42,13 +56,33 @@ export default function SignInScreen() {
   const [needs2fa, setNeeds2fa] = useState(false);
   const [supportsBackupCode, setSupportsBackupCode] = useState(false);
   const [strategy, setStrategy] = useState<SecondFactorStrategy>("totp");
+  const [destination, setDestination] = useState<string | null>(null);
   const [code, setCode] = useState("");
+  const [resending, setResending] = useState(false);
 
   function reset2fa() {
     setNeeds2fa(false);
     setStrategy("totp");
     setCode("");
     setSupportsBackupCode(false);
+    setDestination(null);
+  }
+
+  async function prepareIfNeeded(chosen: SecondFactorStrategy, supported: SupportedSecondFactor[]) {
+    // TOTP and backup_code don't need a prepare round-trip; email_code and
+    // phone_code do (Clerk has to send the code first).
+    if (chosen !== "email_code" && chosen !== "phone_code") return;
+    const prepare = (
+      signIn as unknown as {
+        prepareSecondFactor: (args: { strategy: SecondFactorStrategy }) => Promise<{ error?: unknown }>;
+      }
+    ).prepareSecondFactor;
+    const { error } = await prepare({ strategy: chosen });
+    if (error) {
+      throw error;
+    }
+    const match = supported.find((f) => f?.strategy === chosen);
+    setDestination(match?.safeIdentifier ?? null);
   }
 
   async function finalizeAndGo() {
@@ -97,15 +131,27 @@ export default function SignInScreen() {
       if (signIn.status === "complete") {
         await finalizeAndGo();
       } else if (signIn.status === "needs_second_factor") {
-        // Inspect supported strategies so we know whether to offer the
-        // "Use backup code" toggle.
+        // Inspect supported strategies. Most accounts here only have
+        // email_code enrolled (the user never set up TOTP), so we need to
+        // ask Clerk to send a code before showing the input.
         const supported =
-          (signIn as unknown as { supportedSecondFactors?: { strategy?: string }[] })
+          (signIn as unknown as { supportedSecondFactors?: SupportedSecondFactor[] })
             .supportedSecondFactors ?? [];
+        const chosen = pickPrimaryStrategy(supported);
         const hasBackup = supported.some((f) => f?.strategy === "backup_code");
         setSupportsBackupCode(hasBackup);
-        setStrategy("totp");
+        setStrategy(chosen);
         setCode("");
+        setDestination(null);
+        try {
+          await prepareIfNeeded(chosen, supported);
+        } catch (prepareErr) {
+          Alert.alert(
+            "Couldn't send code",
+            describeError(prepareErr, "We couldn't send the verification code. Please try again.")
+          );
+          return;
+        }
         setNeeds2fa(true);
       } else {
         Alert.alert(
@@ -123,15 +169,41 @@ export default function SignInScreen() {
     }
   }
 
+  async function onResendCode() {
+    if (strategy !== "email_code" && strategy !== "phone_code") return;
+    setResending(true);
+    try {
+      const supported =
+        (signIn as unknown as { supportedSecondFactors?: SupportedSecondFactor[] })
+          .supportedSecondFactors ?? [];
+      await prepareIfNeeded(strategy, supported);
+      Alert.alert(
+        "Code sent",
+        strategy === "email_code"
+          ? "We've sent another code to your email."
+          : "We've sent another code to your phone."
+      );
+    } catch (err) {
+      Alert.alert(
+        "Couldn't send code",
+        describeError(err, "We couldn't send another code. Please try again in a moment.")
+      );
+    } finally {
+      setResending(false);
+    }
+  }
+
   async function onSubmit2fa() {
     const trimmed = code.trim();
     if (!trimmed) {
-      Alert.alert(
-        strategy === "backup_code" ? "Enter backup code" : "Enter code",
-        strategy === "backup_code"
-          ? "Please enter one of your backup codes."
-          : "Please enter the 6-digit code from your authenticator app."
-      );
+      const promptByStrategy: Record<SecondFactorStrategy, { title: string; body: string }> = {
+        totp: { title: "Enter code", body: "Please enter the 6-digit code from your authenticator app." },
+        email_code: { title: "Enter code", body: "Please enter the code we sent to your email." },
+        phone_code: { title: "Enter code", body: "Please enter the code we sent to your phone." },
+        backup_code: { title: "Enter backup code", body: "Please enter one of your backup codes." },
+      };
+      const { title, body } = promptByStrategy[strategy];
+      Alert.alert(title, body);
       return;
     }
     setLoading(true);
@@ -200,19 +272,39 @@ export default function SignInScreen() {
         >
           <Feather name="heart" size={26} color={c.primary} />
         </View>
-        <AppText variant="h1">{needs2fa ? "Two-factor required" : "Welcome back"}</AppText>
+        <AppText variant="h1">
+          {needs2fa
+            ? strategy === "email_code"
+              ? "Check your email"
+              : strategy === "phone_code"
+                ? "Check your phone"
+                : "Two-factor required"
+            : "Welcome back"}
+        </AppText>
         <AppText variant="body" color={c.mutedForeground} style={{ marginTop: 6, marginBottom: 28 }}>
           {needs2fa
             ? strategy === "backup_code"
               ? "Enter one of the backup codes you saved when you turned on 2FA."
-              : "Open your authenticator app and enter the 6-digit code."
+              : strategy === "email_code"
+                ? `We sent a verification code to ${destination ?? "your email"}. Enter it below to finish signing in.`
+                : strategy === "phone_code"
+                  ? `We sent a verification code to ${destination ?? "your phone"}. Enter it below to finish signing in.`
+                  : "Open your authenticator app and enter the 6-digit code."
             : "Sign in to your trusted circles."}
         </AppText>
 
         {needs2fa ? (
           <>
             <Field
-              label={strategy === "backup_code" ? "Backup code" : "Authenticator code"}
+              label={
+                strategy === "backup_code"
+                  ? "Backup code"
+                  : strategy === "email_code"
+                    ? "Email code"
+                    : strategy === "phone_code"
+                      ? "SMS code"
+                      : "Authenticator code"
+              }
             >
               <Input
                 value={code}
@@ -232,7 +324,18 @@ export default function SignInScreen() {
               testID="button-2fa-verify"
             />
 
-            {supportsBackupCode ? (
+            {strategy === "email_code" || strategy === "phone_code" ? (
+              <Pressable
+                onPress={onResendCode}
+                disabled={resending}
+                style={{ marginTop: 16, alignItems: "center", opacity: resending ? 0.5 : 1 }}
+                testID="button-2fa-resend"
+              >
+                <AppText color={c.primary} weight="semibold">
+                  {resending ? "Sending…" : "Resend code"}
+                </AppText>
+              </Pressable>
+            ) : supportsBackupCode ? (
               <Pressable
                 onPress={() => {
                   setStrategy(strategy === "totp" ? "backup_code" : "totp");
