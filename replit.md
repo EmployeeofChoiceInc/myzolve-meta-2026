@@ -170,3 +170,22 @@ and is intended to be wired into CI before public launch.
 ### Brand tokens
 See `artifacts/myzolve-connect/BRAND.md` for palette, typography, shape,
 voice, and "by MyZolve" sub-brand mark guidance.
+
+### Mobile post-sign-in race (Apple TestFlight 2.1(a) fix)
+Apple App Review repeatedly rejected MyZolve Connect Mobile because the
+Home tab stayed on its loading skeleton forever after the very first
+sign-in (`useListCircles` never resolved). Closing and reopening the app
+made it work, so it was a cold-start vs. post-`signIn.finalize` race —
+the Home query fired before Clerk's session was fully active, so
+`getToken()` either hung or returned null. Fix lives in three places:
+
+- `artifacts/myzolve-connect-mobile/app/(tabs)/index.tsx` — gates
+  `useListCircles`, `useGetCircleDashboard`, `useListSupportRequests`
+  with `enabled: !!isLoaded && !!isSignedIn` from `useAuth()`.
+- `artifacts/myzolve-connect-mobile/app/_layout.tsx` `AuthBridge` — when
+  `userId` transitions to a value, `qc.clear()` then
+  `setTimeout(() => qc.invalidateQueries(), 0)` to force a refetch with
+  the fresh token.
+- `lib/api-client-react/src/custom-fetch.ts` — `getTokenWithTimeout`
+  caps the auth getter at 5 s so a hanging Clerk getter can never
+  freeze a fetch (request fast-fails 401, React Query retries).

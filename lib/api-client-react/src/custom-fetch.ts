@@ -44,6 +44,24 @@ export function setAuthTokenGetter(getter: AuthTokenGetter | null): void {
   _authTokenGetter = getter;
 }
 
+async function getTokenWithTimeout(
+  getter: AuthTokenGetter,
+  timeoutMs: number,
+): Promise<string | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), timeoutMs);
+  });
+  try {
+    const result = await Promise.race([Promise.resolve(getter()), timeout]);
+    return result ?? null;
+  } catch {
+    return null;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 function isRequest(input: RequestInfo | URL): input is Request {
   return typeof Request !== "undefined" && input instanceof Request;
 }
@@ -351,8 +369,18 @@ export async function customFetch<T = unknown>(
 
   // Attach bearer token when an auth getter is configured and no
   // Authorization header has been explicitly provided.
+  //
+  // Wrap the getter call in a timeout: some auth SDKs (notably Clerk on
+  // React Native, immediately after sign-in) have been observed to leave
+  // their getToken() promise pending while session activation completes.
+  // If we awaited that forever, the entire fetch would hang and the
+  // calling React Query would stay in `isLoading` indefinitely — which
+  // is exactly what stranded the Home screen on its loading skeleton on
+  // initial sign-in.  After the timeout we proceed without a header so
+  // the request fails fast (401) and React Query can surface an error
+  // or refetch when auth eventually catches up.
   if (_authTokenGetter && !headers.has("authorization")) {
-    const token = await _authTokenGetter();
+    const token = await getTokenWithTimeout(_authTokenGetter, 5_000);
     if (token) {
       headers.set("authorization", `Bearer ${token}`);
     }

@@ -1,4 +1,4 @@
-import { useUser } from "@clerk/expo";
+import { useAuth, useUser } from "@clerk/expo";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect } from "react";
@@ -32,6 +32,14 @@ import {
 
 export default function HomeScreen() {
   const { user } = useUser();
+  const { isLoaded: authLoaded, isSignedIn } = useAuth();
+  // Only fire authenticated queries once Clerk reports the session is
+  // active.  On initial sign-in there's a brief window where the screen
+  // mounts before Clerk's session signal propagates to useAuth(); without
+  // this gate, the query fires with no token, hangs (or 401s) and the
+  // user is stuck on the loading skeleton forever — exactly what Apple's
+  // App Review flagged.
+  const authReady = !!authLoaded && !!isSignedIn;
   const c = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -42,15 +50,18 @@ export default function HomeScreen() {
     error,
     refetch,
     isRefetching,
-  } = useListCircles();
+  } = useListCircles({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    query: { enabled: authReady } as any,
+  });
   const firstCircle = circles?.[0];
   const dashboardQuery = useGetCircleDashboard(firstCircle?.id ?? 0, {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    query: { enabled: !!firstCircle } as any,
+    query: { enabled: authReady && !!firstCircle } as any,
   });
   const requestsQuery = useListSupportRequests(firstCircle?.id ?? 0, undefined, {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    query: { enabled: !!firstCircle } as any,
+    query: { enabled: authReady && !!firstCircle } as any,
   });
 
   useEffect(() => {
