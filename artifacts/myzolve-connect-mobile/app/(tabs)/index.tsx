@@ -1,8 +1,9 @@
 import { useAuth, useUser } from "@clerk/expo";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { View } from "react-native";
+import { hasAcknowledgedOnboarding } from "@/lib/onboardingFlag";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   useGetCircleDashboard,
@@ -32,7 +33,27 @@ import {
 
 export default function HomeScreen() {
   const { user } = useUser();
-  const { isLoaded: authLoaded, isSignedIn } = useAuth();
+  const { isLoaded: authLoaded, isSignedIn, userId } = useAuth();
+  // Tri-state flag: undefined = not checked yet, true/false = checked.
+  // We must NOT make an auto-redirect decision until we've read the
+  // persisted "user already acknowledged onboarding" flag, otherwise we
+  // bounce the user back to /onboarding even after they tapped Skip.
+  const [onboardingAck, setOnboardingAck] = useState<boolean | undefined>(
+    undefined,
+  );
+  useEffect(() => {
+    let cancelled = false;
+    if (!userId) {
+      setOnboardingAck(undefined);
+      return;
+    }
+    hasAcknowledgedOnboarding(userId).then((v) => {
+      if (!cancelled) setOnboardingAck(v);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
   // Only fire authenticated queries once Clerk reports the session is
   // active.  On initial sign-in there's a brief window where the screen
   // mounts before Clerk's session signal propagates to useAuth(); without
@@ -65,10 +86,22 @@ export default function HomeScreen() {
   });
 
   useEffect(() => {
-    if (!isLoading && circles && circles.length === 0) {
+    // Only auto-route to /onboarding the FIRST time a brand-new account
+    // lands here with zero circles.  Once they've either created a
+    // circle or tapped "Skip for now" on the onboarding screen, the
+    // flag is set and we leave them on Home with an empty-state CTA.
+    // Without this gate, Skip → Home → auto-redirect → Onboarding
+    // loops forever — exactly what the user reported and what App
+    // Review would (correctly) reject.
+    if (
+      !isLoading &&
+      circles &&
+      circles.length === 0 &&
+      onboardingAck === false
+    ) {
       router.replace("/onboarding");
     }
-  }, [isLoading, circles, router]);
+  }, [isLoading, circles, router, onboardingAck]);
 
   const greeting = user?.firstName ? `Hi, ${user.firstName}.` : "Welcome home.";
   const dashboard = dashboardQuery.data;
@@ -184,11 +217,19 @@ export default function HomeScreen() {
           )}
         </View>
       ) : (
-        <Empty
-          icon="users"
-          title="No circles yet"
-          subtitle="Create one to share support with the people you trust."
-        />
+        <View style={{ gap: 12 }}>
+          <Empty
+            icon="users"
+            title="No circles yet"
+            subtitle="Create one to share support with the people you trust."
+          />
+          <Button
+            title="Create your first circle"
+            icon="plus"
+            onPress={() => router.push("/onboarding")}
+            testID="button-home-create-first-circle"
+          />
+        </View>
       )}
 
       {firstCircle && (

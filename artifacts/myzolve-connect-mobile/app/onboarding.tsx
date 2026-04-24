@@ -1,3 +1,4 @@
+import { useAuth } from "@clerk/expo";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Alert, Pressable, View } from "react-native";
@@ -12,6 +13,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AppText, Button, Field, Input, Row } from "@/components/UI";
 import { useColors } from "@/hooks/useColors";
 import { CIRCLE_TYPE_LABELS } from "@/lib/circleTypes";
+import { setOnboardingAcknowledged } from "@/lib/onboardingFlag";
 
 const TYPES = Object.entries(CIRCLE_TYPE_LABELS).map(([value, label]) => ({
   value,
@@ -23,9 +25,17 @@ export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const qc = useQueryClient();
+  const { userId } = useAuth();
   const create = useCreateCircle();
   const [name, setName] = useState("");
   const [type, setType] = useState("chosen_family");
+
+  async function skip() {
+    // Persist that this user has seen and acknowledged onboarding so
+    // the Home screen no longer auto-redirects them back here.
+    await setOnboardingAcknowledged(userId);
+    router.replace("/(tabs)");
+  }
 
   function submit() {
     if (name.trim().length < 2) {
@@ -38,7 +48,8 @@ export default function OnboardingScreen() {
         data: { name: name.trim(), circleType: type as any, currency: "USD" },
       },
       {
-        onSuccess: (newCircle) => {
+        onSuccess: async (newCircle) => {
+          await setOnboardingAcknowledged(userId);
           qc.invalidateQueries({ queryKey: getListCirclesQueryKey() });
           router.replace(`/circle/${newCircle.id}`);
         },
@@ -109,8 +120,9 @@ export default function OnboardingScreen() {
           <Button
             title="Skip for now"
             variant="ghost"
-            onPress={() => router.replace("/(tabs)")}
+            onPress={skip}
             style={{ flex: 1 }}
+            testID="button-onboarding-skip"
           />
           <Button
             title="Create circle"
