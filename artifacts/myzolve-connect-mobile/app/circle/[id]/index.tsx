@@ -34,7 +34,7 @@ export default function CircleHomeScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
   const id = Number(params.id);
-  const { data: circle, isLoading } = useGetCircle(id);
+  const { data: circle, isLoading, isError } = useGetCircle(id);
   const { data: stats } = useGetCircleStats(id);
   const { data: dashboard } = useGetCircleDashboard(id);
 
@@ -73,7 +73,27 @@ export default function CircleHomeScreen() {
           </Row>
         </Row>
 
-        {isLoading || !circle ? (
+        {isError ? (
+          // Reached when a non-member opens a circle URL they don't
+          // have access to — most commonly via Discover, an old push
+          // notification, or a stale cached list.  Without this
+          // branch the screen used to sit on a skeleton forever
+          // because `circle` stayed undefined.
+          <Card style={{ paddingVertical: 24, alignItems: "center" }}>
+            <Feather name="lock" size={28} color={c.mutedForeground} />
+            <AppText weight="semibold" style={{ marginTop: 10 }}>
+              This circle isn't available
+            </AppText>
+            <AppText
+              variant="caption"
+              color={c.mutedForeground}
+              style={{ marginTop: 4, textAlign: "center" }}
+            >
+              You may not be a member yet, or it may have been removed.
+              Browse Discover to find circles you can join.
+            </AppText>
+          </Card>
+        ) : isLoading || !circle ? (
           <Skeleton height={140} />
         ) : (
           <>

@@ -1,9 +1,14 @@
 import { Feather } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import React from "react";
-import { View } from "react-native";
+import { Alert, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useDiscoverCircles } from "@workspace/api-client-react";
+import {
+  getDiscoverCirclesQueryKey,
+  useCreateJoinRequest,
+  useDiscoverCircles,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import {
   AppText,
@@ -18,11 +23,76 @@ import { Screen } from "@/components/Screen";
 import { useColors } from "@/hooks/useColors";
 import { CIRCLE_TYPE_LABELS } from "@/lib/circleTypes";
 
+type DiscoverCircle = {
+  id: number;
+  name: string;
+  isMember: boolean;
+  joinRequestStatus?: string | null;
+  privacyMode?: string | null;
+};
+
 export default function DiscoverScreen() {
   const c = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const qc = useQueryClient();
   const { data, isLoading, refetch, isRefetching } = useDiscoverCircles();
+  const joinRequest = useCreateJoinRequest();
+
+  function handleCirclePress(circle: DiscoverCircle) {
+    // Members can open the full circle detail.  Non-members would
+    // hit the protected /circles/:id endpoint and get a 404, which
+    // previously left them staring at a blank skeleton with no way
+    // forward — a hard blocker for App Review's reviewer flow.
+    if (circle.isMember) {
+      router.push(`/circle/${circle.id}`);
+      return;
+    }
+    if (circle.joinRequestStatus === "pending") {
+      Alert.alert(
+        "Request pending",
+        `Your request to join ${circle.name} is waiting for the circle's admin to review it.`,
+      );
+      return;
+    }
+    const requiresApproval = circle.privacyMode === "community";
+    Alert.alert(
+      `Join ${circle.name}?`,
+      requiresApproval
+        ? "Your request will be reviewed by the circle's admin before you're added."
+        : "You'll be added to this circle right away.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: requiresApproval ? "Request to join" : "Join",
+          onPress: () => {
+            joinRequest.mutate(
+              { circleId: circle.id, data: {} },
+              {
+                onSuccess: () => {
+                  qc.invalidateQueries({
+                    queryKey: getDiscoverCirclesQueryKey(),
+                  });
+                  Alert.alert(
+                    requiresApproval ? "Request sent" : "Joined",
+                    requiresApproval
+                      ? `We've let the admin of ${circle.name} know.`
+                      : `You're now a member of ${circle.name}.`,
+                  );
+                },
+                onError: () => {
+                  Alert.alert(
+                    "Couldn't send request",
+                    "Please try again in a moment.",
+                  );
+                },
+              },
+            );
+          },
+        },
+      ],
+    );
+  }
 
   return (
     <>
@@ -67,7 +137,7 @@ export default function DiscoverScreen() {
               return (
                 <PressableCard
                   key={circle.id}
-                  onPress={() => router.push(`/circle/${circle.id}`)}
+                  onPress={() => handleCirclePress(circle)}
                   testID={`discover-circle-${circle.id}`}
                 >
                   <Row justify="space-between" align="flex-start">

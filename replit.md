@@ -239,3 +239,17 @@ Review for accounts that have zero circles:
    registrations with one `<Stack.Screen name="circle/[id]"
    options={{ headerShown: false }} />`; every subscreen already
    draws its own header.
+4. **Discover -> blank circle screen.**  `app/discover.tsx` was
+   pushing every tapped circle to `/circle/{id}` regardless of
+   membership.  For non-members the protected `/circles/:id`
+   endpoint correctly returns 404, so the detail screen sat on its
+   skeleton with no path forward.  Fix: Discover now branches on
+   `circle.isMember` / `circle.joinRequestStatus`.  Members open the
+   detail; everyone else gets a confirm-to-join Alert that calls
+   `useCreateJoinRequest` and refetches the discover list on
+   success (with copy that adapts to whether the circle requires
+   admin approval).  As defense in depth, `circle/[id]/index.tsx`
+   now renders a friendly "this circle isn't available" card when
+   `useGetCircle` errors, so any other code path that lands a
+   non-member here (deep links, push notifications, stale lists)
+   never gets stranded on a blank skeleton again.
