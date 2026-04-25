@@ -8,6 +8,13 @@
     "scheme": "myzolve-connect-mobile",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "updates": {
+      "url": "https://u.expo.dev/43260551-a6ad-4de0-8b5a-c883e9282a6b",
+      "fallbackToCacheTimeout": 0
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "splash": {
       "image": "./assets/images/icon.png",
       "resizeMode": "contain",
