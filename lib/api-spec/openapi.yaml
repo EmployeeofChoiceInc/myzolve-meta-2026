@@ -268,6 +268,100 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /circles/{circleId}/verification:
+    post:
+      operationId: applyForCircleVerification
+      tags: [circles]
+      summary: Submit a verified-circle application (Plus owner only)
+      description: |
+        Plus circle owners can apply for the team to verify their circle as a
+        real-world organization. Sets status to "pending" and notifies the
+        configured admin email. Re-applying after a rejection is allowed.
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CircleVerificationApplicationBody"
+      responses:
+        "200":
+          description: Application accepted; circle is now in pending state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Circle"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "402":
+          $ref: "#/components/responses/PaymentRequired"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Circle is already pending or verified
+
+  /admin/circles/verifications:
+    get:
+      operationId: listPendingCircleVerifications
+      tags: [admin]
+      summary: List circles awaiting verification review (admin only)
+      description: |
+        Returns every circle whose verification status is "pending", along with
+        the application metadata the owner submitted. Restricted to the
+        configured verification admin email.
+      security: [{ clerk: [] }]
+      responses:
+        "200":
+          description: List of pending applications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PendingCircleVerification"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/circles/{circleId}/verification/decision:
+    post:
+      operationId: decideCircleVerification
+      tags: [admin]
+      summary: Approve or reject a pending verification application (admin only)
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CircleVerificationDecisionBody"
+      responses:
+        "200":
+          description: Updated circle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Circle"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Circle is not in pending state
+
   # ── Members ───────────────────────────────────────────────────────────────
   /circles/{circleId}/members:
     get:
@@ -506,6 +600,36 @@ paths:
           $ref: "#/components/responses/PaymentRequired"
         "403":
           $ref: "#/components/responses/Forbidden"
+
+  /invitations/{token}:
+    get:
+      operationId: previewInvitation
+      tags: [invitations]
+      summary: Preview a circle invitation (basic circle info, no join yet)
+      description: |
+        Returns enough information about the invited circle for the
+        invitee to decide whether to accept — including the circle name,
+        type, photo, and whether the circle is verified. The invitation
+        token itself acts as the access secret; the response intentionally
+        omits sensitive circle data.
+      security: [{ clerk: [] }]
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Invitation details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationPreview"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /invitations/{token}/accept:
     post:
@@ -2841,6 +2965,21 @@ components:
         showWelcomeCard:
           type: boolean
           description: True when the calling member should see the one-time welcome card.
+        verificationStatus:
+          type: string
+          enum: [none, pending, verified, rejected]
+          description: |
+            Verified circle badge state. Plus owners apply; the MyZolve
+            team reviews via the admin script. The "verified" state is
+            visible to every member regardless of their Plus status.
+        verificationAppliedAt:
+          type: ["string", "null"]
+          format: date-time
+        verificationDecisionReason:
+          type: ["string", "null"]
+          description: |
+            Reason supplied by the reviewer on rejection. Surfaced to
+            the owner so they can fix the issue and re-apply.
         createdAt:
           type: string
           format: date-time
@@ -2855,6 +2994,7 @@ components:
         - memberCount
         - myRole
         - showWelcomeCard
+        - verificationStatus
         - createdAt
 
     CreateCircleBody:
@@ -2910,6 +3050,127 @@ components:
           description: Hex color from the curated palette, or null to reset.
         welcomeMessage:
           type: ["string", "null"]
+
+    CircleVerificationApplicationBody:
+      type: object
+      properties:
+        legalName:
+          type: string
+          description: Legal name of the real-world organization.
+        orgType:
+          type: string
+          enum: [faith_group, mutual_aid, co_op, nonprofit, other]
+        description:
+          type: string
+          description: Brief description of the organization and its mission.
+        contactEmail:
+          type: string
+          format: email
+        supportingUrl:
+          type: ["string", "null"]
+          description: Optional public URL the reviewer can use to corroborate.
+      required:
+        - legalName
+        - orgType
+        - description
+        - contactEmail
+
+    CircleVerificationDecisionBody:
+      type: object
+      properties:
+        decision:
+          type: string
+          enum: [approve, reject]
+        reason:
+          type: string
+          description: |
+            Required for reject (shown to the owner so they can re-apply).
+            Optional note for approve.
+      required:
+        - decision
+
+    PendingCircleVerification:
+      type: object
+      description: Pending application for the verified-circle queue.
+      properties:
+        circleId:
+          type: integer
+        circleName:
+          type: string
+        ownerId:
+          type: integer
+        ownerName:
+          type: ["string", "null"]
+        ownerEmail:
+          type: ["string", "null"]
+        appliedAt:
+          type: ["string", "null"]
+          format: date-time
+        legalName:
+          type: ["string", "null"]
+        orgType:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        contactEmail:
+          type: ["string", "null"]
+        supportingUrl:
+          type: ["string", "null"]
+      required:
+        - circleId
+        - circleName
+        - ownerId
+
+    InvitationPreview:
+      type: object
+      description: Lightweight circle preview shown on the invite-accept screen.
+      properties:
+        token:
+          type: string
+        status:
+          type: string
+          enum: [pending, accepted, revoked, expired]
+        role:
+          type: string
+        invitedEmail:
+          type: ["string", "null"]
+        expiresAt:
+          type: ["string", "null"]
+          format: date-time
+        circle:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            circleType:
+              type: string
+            description:
+              type: ["string", "null"]
+            photoUrl:
+              type: ["string", "null"]
+            verificationStatus:
+              type: string
+              enum: [none, pending, verified, rejected]
+          required:
+            - id
+            - name
+            - circleType
+            - verificationStatus
+        invitedBy:
+          type: object
+          properties:
+            displayName:
+              type: string
+          required:
+            - displayName
+      required:
+        - token
+        - status
+        - role
+        - circle
+        - invitedBy
 
     CircleStats:
       type: object
@@ -3048,6 +3309,9 @@ components:
         joinRequestStatus:
           type: ["string", "null"]
           enum: [pending, approved, declined, null]
+        verificationStatus:
+          type: string
+          enum: [none, pending, verified, rejected]
         createdAt:
           type: string
           format: date-time
@@ -3060,6 +3324,7 @@ components:
         - ownerId
         - memberCount
         - isMember
+        - verificationStatus
         - createdAt
 
     CreateJoinRequestBody:

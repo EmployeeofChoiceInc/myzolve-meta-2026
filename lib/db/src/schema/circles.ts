@@ -19,6 +19,18 @@ export const circlesTable = pgTable("circles", {
   bannerObjectPath: text("banner_object_path"),
   accentColor: text("accent_color"),
   welcomeMessage: text("welcome_message"),
+  // Verified circle badge — Plus owners apply, the team approves out of
+  // band via the admin script. Status is plain text for forward compat:
+  //   none | pending | verified | rejected
+  verificationStatus: text("verification_status").notNull().default("none"),
+  verificationAppliedAt: timestamp("verification_applied_at", {
+    withTimezone: true,
+  }),
+  verificationDecisionReason: text("verification_decision_reason"),
+  // Stringified JSON of the application payload (legalName, orgType,
+  // description, contactEmail, supportingUrl). Mirrors the pattern used
+  // by audit_logs.metadata so we don't need a jsonb column.
+  verificationMetadata: text("verification_metadata"),
   ownerId: integer("owner_id")
     .notNull()
     .references(() => usersTable.id),

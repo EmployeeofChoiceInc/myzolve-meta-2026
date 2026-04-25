@@ -21,6 +21,7 @@ import {
 } from "@/components/UI";
 import { Screen } from "@/components/Screen";
 import { PaywallSheet } from "@/components/PaywallSheet";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { useColors } from "@/hooks/useColors";
 import { CIRCLE_TYPE_LABELS } from "@/lib/circleTypes";
 import { safeBack } from "@/lib/safeBack";
@@ -157,9 +158,14 @@ export default function DiscoverScreen() {
                     />
                     {status && <Pill label={status.label} bg={status.bg} fg={status.fg} />}
                   </Row>
-                  <AppText variant="title" style={{ marginTop: 10 }}>
-                    {circle.name}
-                  </AppText>
+                  <Row align="center" gap={6} style={{ marginTop: 10 }}>
+                    <AppText variant="title" style={{ flexShrink: 1 }}>
+                      {circle.name}
+                    </AppText>
+                    {circle.verificationStatus === "verified" ? (
+                      <VerifiedBadge size="sm" />
+                    ) : null}
+                  </Row>
                   <AppText
                     variant="caption"
                     color={c.mutedForeground}

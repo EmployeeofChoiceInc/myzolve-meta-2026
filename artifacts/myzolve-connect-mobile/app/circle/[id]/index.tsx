@@ -15,6 +15,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { AppText, Card, IconButton, Pill, Row, Skeleton } from "@/components/UI";
 import { Screen } from "@/components/Screen";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { useColors } from "@/hooks/useColors";
 import { CIRCLE_TYPE_LABELS, formatMoney } from "@/lib/circleTypes";
 import { safeBack } from "@/lib/safeBack";
@@ -190,12 +191,17 @@ export default function CircleHomeScreen() {
                     bg="rgba(255,255,255,0.2)"
                     fg="#fff"
                   />
-                  <AppText
-                    variant="h1"
-                    style={{ marginTop: 10, color: "#fff" }}
-                  >
-                    {circle.name}
-                  </AppText>
+                  <Row align="center" gap={8} style={{ marginTop: 10 }}>
+                    <AppText
+                      variant="h1"
+                      style={{ color: "#fff", flexShrink: 1 }}
+                    >
+                      {circle.name}
+                    </AppText>
+                    {circle.verificationStatus === "verified" ? (
+                      <VerifiedBadge size="md" />
+                    ) : null}
+                  </Row>
                   {circle.description ? (
                     <AppText
                       color="rgba(255,255,255,0.9)"
@@ -209,9 +215,14 @@ export default function CircleHomeScreen() {
             ) : (
               <>
                 <Pill label={CIRCLE_TYPE_LABELS[circle.circleType] ?? circle.circleType} />
-                <AppText variant="h1" style={{ marginTop: 10, color: c.primary }}>
-                  {circle.name}
-                </AppText>
+                <Row align="center" gap={8} style={{ marginTop: 10 }}>
+                  <AppText variant="h1" style={{ color: c.primary, flexShrink: 1 }}>
+                    {circle.name}
+                  </AppText>
+                  {circle.verificationStatus === "verified" ? (
+                    <VerifiedBadge size="md" />
+                  ) : null}
+                </Row>
                 {circle.description ? (
                   <AppText color={c.mutedForeground} style={{ marginTop: 6 }}>
                     {circle.description}

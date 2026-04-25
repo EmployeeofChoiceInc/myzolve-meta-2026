@@ -426,6 +426,70 @@ router.post("/circles/:circleId/invitations", requireAuth, validateParams(circle
   });
 });
 
+// Lightweight preview for the invite-accept screen so the invitee can
+// see who's inviting them, the circle's name and verified status BEFORE
+// they tap accept. The token itself is the access secret.
+router.get(
+  "/invitations/:token",
+  requireAuth,
+  validateParams(invitationTokenParam),
+  async (req, res) => {
+    const token = String(req.params.token);
+
+    const row = await db
+      .select({
+        invitation: circleInvitationsTable,
+        circle: circlesTable,
+        invitedBy: usersTable,
+      })
+      .from(circleInvitationsTable)
+      .innerJoin(
+        circlesTable,
+        eq(circleInvitationsTable.circleId, circlesTable.id),
+      )
+      .leftJoin(
+        usersTable,
+        eq(circleInvitationsTable.invitedByUserId, usersTable.id),
+      )
+      .where(eq(circleInvitationsTable.token, token))
+      .limit(1)
+      .then((r) => r[0]);
+
+    if (!row) {
+      res.status(404).json({ error: "Invitation not found" });
+      return;
+    }
+
+    const status =
+      row.invitation.status === "pending" &&
+      row.invitation.expiresAt &&
+      row.invitation.expiresAt < new Date()
+        ? "expired"
+        : row.invitation.status;
+
+    res.json({
+      token: row.invitation.token,
+      status,
+      role: row.invitation.role,
+      invitedEmail: row.invitation.invitedEmail ?? null,
+      expiresAt: row.invitation.expiresAt
+        ? row.invitation.expiresAt.toISOString()
+        : null,
+      circle: {
+        id: row.circle.id,
+        name: row.circle.name,
+        circleType: row.circle.circleType,
+        description: row.circle.description ?? null,
+        photoUrl: row.circle.photoUrl ?? null,
+        verificationStatus: row.circle.verificationStatus ?? "none",
+      },
+      invitedBy: {
+        displayName: row.invitedBy?.displayName ?? "Someone",
+      },
+    });
+  },
+);
+
 router.post("/invitations/:token/accept", requireAuth, validateParams(invitationTokenParam), async (req, res) => {
   const userId = req.dbUser!.id;
   const clerkId = req.dbUser!.clerkId;

@@ -23,6 +23,23 @@ import {
   activityFeedItemsTable,
   supportContributionsTable,
 } from "@workspace/db";
+import { createNotification } from "../lib/helpers";
+
+/**
+ * Returns true if the requesting user's email matches the configured
+ * verification admin allow-list. The MyZolve team uses a small static
+ * allow-list (comma-separated `VERIFICATION_ADMIN_EMAIL` env var) for
+ * the verified-circle queue rather than a full RBAC system.
+ */
+function isVerificationAdmin(email: string | null | undefined): boolean {
+  const raw = process.env["VERIFICATION_ADMIN_EMAIL"];
+  if (!raw || !email) return false;
+  const allowed = raw
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  return allowed.includes(email.toLowerCase());
+}
 
 const router = Router();
 
@@ -71,6 +88,9 @@ function circleToApi(
     accentColor: circle.accentColor,
     welcomeMessage: circle.welcomeMessage,
     showWelcomeCard,
+    verificationStatus: circle.verificationStatus ?? "none",
+    verificationAppliedAt: circle.verificationAppliedAt ?? null,
+    verificationDecisionReason: circle.verificationDecisionReason ?? null,
     createdAt: circle.createdAt,
   };
 }
@@ -138,6 +158,7 @@ router.get("/circles/discover", requireAuth, async (req, res) => {
       memberCount: Number(memberCount),
       isMember: memberSet.has(circle.id),
       joinRequestStatus: joinRequestMap.get(circle.id) ?? null,
+      verificationStatus: circle.verificationStatus ?? "none",
       createdAt: circle.createdAt,
     })),
   );
@@ -428,6 +449,144 @@ router.post(
     // a member), the client only cares that the card stays gone.
     void result;
     res.status(204).end();
+  },
+);
+
+const applyVerificationSchema = z.object({
+  legalName: z.string().min(1).max(200),
+  orgType: z.enum(["faith_group", "mutual_aid", "co_op", "nonprofit", "other"]),
+  description: z.string().min(1).max(2000),
+  contactEmail: z.string().email().max(320),
+  supportingUrl: z.string().url().max(2000).nullable().optional(),
+});
+
+router.post(
+  "/circles/:circleId/verification",
+  requireAuth,
+  validateParams(circleIdParam),
+  validateBody(applyVerificationSchema),
+  async (req, res) => {
+    const userId = req.dbUser!.id;
+    const circleId = parseInt(String(req.params.circleId));
+
+    const circle = await db
+      .select()
+      .from(circlesTable)
+      .where(eq(circlesTable.id, circleId))
+      .limit(1)
+      .then((r) => r[0]);
+
+    if (!circle) {
+      res.status(404).json({ error: "Circle not found" });
+      return;
+    }
+
+    // Only the owner — not admins — can apply on behalf of the circle.
+    if (circle.ownerId !== userId) {
+      res.status(403).json({
+        error: "Only the circle owner can apply for verification.",
+      });
+      return;
+    }
+
+    // Plus is required to apply (keeps the queue manageable). The
+    // resulting verified badge is visible to everyone regardless of
+    // their Plus status.
+    const ownerHasPlus = await isPlus(req.dbUser!.clerkId);
+    if (!ownerHasPlus) {
+      res.status(402).json({
+        error: "plus_required",
+        reason: "circle_verification",
+        message:
+          "MyZolve Connect Plus is required to apply for verification.",
+      });
+      return;
+    }
+
+    const status = circle.verificationStatus ?? "none";
+    if (status === "pending" || status === "verified") {
+      res.status(409).json({
+        error:
+          status === "verified"
+            ? "This circle is already verified."
+            : "An application is already pending review.",
+      });
+      return;
+    }
+
+    const application = req.body as z.infer<typeof applyVerificationSchema>;
+    const now = new Date();
+    const metadata = {
+      legalName: application.legalName.trim(),
+      orgType: application.orgType,
+      description: application.description.trim(),
+      contactEmail: application.contactEmail.trim(),
+      supportingUrl:
+        application.supportingUrl && application.supportingUrl.length > 0
+          ? application.supportingUrl.trim()
+          : null,
+    };
+
+    const [updated] = await db
+      .update(circlesTable)
+      .set({
+        verificationStatus: "pending",
+        verificationAppliedAt: now,
+        verificationDecisionReason: null,
+        verificationMetadata: JSON.stringify(metadata),
+      })
+      .where(eq(circlesTable.id, circleId))
+      .returning();
+
+    await createAuditLog({
+      actorUserId: userId,
+      circleId,
+      action: "circle_verification_applied",
+      targetEntityType: "circle",
+      targetEntityId: circleId,
+      metadata,
+    });
+
+    // Notify the configured admin email so the team knows there's a
+    // new application waiting in the queue.
+    const adminEmail = process.env["VERIFICATION_ADMIN_EMAIL"];
+    if (adminEmail) {
+      const { sendEmail } = await import("../lib/email");
+      const summary = [
+        `Circle: ${circle.name} (id: ${circle.id})`,
+        `Owner: ${req.dbUser!.displayName} <${req.dbUser!.email ?? "no email"}>`,
+        `Org name: ${metadata.legalName}`,
+        `Org type: ${metadata.orgType}`,
+        `Contact: ${metadata.contactEmail}`,
+        `Supporting URL: ${metadata.supportingUrl ?? "(none)"}`,
+        "",
+        metadata.description,
+        "",
+        `Approve:  pnpm --filter @workspace/scripts exec tsx ./src/verifyCircle.ts approve ${circle.id} "Looks good"`,
+        `Reject:   pnpm --filter @workspace/scripts exec tsx ./src/verifyCircle.ts reject ${circle.id} "Reason"`,
+      ].join("\n");
+      void sendEmail({
+        to: adminEmail,
+        subject: `[MyZolve] Verify circle: ${circle.name}`,
+        text: summary,
+        html: `<pre style="font-family: ui-monospace, monospace; white-space: pre-wrap;">${summary
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")}</pre>`,
+      });
+    }
+
+    const [memberCount] = await db
+      .select({ cnt: count() })
+      .from(circleMembersTable)
+      .where(
+        and(
+          eq(circleMembersTable.circleId, circleId),
+          eq(circleMembersTable.status, "active"),
+        ),
+      );
+
+    res.json(circleToApi(updated, Number(memberCount.cnt), "owner"));
   },
 );
 
@@ -758,5 +917,155 @@ router.get("/circles/:circleId/stats", requireAuth, validateParams(circleIdParam
     recentActivityCount: Number(recentActivityRow.cnt),
   });
 });
+
+// ── Admin: verified-circle queue ────────────────────────────────────────
+// Mirrors the operations in scripts/src/verifyCircle.ts but exposed as an
+// authenticated API so a future admin UI doesn't need shell access.
+
+const decisionSchema = z.object({
+  decision: z.enum(["approve", "reject"]),
+  reason: z.string().max(500).optional(),
+});
+
+router.get("/admin/circles/verifications", requireAuth, async (req, res) => {
+  if (!isVerificationAdmin(req.dbUser?.email)) {
+    res.status(403).json({ error: "Verification admin access required" });
+    return;
+  }
+
+  const rows = await db
+    .select({
+      circleId: circlesTable.id,
+      circleName: circlesTable.name,
+      ownerId: circlesTable.ownerId,
+      ownerName: usersTable.displayName,
+      ownerEmail: usersTable.email,
+      appliedAt: circlesTable.verificationAppliedAt,
+      metadata: circlesTable.verificationMetadata,
+    })
+    .from(circlesTable)
+    .leftJoin(usersTable, eq(circlesTable.ownerId, usersTable.id))
+    .where(eq(circlesTable.verificationStatus, "pending"))
+    .orderBy(circlesTable.verificationAppliedAt);
+
+  res.json(
+    rows.map((r) => {
+      let meta: Record<string, unknown> = {};
+      if (r.metadata) {
+        try {
+          meta = JSON.parse(r.metadata);
+        } catch {
+          meta = {};
+        }
+      }
+      return {
+        circleId: r.circleId,
+        circleName: r.circleName,
+        ownerId: r.ownerId,
+        ownerName: r.ownerName,
+        ownerEmail: r.ownerEmail,
+        appliedAt: r.appliedAt ? r.appliedAt.toISOString() : null,
+        legalName: (meta.legalName as string) ?? null,
+        orgType: (meta.orgType as string) ?? null,
+        description: (meta.description as string) ?? null,
+        contactEmail: (meta.contactEmail as string) ?? null,
+        supportingUrl: (meta.supportingUrl as string) ?? null,
+      };
+    }),
+  );
+});
+
+router.post(
+  "/admin/circles/:circleId/verification/decision",
+  requireAuth,
+  validateParams(circleIdParam),
+  validateBody(decisionSchema),
+  async (req, res) => {
+    if (!isVerificationAdmin(req.dbUser?.email)) {
+      res.status(403).json({ error: "Verification admin access required" });
+      return;
+    }
+
+    const circleId = parseInt(String(req.params.circleId));
+    const { decision, reason } = req.body as z.infer<typeof decisionSchema>;
+    if (decision === "reject" && (!reason || reason.trim().length === 0)) {
+      res.status(400).json({ error: "Reject decisions require a reason." });
+      return;
+    }
+
+    const circle = await db
+      .select()
+      .from(circlesTable)
+      .where(eq(circlesTable.id, circleId))
+      .limit(1)
+      .then((r) => r[0]);
+
+    if (!circle) {
+      res.status(404).json({ error: "Circle not found" });
+      return;
+    }
+    if (circle.verificationStatus !== "pending") {
+      res.status(409).json({
+        error: `Circle is in status "${circle.verificationStatus}", expected "pending".`,
+      });
+      return;
+    }
+
+    const newStatus = decision === "approve" ? "verified" : "rejected";
+    const decisionReason = reason?.trim() || (decision === "approve" ? "Approved" : "");
+
+    const [updated] = await db
+      .update(circlesTable)
+      .set({
+        verificationStatus: newStatus,
+        verificationDecisionReason: decisionReason || null,
+      })
+      .where(eq(circlesTable.id, circleId))
+      .returning();
+
+    await createAuditLog({
+      actorUserId: req.dbUser!.id,
+      circleId,
+      action:
+        decision === "approve"
+          ? "circle_verification_approved"
+          : "circle_verification_rejected",
+      targetEntityType: "circle",
+      targetEntityId: circleId,
+      metadata: { reason: decisionReason },
+    });
+
+    await createNotification({
+      userId: updated.ownerId,
+      circleId,
+      notificationType:
+        decision === "approve"
+          ? "circle_verified"
+          : "circle_verification_rejected",
+      title:
+        decision === "approve"
+          ? "Your circle is now verified"
+          : "Your verification application was declined",
+      body:
+        decision === "approve"
+          ? `${updated.name} now shows the Verified badge to all members.`
+          : `${updated.name}: ${decisionReason}`,
+      targetEntityType: "circle",
+      targetEntityId: circleId,
+    });
+
+    const [memberCount] = await db
+      .select({ cnt: count() })
+      .from(circleMembersTable)
+      .where(
+        and(
+          eq(circleMembersTable.circleId, circleId),
+          eq(circleMembersTable.status, "active"),
+        ),
+      );
+
+    res.json(circleToApi(updated, Number(memberCount.cnt), "owner"));
+  },
+);
 
 export default router;

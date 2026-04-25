@@ -29,6 +29,8 @@ import type {
   CircleInvitation,
   CircleMember,
   CircleStats,
+  CircleVerificationApplicationBody,
+  CircleVerificationDecisionBody,
   Comment,
   Contribution,
   CopilotGrant,
@@ -63,6 +65,7 @@ import type {
   GetNotificationUnreadCount200,
   GratitudeNote,
   HealthStatus,
+  InvitationPreview,
   InviteCopilotBody,
   JoinRequest,
   LedgerEntry,
@@ -85,6 +88,7 @@ import type {
   NotificationList,
   NotificationPreference,
   PaymentRequiredResponse,
+  PendingCircleVerification,
   PlaceholderMember,
   ReactionSummary,
   ReactionToggleResult,
@@ -1045,6 +1049,311 @@ export const useDismissCircleWelcome = <
   TContext
 > => {
   return useMutation(getDismissCircleWelcomeMutationOptions(options));
+};
+
+/**
+ * Plus circle owners can apply for the team to verify their circle as a
+real-world organization. Sets status to "pending" and notifies the
+configured admin email. Re-applying after a rejection is allowed.
+
+ * @summary Submit a verified-circle application (Plus owner only)
+ */
+export const getApplyForCircleVerificationUrl = (circleId: number) => {
+  return `/api/circles/${circleId}/verification`;
+};
+
+export const applyForCircleVerification = async (
+  circleId: number,
+  circleVerificationApplicationBody: CircleVerificationApplicationBody,
+  options?: RequestInit,
+): Promise<Circle> => {
+  return customFetch<Circle>(getApplyForCircleVerificationUrl(circleId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(circleVerificationApplicationBody),
+  });
+};
+
+export const getApplyForCircleVerificationMutationOptions = <
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | PaymentRequiredResponse
+    | ForbiddenResponse
+    | NotFoundResponse
+    | void
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof applyForCircleVerification>>,
+    TError,
+    { circleId: number; data: BodyType<CircleVerificationApplicationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof applyForCircleVerification>>,
+  TError,
+  { circleId: number; data: BodyType<CircleVerificationApplicationBody> },
+  TContext
+> => {
+  const mutationKey = ["applyForCircleVerification"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof applyForCircleVerification>>,
+    { circleId: number; data: BodyType<CircleVerificationApplicationBody> }
+  > = (props) => {
+    const { circleId, data } = props ?? {};
+
+    return applyForCircleVerification(circleId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ApplyForCircleVerificationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof applyForCircleVerification>>
+>;
+export type ApplyForCircleVerificationMutationBody =
+  BodyType<CircleVerificationApplicationBody>;
+export type ApplyForCircleVerificationMutationError = ErrorType<
+  | BadRequestResponse
+  | UnauthorizedResponse
+  | PaymentRequiredResponse
+  | ForbiddenResponse
+  | NotFoundResponse
+  | void
+>;
+
+/**
+ * @summary Submit a verified-circle application (Plus owner only)
+ */
+export const useApplyForCircleVerification = <
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | PaymentRequiredResponse
+    | ForbiddenResponse
+    | NotFoundResponse
+    | void
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof applyForCircleVerification>>,
+    TError,
+    { circleId: number; data: BodyType<CircleVerificationApplicationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof applyForCircleVerification>>,
+  TError,
+  { circleId: number; data: BodyType<CircleVerificationApplicationBody> },
+  TContext
+> => {
+  return useMutation(getApplyForCircleVerificationMutationOptions(options));
+};
+
+/**
+ * Returns every circle whose verification status is "pending", along with
+the application metadata the owner submitted. Restricted to the
+configured verification admin email.
+
+ * @summary List circles awaiting verification review (admin only)
+ */
+export const getListPendingCircleVerificationsUrl = () => {
+  return `/api/admin/circles/verifications`;
+};
+
+export const listPendingCircleVerifications = async (
+  options?: RequestInit,
+): Promise<PendingCircleVerification[]> => {
+  return customFetch<PendingCircleVerification[]>(
+    getListPendingCircleVerificationsUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListPendingCircleVerificationsQueryKey = () => {
+  return [`/api/admin/circles/verifications`] as const;
+};
+
+export const getListPendingCircleVerificationsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPendingCircleVerifications>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPendingCircleVerifications>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListPendingCircleVerificationsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPendingCircleVerifications>>
+  > = ({ signal }) =>
+    listPendingCircleVerifications({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPendingCircleVerifications>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPendingCircleVerificationsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPendingCircleVerifications>>
+>;
+export type ListPendingCircleVerificationsQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary List circles awaiting verification review (admin only)
+ */
+
+export function useListPendingCircleVerifications<
+  TData = Awaited<ReturnType<typeof listPendingCircleVerifications>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPendingCircleVerifications>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPendingCircleVerificationsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Approve or reject a pending verification application (admin only)
+ */
+export const getDecideCircleVerificationUrl = (circleId: number) => {
+  return `/api/admin/circles/${circleId}/verification/decision`;
+};
+
+export const decideCircleVerification = async (
+  circleId: number,
+  circleVerificationDecisionBody: CircleVerificationDecisionBody,
+  options?: RequestInit,
+): Promise<Circle> => {
+  return customFetch<Circle>(getDecideCircleVerificationUrl(circleId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(circleVerificationDecisionBody),
+  });
+};
+
+export const getDecideCircleVerificationMutationOptions = <
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | NotFoundResponse
+    | void
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof decideCircleVerification>>,
+    TError,
+    { circleId: number; data: BodyType<CircleVerificationDecisionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof decideCircleVerification>>,
+  TError,
+  { circleId: number; data: BodyType<CircleVerificationDecisionBody> },
+  TContext
+> => {
+  const mutationKey = ["decideCircleVerification"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof decideCircleVerification>>,
+    { circleId: number; data: BodyType<CircleVerificationDecisionBody> }
+  > = (props) => {
+    const { circleId, data } = props ?? {};
+
+    return decideCircleVerification(circleId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DecideCircleVerificationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof decideCircleVerification>>
+>;
+export type DecideCircleVerificationMutationBody =
+  BodyType<CircleVerificationDecisionBody>;
+export type DecideCircleVerificationMutationError = ErrorType<
+  | BadRequestResponse
+  | UnauthorizedResponse
+  | ForbiddenResponse
+  | NotFoundResponse
+  | void
+>;
+
+/**
+ * @summary Approve or reject a pending verification application (admin only)
+ */
+export const useDecideCircleVerification = <
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | NotFoundResponse
+    | void
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof decideCircleVerification>>,
+    TError,
+    { circleId: number; data: BodyType<CircleVerificationDecisionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof decideCircleVerification>>,
+  TError,
+  { circleId: number; data: BodyType<CircleVerificationDecisionBody> },
+  TContext
+> => {
+  return useMutation(getDecideCircleVerificationMutationOptions(options));
 };
 
 /**
@@ -2012,6 +2321,102 @@ export const useCreateCircleInvitation = <
 > => {
   return useMutation(getCreateCircleInvitationMutationOptions(options));
 };
+
+/**
+ * Returns enough information about the invited circle for the
+invitee to decide whether to accept — including the circle name,
+type, photo, and whether the circle is verified. The invitation
+token itself acts as the access secret; the response intentionally
+omits sensitive circle data.
+
+ * @summary Preview a circle invitation (basic circle info, no join yet)
+ */
+export const getPreviewInvitationUrl = (token: string) => {
+  return `/api/invitations/${token}`;
+};
+
+export const previewInvitation = async (
+  token: string,
+  options?: RequestInit,
+): Promise<InvitationPreview> => {
+  return customFetch<InvitationPreview>(getPreviewInvitationUrl(token), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getPreviewInvitationQueryKey = (token: string) => {
+  return [`/api/invitations/${token}`] as const;
+};
+
+export const getPreviewInvitationQueryOptions = <
+  TData = Awaited<ReturnType<typeof previewInvitation>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  token: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof previewInvitation>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getPreviewInvitationQueryKey(token);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof previewInvitation>>
+  > = ({ signal }) => previewInvitation(token, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!token,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof previewInvitation>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type PreviewInvitationQueryResult = NonNullable<
+  Awaited<ReturnType<typeof previewInvitation>>
+>;
+export type PreviewInvitationQueryError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Preview a circle invitation (basic circle info, no join yet)
+ */
+
+export function usePreviewInvitation<
+  TData = Awaited<ReturnType<typeof previewInvitation>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  token: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof previewInvitation>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getPreviewInvitationQueryOptions(token, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Accept a circle invitation by token

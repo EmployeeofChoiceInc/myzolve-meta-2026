@@ -99,6 +99,18 @@ export const ListCirclesResponseItem = zod.object({
     .describe(
       "True when the calling member should see the one-time welcome card.",
     ),
+  verificationStatus: zod
+    .enum(["none", "pending", "verified", "rejected"])
+    .describe(
+      'Verified circle badge state. Plus owners apply; the MyZolve\nteam reviews via the admin script. The \"verified\" state is\nvisible to every member regardless of their Plus status.\n',
+    ),
+  verificationAppliedAt: zod.coerce.date().nullish(),
+  verificationDecisionReason: zod
+    .string()
+    .nullish()
+    .describe(
+      "Reason supplied by the reviewer on rejection. Surfaced to\nthe owner so they can fix the issue and re-apply.\n",
+    ),
   createdAt: zod.coerce.date(),
 });
 export const ListCirclesResponse = zod.array(ListCirclesResponseItem);
@@ -181,6 +193,18 @@ export const GetCircleResponse = zod.object({
     .describe(
       "True when the calling member should see the one-time welcome card.",
     ),
+  verificationStatus: zod
+    .enum(["none", "pending", "verified", "rejected"])
+    .describe(
+      'Verified circle badge state. Plus owners apply; the MyZolve\nteam reviews via the admin script. The \"verified\" state is\nvisible to every member regardless of their Plus status.\n',
+    ),
+  verificationAppliedAt: zod.coerce.date().nullish(),
+  verificationDecisionReason: zod
+    .string()
+    .nullish()
+    .describe(
+      "Reason supplied by the reviewer on rejection. Surfaced to\nthe owner so they can fix the issue and re-apply.\n",
+    ),
   createdAt: zod.coerce.date(),
 });
 
@@ -259,6 +283,18 @@ export const UpdateCircleResponse = zod.object({
     .describe(
       "True when the calling member should see the one-time welcome card.",
     ),
+  verificationStatus: zod
+    .enum(["none", "pending", "verified", "rejected"])
+    .describe(
+      'Verified circle badge state. Plus owners apply; the MyZolve\nteam reviews via the admin script. The \"verified\" state is\nvisible to every member regardless of their Plus status.\n',
+    ),
+  verificationAppliedAt: zod.coerce.date().nullish(),
+  verificationDecisionReason: zod
+    .string()
+    .nullish()
+    .describe(
+      "Reason supplied by the reviewer on rejection. Surfaced to\nthe owner so they can fix the issue and re-apply.\n",
+    ),
   createdAt: zod.coerce.date(),
 });
 
@@ -295,6 +331,199 @@ Idempotent — calling it again is a no-op.
  */
 export const DismissCircleWelcomeParams = zod.object({
   circleId: zod.coerce.number(),
+});
+
+/**
+ * Plus circle owners can apply for the team to verify their circle as a
+real-world organization. Sets status to "pending" and notifies the
+configured admin email. Re-applying after a rejection is allowed.
+
+ * @summary Submit a verified-circle application (Plus owner only)
+ */
+export const ApplyForCircleVerificationParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const ApplyForCircleVerificationBody = zod.object({
+  legalName: zod
+    .string()
+    .describe("Legal name of the real-world organization."),
+  orgType: zod.enum([
+    "faith_group",
+    "mutual_aid",
+    "co_op",
+    "nonprofit",
+    "other",
+  ]),
+  description: zod
+    .string()
+    .describe("Brief description of the organization and its mission."),
+  contactEmail: zod.string().email(),
+  supportingUrl: zod
+    .string()
+    .nullish()
+    .describe("Optional public URL the reviewer can use to corroborate."),
+});
+
+export const ApplyForCircleVerificationResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  circleType: zod.enum([
+    "family",
+    "chosen_family",
+    "friends",
+    "caregiving_circle",
+    "neighborhood_circle",
+    "other",
+  ]),
+  description: zod.string().nullish(),
+  photoUrl: zod.string().nullish(),
+  currency: zod.string(),
+  privacyMode: zod.enum(["private", "hidden", "open", "community"]),
+  ledgerMode: zod.enum(["private", "summary", "full", "admin_only"]),
+  ownerId: zod.number(),
+  memberCount: zod.number(),
+  myRole: zod.enum([
+    "owner",
+    "admin",
+    "host",
+    "treasurer",
+    "scribe",
+    "member",
+    "guest",
+  ]),
+  bannerObjectPath: zod
+    .string()
+    .nullish()
+    .describe("Plus customization. Banner shown behind the circle title."),
+  accentColor: zod
+    .string()
+    .nullish()
+    .describe('Plus customization. Hex accent color (e.g. \"#D7754D\").'),
+  welcomeMessage: zod
+    .string()
+    .nullish()
+    .describe("Plus customization. Greeting shown to new members."),
+  showWelcomeCard: zod
+    .boolean()
+    .describe(
+      "True when the calling member should see the one-time welcome card.",
+    ),
+  verificationStatus: zod
+    .enum(["none", "pending", "verified", "rejected"])
+    .describe(
+      'Verified circle badge state. Plus owners apply; the MyZolve\nteam reviews via the admin script. The \"verified\" state is\nvisible to every member regardless of their Plus status.\n',
+    ),
+  verificationAppliedAt: zod.coerce.date().nullish(),
+  verificationDecisionReason: zod
+    .string()
+    .nullish()
+    .describe(
+      "Reason supplied by the reviewer on rejection. Surfaced to\nthe owner so they can fix the issue and re-apply.\n",
+    ),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * Returns every circle whose verification status is "pending", along with
+the application metadata the owner submitted. Restricted to the
+configured verification admin email.
+
+ * @summary List circles awaiting verification review (admin only)
+ */
+export const ListPendingCircleVerificationsResponseItem = zod
+  .object({
+    circleId: zod.number(),
+    circleName: zod.string(),
+    ownerId: zod.number(),
+    ownerName: zod.string().nullish(),
+    ownerEmail: zod.string().nullish(),
+    appliedAt: zod.coerce.date().nullish(),
+    legalName: zod.string().nullish(),
+    orgType: zod.string().nullish(),
+    description: zod.string().nullish(),
+    contactEmail: zod.string().nullish(),
+    supportingUrl: zod.string().nullish(),
+  })
+  .describe("Pending application for the verified-circle queue.");
+export const ListPendingCircleVerificationsResponse = zod.array(
+  ListPendingCircleVerificationsResponseItem,
+);
+
+/**
+ * @summary Approve or reject a pending verification application (admin only)
+ */
+export const DecideCircleVerificationParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const DecideCircleVerificationBody = zod.object({
+  decision: zod.enum(["approve", "reject"]),
+  reason: zod
+    .string()
+    .optional()
+    .describe(
+      "Required for reject (shown to the owner so they can re-apply).\nOptional note for approve.\n",
+    ),
+});
+
+export const DecideCircleVerificationResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  circleType: zod.enum([
+    "family",
+    "chosen_family",
+    "friends",
+    "caregiving_circle",
+    "neighborhood_circle",
+    "other",
+  ]),
+  description: zod.string().nullish(),
+  photoUrl: zod.string().nullish(),
+  currency: zod.string(),
+  privacyMode: zod.enum(["private", "hidden", "open", "community"]),
+  ledgerMode: zod.enum(["private", "summary", "full", "admin_only"]),
+  ownerId: zod.number(),
+  memberCount: zod.number(),
+  myRole: zod.enum([
+    "owner",
+    "admin",
+    "host",
+    "treasurer",
+    "scribe",
+    "member",
+    "guest",
+  ]),
+  bannerObjectPath: zod
+    .string()
+    .nullish()
+    .describe("Plus customization. Banner shown behind the circle title."),
+  accentColor: zod
+    .string()
+    .nullish()
+    .describe('Plus customization. Hex accent color (e.g. \"#D7754D\").'),
+  welcomeMessage: zod
+    .string()
+    .nullish()
+    .describe("Plus customization. Greeting shown to new members."),
+  showWelcomeCard: zod
+    .boolean()
+    .describe(
+      "True when the calling member should see the one-time welcome card.",
+    ),
+  verificationStatus: zod
+    .enum(["none", "pending", "verified", "rejected"])
+    .describe(
+      'Verified circle badge state. Plus owners apply; the MyZolve\nteam reviews via the admin script. The \"verified\" state is\nvisible to every member regardless of their Plus status.\n',
+    ),
+  verificationAppliedAt: zod.coerce.date().nullish(),
+  verificationDecisionReason: zod
+    .string()
+    .nullish()
+    .describe(
+      "Reason supplied by the reviewer on rejection. Surfaced to\nthe owner so they can fix the issue and re-apply.\n",
+    ),
+  createdAt: zod.coerce.date(),
 });
 
 /**
@@ -400,6 +629,7 @@ export const DiscoverCirclesResponseItem = zod.object({
       zod.literal(null),
     ])
     .nullish(),
+  verificationStatus: zod.enum(["none", "pending", "verified", "rejected"]),
   createdAt: zod.coerce.date(),
 });
 export const DiscoverCirclesResponse = zod.array(DiscoverCirclesResponseItem);
@@ -491,6 +721,40 @@ export const CreateCircleInvitationBody = zod.object({
     .default(createCircleInvitationBodyRoleDefault),
   customMessage: zod.string().optional(),
 });
+
+/**
+ * Returns enough information about the invited circle for the
+invitee to decide whether to accept — including the circle name,
+type, photo, and whether the circle is verified. The invitation
+token itself acts as the access secret; the response intentionally
+omits sensitive circle data.
+
+ * @summary Preview a circle invitation (basic circle info, no join yet)
+ */
+export const PreviewInvitationParams = zod.object({
+  token: zod.coerce.string(),
+});
+
+export const PreviewInvitationResponse = zod
+  .object({
+    token: zod.string(),
+    status: zod.enum(["pending", "accepted", "revoked", "expired"]),
+    role: zod.string(),
+    invitedEmail: zod.string().nullish(),
+    expiresAt: zod.coerce.date().nullish(),
+    circle: zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      circleType: zod.string(),
+      description: zod.string().nullish(),
+      photoUrl: zod.string().nullish(),
+      verificationStatus: zod.enum(["none", "pending", "verified", "rejected"]),
+    }),
+    invitedBy: zod.object({
+      displayName: zod.string(),
+    }),
+  })
+  .describe("Lightweight circle preview shown on the invite-accept screen.");
 
 /**
  * @summary Accept a circle invitation by token

@@ -12,6 +12,7 @@ import {
   getGetCircleQueryKey,
   getListCircleMembersQueryKey,
   getListCirclesQueryKey,
+  useApplyForCircleVerification,
   useGetCircle,
   useListCircleMembers,
   useUpdateCircle,
@@ -30,6 +31,7 @@ import {
 import { PaywallSheet } from "@/components/PaywallSheet";
 import { PlusBadge } from "@/components/PlusBadge";
 import { RolePickerSheet } from "@/components/RolePickerSheet";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { useColors } from "@/hooks/useColors";
 import { safeBack } from "@/lib/safeBack";
 import {
@@ -130,6 +132,85 @@ export default function CircleSettingsScreen() {
     name: string;
     role: string;
   } | null>(null);
+
+  // ── Verified circle application ───────────────────────────────────────
+  // Plus owners can apply to have their circle verified by the team. We
+  // hide the form once an application has been submitted (pending) or
+  // accepted (verified); rejected circles can re-apply with the form
+  // pre-cleared.
+  const applyForVerification = useApplyForCircleVerification();
+  const [verifyOpen, setVerifyOpen] = useState(false);
+  const [vLegalName, setVLegalName] = useState("");
+  const [vOrgType, setVOrgType] = useState<
+    "faith_group" | "mutual_aid" | "co_op" | "nonprofit" | "other"
+  >("nonprofit");
+  const [vDescription, setVDescription] = useState("");
+  const [vContactEmail, setVContactEmail] = useState("");
+  const [vSupportingUrl, setVSupportingUrl] = useState("");
+
+  function submitVerification() {
+    if (vLegalName.trim().length < 1) {
+      Alert.alert("Add the org name", "Please share your organization's legal name.");
+      return;
+    }
+    if (vDescription.trim().length < 10) {
+      Alert.alert(
+        "Tell us more",
+        "A short description (at least a sentence) helps the reviewer.",
+      );
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(vContactEmail.trim())) {
+      Alert.alert("Contact email", "Please share a valid contact email.");
+      return;
+    }
+    const trimmedUrl = vSupportingUrl.trim();
+    if (trimmedUrl && !/^https?:\/\//i.test(trimmedUrl)) {
+      Alert.alert("Supporting URL", "Please paste a full URL starting with http or https.");
+      return;
+    }
+    applyForVerification.mutate(
+      {
+        circleId,
+        data: {
+          legalName: vLegalName.trim(),
+          orgType: vOrgType,
+          description: vDescription.trim(),
+          contactEmail: vContactEmail.trim(),
+          supportingUrl: trimmedUrl ? trimmedUrl : null,
+        },
+      },
+      {
+        onSuccess: (updated) => {
+          qc.setQueryData(getGetCircleQueryKey(circleId), updated);
+          setVerifyOpen(false);
+          Alert.alert(
+            "Application sent",
+            "Our team will take a look and get back to you. You'll get a notification when there's a decision.",
+          );
+        },
+        onError: (err: unknown) => {
+          const status =
+            typeof err === "object" && err !== null && "status" in err
+              ? (err as { status?: number }).status
+              : undefined;
+          if (status === 402) {
+            setPaywallVisible(true);
+            return;
+          }
+          if (status === 409) {
+            qc.invalidateQueries({ queryKey: getGetCircleQueryKey(circleId) });
+            Alert.alert(
+              "Already submitted",
+              "This circle already has an application in review.",
+            );
+            return;
+          }
+          Alert.alert("Couldn't send application", "Please try again in a moment.");
+        },
+      },
+    );
+  }
 
   useEffect(() => {
     if (circle && !hydrated) {
@@ -709,6 +790,270 @@ export default function CircleSettingsScreen() {
                 testID="button-save-settings"
                 style={{ marginTop: 8 }}
               />
+
+              {isOwner ? (
+                <View style={{ marginTop: 32 }}>
+                  <Row align="center" gap={8} style={{ marginBottom: 4 }}>
+                    <AppText weight="semibold">Trust</AppText>
+                    <PlusBadge size="sm" variant="soft" />
+                  </Row>
+                  <AppText
+                    variant="caption"
+                    color={c.mutedForeground}
+                    style={{ marginBottom: 12, lineHeight: 18 }}
+                  >
+                    If your circle represents a real-world organization — a
+                    mosque mutual aid group, a recovery community, a co-op —
+                    apply for the Verified badge. Our team reviews each one.
+                  </AppText>
+
+                  {circle.verificationStatus === "verified" ? (
+                    <View
+                      testID="verification-status-verified"
+                      style={{
+                        backgroundColor: c.card,
+                        borderColor: c.border,
+                        borderWidth: 1,
+                        borderRadius: 14,
+                        padding: 14,
+                      }}
+                    >
+                      <Row align="center" gap={10}>
+                        <VerifiedBadge size="md" />
+                        <View style={{ flex: 1 }}>
+                          <AppText weight="semibold">This circle is verified</AppText>
+                          <AppText
+                            variant="caption"
+                            color={c.mutedForeground}
+                            style={{ marginTop: 2 }}
+                          >
+                            The Verified badge shows next to your circle name everywhere.
+                          </AppText>
+                        </View>
+                      </Row>
+                    </View>
+                  ) : circle.verificationStatus === "pending" ? (
+                    <View
+                      testID="verification-status-pending"
+                      style={{
+                        backgroundColor: c.card,
+                        borderColor: c.border,
+                        borderWidth: 1,
+                        borderRadius: 14,
+                        padding: 14,
+                      }}
+                    >
+                      <Row align="center" gap={10}>
+                        <Feather name="clock" size={18} color={c.mutedForeground} />
+                        <View style={{ flex: 1 }}>
+                          <AppText weight="semibold">Application in review</AppText>
+                          <AppText
+                            variant="caption"
+                            color={c.mutedForeground}
+                            style={{ marginTop: 2 }}
+                          >
+                            We&apos;ll send a notification when there&apos;s a decision.
+                          </AppText>
+                        </View>
+                      </Row>
+                    </View>
+                  ) : !ownerHasPlus ? (
+                    <Pressable
+                      onPress={() => setPaywallVisible(true)}
+                      testID="verification-upsell"
+                      style={({ pressed }) => ({
+                        backgroundColor: c.primarySoft,
+                        borderColor: c.primary,
+                        borderWidth: 1,
+                        borderRadius: 14,
+                        padding: 14,
+                        opacity: pressed ? 0.92 : 1,
+                      })}
+                    >
+                      <Row align="center" justify="space-between">
+                        <View style={{ flex: 1, paddingRight: 12 }}>
+                          <AppText weight="semibold" color={c.primary}>
+                            Apply for Verified with Plus
+                          </AppText>
+                          <AppText
+                            variant="caption"
+                            color={c.foreground}
+                            style={{ marginTop: 2 }}
+                          >
+                            Tap to learn more about Plus.
+                          </AppText>
+                        </View>
+                        <Feather name="chevron-right" size={20} color={c.primary} />
+                      </Row>
+                    </Pressable>
+                  ) : (
+                    <>
+                      {circle.verificationStatus === "rejected" &&
+                      circle.verificationDecisionReason ? (
+                        <View
+                          testID="verification-status-rejected"
+                          style={{
+                            backgroundColor: c.card,
+                            borderColor: c.border,
+                            borderWidth: 1,
+                            borderRadius: 14,
+                            padding: 14,
+                            marginBottom: 12,
+                          }}
+                        >
+                          <Row align="flex-start" gap={10}>
+                            <Feather
+                              name="alert-circle"
+                              size={18}
+                              color={c.mutedForeground}
+                            />
+                            <View style={{ flex: 1 }}>
+                              <AppText weight="semibold">
+                                Application declined
+                              </AppText>
+                              <AppText
+                                variant="caption"
+                                color={c.mutedForeground}
+                                style={{ marginTop: 4, lineHeight: 18 }}
+                              >
+                                {circle.verificationDecisionReason}
+                              </AppText>
+                              <AppText
+                                variant="caption"
+                                color={c.mutedForeground}
+                                style={{ marginTop: 6, lineHeight: 18 }}
+                              >
+                                You can address the feedback and apply again.
+                              </AppText>
+                            </View>
+                          </Row>
+                        </View>
+                      ) : null}
+
+                      {!verifyOpen ? (
+                        <Button
+                          title={
+                            circle.verificationStatus === "rejected"
+                              ? "Apply again"
+                              : "Apply for Verified"
+                          }
+                          icon="check-circle"
+                          variant="secondary"
+                          testID="button-apply-verification"
+                          onPress={() => setVerifyOpen(true)}
+                        />
+                      ) : (
+                        <View
+                          style={{
+                            backgroundColor: c.card,
+                            borderColor: c.border,
+                            borderWidth: 1,
+                            borderRadius: 14,
+                            padding: 14,
+                          }}
+                        >
+                          <Field label="Legal name of the organization">
+                            <Input
+                              value={vLegalName}
+                              onChangeText={setVLegalName}
+                              placeholder="e.g. Ridgeway Community Mutual Aid"
+                              testID="input-verify-legal-name"
+                            />
+                          </Field>
+                          <Field label="Type">
+                            <View
+                              style={{
+                                flexDirection: "row",
+                                flexWrap: "wrap",
+                                gap: 8,
+                              }}
+                            >
+                              {(
+                                [
+                                  ["faith_group", "Faith group"],
+                                  ["mutual_aid", "Mutual aid"],
+                                  ["co_op", "Co-op"],
+                                  ["nonprofit", "Nonprofit"],
+                                  ["other", "Other"],
+                                ] as const
+                              ).map(([value, label]) => {
+                                const active = vOrgType === value;
+                                return (
+                                  <Pressable
+                                    key={value}
+                                    onPress={() => setVOrgType(value)}
+                                    testID={`verify-orgtype-${value}`}
+                                    style={{
+                                      paddingHorizontal: 14,
+                                      paddingVertical: 8,
+                                      borderRadius: 999,
+                                      backgroundColor: active
+                                        ? c.primary
+                                        : c.muted,
+                                    }}
+                                  >
+                                    <AppText
+                                      variant="caption"
+                                      weight="medium"
+                                      color={active ? "#fff" : c.foreground}
+                                    >
+                                      {label}
+                                    </AppText>
+                                  </Pressable>
+                                );
+                              })}
+                            </View>
+                          </Field>
+                          <Field label="Description">
+                            <Input
+                              value={vDescription}
+                              onChangeText={setVDescription}
+                              placeholder="What does this organization do?"
+                              multiline
+                              style={{ minHeight: 90, textAlignVertical: "top" }}
+                              testID="input-verify-description"
+                            />
+                          </Field>
+                          <Field label="Contact email">
+                            <Input
+                              value={vContactEmail}
+                              onChangeText={setVContactEmail}
+                              placeholder="someone@yourorg.org"
+                              keyboardType="email-address"
+                              autoCapitalize="none"
+                              testID="input-verify-contact-email"
+                            />
+                          </Field>
+                          <Field label="Supporting URL or document (optional)">
+                            <Input
+                              value={vSupportingUrl}
+                              onChangeText={setVSupportingUrl}
+                              placeholder="https://yourorg.org"
+                              autoCapitalize="none"
+                              testID="input-verify-supporting-url"
+                            />
+                          </Field>
+                          <Row gap={8}>
+                            <View style={{ flex: 1 }}>
+                              <Button
+                                title="Submit"
+                                onPress={submitVerification}
+                                loading={applyForVerification.isPending}
+                                testID="button-submit-verification"
+                              />
+                            </View>
+                            <Button
+                              title="Cancel"
+                              variant="ghost"
+                              onPress={() => setVerifyOpen(false)}
+                            />
+                          </Row>
+                        </View>
+                      )}
+                    </>
+                  )}
+                </View>
+              ) : null}
 
               {isOwner ? (
                 <View style={{ marginTop: 32 }}>

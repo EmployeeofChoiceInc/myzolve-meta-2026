@@ -104,6 +104,22 @@ export const CircleMyRole = {
   guest: "guest",
 } as const;
 
+/**
+ * Verified circle badge state. Plus owners apply; the MyZolve
+team reviews via the admin script. The "verified" state is
+visible to every member regardless of their Plus status.
+
+ */
+export type CircleVerificationStatus =
+  (typeof CircleVerificationStatus)[keyof typeof CircleVerificationStatus];
+
+export const CircleVerificationStatus = {
+  none: "none",
+  pending: "pending",
+  verified: "verified",
+  rejected: "rejected",
+} as const;
+
 export interface Circle {
   id: number;
   name: string;
@@ -135,6 +151,20 @@ export interface Circle {
   welcomeMessage?: string | null;
   /** True when the calling member should see the one-time welcome card. */
   showWelcomeCard: boolean;
+  /** Verified circle badge state. Plus owners apply; the MyZolve
+team reviews via the admin script. The "verified" state is
+visible to every member regardless of their Plus status.
+ */
+  verificationStatus: CircleVerificationStatus;
+  /** @nullable */
+  verificationAppliedAt?: string | null;
+  /**
+   * Reason supplied by the reviewer on rejection. Surfaced to
+the owner so they can fix the issue and re-apply.
+
+   * @nullable
+   */
+  verificationDecisionReason?: string | null;
   createdAt: string;
 }
 
@@ -227,6 +257,122 @@ export interface UpdateCircleBody {
   accentColor?: string | null;
   /** @nullable */
   welcomeMessage?: string | null;
+}
+
+export type CircleVerificationApplicationBodyOrgType =
+  (typeof CircleVerificationApplicationBodyOrgType)[keyof typeof CircleVerificationApplicationBodyOrgType];
+
+export const CircleVerificationApplicationBodyOrgType = {
+  faith_group: "faith_group",
+  mutual_aid: "mutual_aid",
+  co_op: "co_op",
+  nonprofit: "nonprofit",
+  other: "other",
+} as const;
+
+export interface CircleVerificationApplicationBody {
+  /** Legal name of the real-world organization. */
+  legalName: string;
+  orgType: CircleVerificationApplicationBodyOrgType;
+  /** Brief description of the organization and its mission. */
+  description: string;
+  contactEmail: string;
+  /**
+   * Optional public URL the reviewer can use to corroborate.
+   * @nullable
+   */
+  supportingUrl?: string | null;
+}
+
+export type CircleVerificationDecisionBodyDecision =
+  (typeof CircleVerificationDecisionBodyDecision)[keyof typeof CircleVerificationDecisionBodyDecision];
+
+export const CircleVerificationDecisionBodyDecision = {
+  approve: "approve",
+  reject: "reject",
+} as const;
+
+export interface CircleVerificationDecisionBody {
+  decision: CircleVerificationDecisionBodyDecision;
+  /** Required for reject (shown to the owner so they can re-apply).
+Optional note for approve.
+ */
+  reason?: string;
+}
+
+/**
+ * Pending application for the verified-circle queue.
+ */
+export interface PendingCircleVerification {
+  circleId: number;
+  circleName: string;
+  ownerId: number;
+  /** @nullable */
+  ownerName?: string | null;
+  /** @nullable */
+  ownerEmail?: string | null;
+  /** @nullable */
+  appliedAt?: string | null;
+  /** @nullable */
+  legalName?: string | null;
+  /** @nullable */
+  orgType?: string | null;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  contactEmail?: string | null;
+  /** @nullable */
+  supportingUrl?: string | null;
+}
+
+export type InvitationPreviewStatus =
+  (typeof InvitationPreviewStatus)[keyof typeof InvitationPreviewStatus];
+
+export const InvitationPreviewStatus = {
+  pending: "pending",
+  accepted: "accepted",
+  revoked: "revoked",
+  expired: "expired",
+} as const;
+
+export type InvitationPreviewCircleVerificationStatus =
+  (typeof InvitationPreviewCircleVerificationStatus)[keyof typeof InvitationPreviewCircleVerificationStatus];
+
+export const InvitationPreviewCircleVerificationStatus = {
+  none: "none",
+  pending: "pending",
+  verified: "verified",
+  rejected: "rejected",
+} as const;
+
+export type InvitationPreviewCircle = {
+  id: number;
+  name: string;
+  circleType: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  photoUrl?: string | null;
+  verificationStatus: InvitationPreviewCircleVerificationStatus;
+};
+
+export type InvitationPreviewInvitedBy = {
+  displayName: string;
+};
+
+/**
+ * Lightweight circle preview shown on the invite-accept screen.
+ */
+export interface InvitationPreview {
+  token: string;
+  status: InvitationPreviewStatus;
+  role: string;
+  /** @nullable */
+  invitedEmail?: string | null;
+  /** @nullable */
+  expiresAt?: string | null;
+  circle: InvitationPreviewCircle;
+  invitedBy: InvitationPreviewInvitedBy;
 }
 
 export interface CircleStats {
@@ -367,6 +513,16 @@ export const DiscoverableCircleJoinRequestStatus = {
   declined: "declined",
 } as const;
 
+export type DiscoverableCircleVerificationStatus =
+  (typeof DiscoverableCircleVerificationStatus)[keyof typeof DiscoverableCircleVerificationStatus];
+
+export const DiscoverableCircleVerificationStatus = {
+  none: "none",
+  pending: "pending",
+  verified: "verified",
+  rejected: "rejected",
+} as const;
+
 export interface DiscoverableCircle {
   id: number;
   name: string;
@@ -382,6 +538,7 @@ export interface DiscoverableCircle {
   isMember: boolean;
   /** @nullable */
   joinRequestStatus?: DiscoverableCircleJoinRequestStatus;
+  verificationStatus: DiscoverableCircleVerificationStatus;
   createdAt: string;
 }
 
