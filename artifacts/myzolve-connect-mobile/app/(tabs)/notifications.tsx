@@ -32,6 +32,8 @@ const ICONS: Record<string, keyof typeof Feather.glyphMap> = {
   dispute_resolved: "check",
   copilot_invite_received: "user-plus",
   copilot_post_made: "user-check",
+  wrapup_weekly: "sun",
+  wrapup_monthly: "calendar",
 };
 
 const COPILOT_ENTITY_TYPES = new Set([
@@ -75,6 +77,17 @@ export default function NotificationsScreen() {
     );
     if (n.notificationType === "copilot_invite_received") {
       router.push("/settings");
+      return;
+    }
+    if (
+      n.notificationType === "wrapup_weekly" ||
+      n.notificationType === "wrapup_monthly"
+    ) {
+      router.push(
+        n.notificationType === "wrapup_monthly"
+          ? "/wrapup?kind=monthly"
+          : "/wrapup",
+      );
       return;
     }
     if (n.targetEntityType === "support_request" && n.targetEntityId) {

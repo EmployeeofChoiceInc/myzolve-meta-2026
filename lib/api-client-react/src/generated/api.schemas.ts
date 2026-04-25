@@ -1166,6 +1166,8 @@ export const UpdateNotificationPreferencesBodyPreferencesItemNotificationType =
     care_calendar_reminder: "care_calendar_reminder",
     copilot_invite_received: "copilot_invite_received",
     copilot_post_made: "copilot_post_made",
+    wrapup_weekly: "wrapup_weekly",
+    wrapup_monthly: "wrapup_monthly",
   } as const;
 
 export type UpdateNotificationPreferencesBodyPreferencesItem = {
@@ -1654,6 +1656,73 @@ export interface InviteCopilotBody {
   helperUserId: number;
 }
 
+export interface WrapupPerson {
+  /** @nullable */
+  userId?: number | null;
+  name: string;
+  /** @nullable */
+  avatarObjectPath?: string | null;
+}
+
+export type WrapupMomentKind =
+  (typeof WrapupMomentKind)[keyof typeof WrapupMomentKind];
+
+export const WrapupMomentKind = {
+  request_fulfilled: "request_fulfilled",
+  gratitude_received: "gratitude_received",
+  gratitude_sent: "gratitude_sent",
+  top_comment: "top_comment",
+  reaction_received: "reaction_received",
+} as const;
+
+/**
+ * A single highlighted moment from the wrap-up period.
+ */
+export interface WrapupMoment {
+  kind: WrapupMomentKind;
+  headline: string;
+  /** @nullable */
+  detail?: string | null;
+  /** @nullable */
+  circleName?: string | null;
+  /** @nullable */
+  otherPersonName?: string | null;
+}
+
+export interface WrapupContent {
+  greeting: string;
+  periodLabel: string;
+  supportGiven: number;
+  supportReceived: number;
+  topMoments: WrapupMoment[];
+  exchangedWith: WrapupPerson[];
+  prompt: string;
+}
+
+export type WrapupKind = (typeof WrapupKind)[keyof typeof WrapupKind];
+
+export const WrapupKind = {
+  weekly: "weekly",
+  monthly: "monthly",
+} as const;
+
+export interface Wrapup {
+  id: number;
+  kind: WrapupKind;
+  /** ISO date YYYY-MM-DD for the first day covered (UTC). */
+  periodStart: string;
+  /** ISO date YYYY-MM-DD for the last day covered (UTC). */
+  periodEnd: string;
+  content: WrapupContent;
+  /** @nullable */
+  readAt?: string | null;
+  /** @nullable */
+  deliveredAt?: string | null;
+  createdAt: string;
+}
+
+export type WrapupOrNull = Wrapup | null;
+
 /**
  * Bad request
  */
@@ -1786,4 +1855,36 @@ export type ReviewCopilotPost200 = {
   entityType: string;
   entityId: number;
   review: string;
+};
+
+export type GetLatestWrapupParams = {
+  kind: GetLatestWrapupKind;
+};
+
+export type GetLatestWrapupKind =
+  (typeof GetLatestWrapupKind)[keyof typeof GetLatestWrapupKind];
+
+export const GetLatestWrapupKind = {
+  weekly: "weekly",
+  monthly: "monthly",
+} as const;
+
+export type ListWrapupsParams = {
+  kind?: ListWrapupsKind;
+  limit?: number;
+  offset?: number;
+};
+
+export type ListWrapupsKind =
+  (typeof ListWrapupsKind)[keyof typeof ListWrapupsKind];
+
+export const ListWrapupsKind = {
+  weekly: "weekly",
+  monthly: "monthly",
+} as const;
+
+export type MarkWrapupRead200 = {
+  id: number;
+  /** @nullable */
+  readAt?: string | null;
 };

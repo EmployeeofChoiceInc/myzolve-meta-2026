@@ -54,6 +54,7 @@ import type {
   ForbiddenResponse,
   GetCircleActivityParams,
   GetCircleLedgerParams,
+  GetLatestWrapupParams,
   GetNotificationUnreadCount200,
   GratitudeNote,
   HealthStatus,
@@ -68,8 +69,10 @@ import type {
   ListServicePostsParams,
   ListSupportRequestsParams,
   ListUpcomingCareDatesParams,
+  ListWrapupsParams,
   MarkAllNotificationsRead200,
   MarkNotificationRead200,
+  MarkWrapupRead200,
   MatchServiceBody,
   NotFoundResponse,
   NotificationList,
@@ -104,6 +107,8 @@ import type {
   UploadUrlRequest,
   UploadUrlResponse,
   UserProfile,
+  Wrapup,
+  WrapupOrNull,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -9228,4 +9233,283 @@ export const useReviewCopilotPost = <
   TContext
 > => {
   return useMutation(getReviewCopilotPostMutationOptions(options));
+};
+
+/**
+ * Returns the most recent wrap-up for the authenticated user of the
+requested kind (`weekly` or `monthly`). Marks it as delivered the
+first time it is fetched but does not mark it read — use
+`/wrapups/{wrapupId}/read` for that.
+
+ * @summary Fetch the latest wrap-up of a given kind for the current user
+ */
+export const getGetLatestWrapupUrl = (params: GetLatestWrapupParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/wrapups/latest?${stringifiedParams}`
+    : `/api/wrapups/latest`;
+};
+
+export const getLatestWrapup = async (
+  params: GetLatestWrapupParams,
+  options?: RequestInit,
+): Promise<WrapupOrNull> => {
+  return customFetch<WrapupOrNull>(getGetLatestWrapupUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetLatestWrapupQueryKey = (params?: GetLatestWrapupParams) => {
+  return [`/api/wrapups/latest`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetLatestWrapupQueryOptions = <
+  TData = Awaited<ReturnType<typeof getLatestWrapup>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  params: GetLatestWrapupParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLatestWrapup>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetLatestWrapupQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getLatestWrapup>>> = ({
+    signal,
+  }) => getLatestWrapup(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getLatestWrapup>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetLatestWrapupQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getLatestWrapup>>
+>;
+export type GetLatestWrapupQueryError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Fetch the latest wrap-up of a given kind for the current user
+ */
+
+export function useGetLatestWrapup<
+  TData = Awaited<ReturnType<typeof getLatestWrapup>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  params: GetLatestWrapupParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLatestWrapup>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetLatestWrapupQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List past wrap-ups for the current user
+ */
+export const getListWrapupsUrl = (params?: ListWrapupsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/wrapups?${stringifiedParams}`
+    : `/api/wrapups`;
+};
+
+export const listWrapups = async (
+  params?: ListWrapupsParams,
+  options?: RequestInit,
+): Promise<Wrapup[]> => {
+  return customFetch<Wrapup[]>(getListWrapupsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListWrapupsQueryKey = (params?: ListWrapupsParams) => {
+  return [`/api/wrapups`, ...(params ? [params] : [])] as const;
+};
+
+export const getListWrapupsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listWrapups>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  params?: ListWrapupsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listWrapups>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListWrapupsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listWrapups>>> = ({
+    signal,
+  }) => listWrapups(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listWrapups>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListWrapupsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listWrapups>>
+>;
+export type ListWrapupsQueryError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary List past wrap-ups for the current user
+ */
+
+export function useListWrapups<
+  TData = Awaited<ReturnType<typeof listWrapups>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  params?: ListWrapupsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listWrapups>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListWrapupsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Mark a wrap-up as read
+ */
+export const getMarkWrapupReadUrl = (wrapupId: number) => {
+  return `/api/wrapups/${wrapupId}/read`;
+};
+
+export const markWrapupRead = async (
+  wrapupId: number,
+  options?: RequestInit,
+): Promise<MarkWrapupRead200> => {
+  return customFetch<MarkWrapupRead200>(getMarkWrapupReadUrl(wrapupId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getMarkWrapupReadMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markWrapupRead>>,
+    TError,
+    { wrapupId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof markWrapupRead>>,
+  TError,
+  { wrapupId: number },
+  TContext
+> => {
+  const mutationKey = ["markWrapupRead"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof markWrapupRead>>,
+    { wrapupId: number }
+  > = (props) => {
+    const { wrapupId } = props ?? {};
+
+    return markWrapupRead(wrapupId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MarkWrapupReadMutationResult = NonNullable<
+  Awaited<ReturnType<typeof markWrapupRead>>
+>;
+
+export type MarkWrapupReadMutationError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Mark a wrap-up as read
+ */
+export const useMarkWrapupRead = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markWrapupRead>>,
+    TError,
+    { wrapupId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof markWrapupRead>>,
+  TError,
+  { wrapupId: number },
+  TContext
+> => {
+  return useMutation(getMarkWrapupReadMutationOptions(options));
 };

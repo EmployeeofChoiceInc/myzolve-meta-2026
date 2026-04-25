@@ -11,6 +11,7 @@ import { and, eq, inArray, lt, lte, gte, isNotNull } from "drizzle-orm";
 import { logger } from "./logger";
 import { createAuditLog, createNotification } from "./helpers";
 import { nextOccurrenceFor } from "../routes/careDates";
+import { runWrapupChecks } from "./wrapups";
 
 const EXPIRY_CHECK_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 
@@ -215,6 +216,7 @@ async function runScheduledChecks(): Promise<void> {
   await expireUrgentRequests();
   await sendRepaymentDueReminders();
   await sendCareCalendarReminders();
+  await runWrapupChecks(new Date());
 }
 
 export function startScheduler(): void {
@@ -222,6 +224,6 @@ export function startScheduler(): void {
   const interval = setInterval(runScheduledChecks, EXPIRY_CHECK_INTERVAL_MS);
   interval.unref();
   logger.info(
-    "Scheduler started (request auto-expiry + repayment_due + care calendar reminders, interval: 1h)",
+    "Scheduler started (request auto-expiry + repayment_due + care calendar reminders + wrap-ups, interval: 1h)",
   );
 }

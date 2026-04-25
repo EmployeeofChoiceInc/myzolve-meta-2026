@@ -1798,6 +1798,8 @@ export const UpdateNotificationPreferencesBody = zod.object({
         "care_calendar_reminder",
         "copilot_invite_received",
         "copilot_post_made",
+        "wrapup_weekly",
+        "wrapup_monthly",
       ]),
       enabled: zod.boolean(),
     }),
@@ -2778,4 +2780,134 @@ export const ReviewCopilotPostResponse = zod.object({
   entityType: zod.string(),
   entityId: zod.number(),
   review: zod.string(),
+});
+
+/**
+ * Returns the most recent wrap-up for the authenticated user of the
+requested kind (`weekly` or `monthly`). Marks it as delivered the
+first time it is fetched but does not mark it read — use
+`/wrapups/{wrapupId}/read` for that.
+
+ * @summary Fetch the latest wrap-up of a given kind for the current user
+ */
+export const GetLatestWrapupQueryParams = zod.object({
+  kind: zod.enum(["weekly", "monthly"]),
+});
+
+export const GetLatestWrapupResponse = zod.union([
+  zod.object({
+    id: zod.number(),
+    kind: zod.enum(["weekly", "monthly"]),
+    periodStart: zod
+      .string()
+      .describe("ISO date YYYY-MM-DD for the first day covered (UTC)."),
+    periodEnd: zod
+      .string()
+      .describe("ISO date YYYY-MM-DD for the last day covered (UTC)."),
+    content: zod.object({
+      greeting: zod.string(),
+      periodLabel: zod.string(),
+      supportGiven: zod.number(),
+      supportReceived: zod.number(),
+      topMoments: zod.array(
+        zod
+          .object({
+            kind: zod.enum([
+              "request_fulfilled",
+              "gratitude_received",
+              "gratitude_sent",
+              "top_comment",
+              "reaction_received",
+            ]),
+            headline: zod.string(),
+            detail: zod.string().nullish(),
+            circleName: zod.string().nullish(),
+            otherPersonName: zod.string().nullish(),
+          })
+          .describe("A single highlighted moment from the wrap-up period."),
+      ),
+      exchangedWith: zod.array(
+        zod.object({
+          userId: zod.number().nullish(),
+          name: zod.string(),
+          avatarObjectPath: zod.string().nullish(),
+        }),
+      ),
+      prompt: zod.string(),
+    }),
+    readAt: zod.coerce.date().nullish(),
+    deliveredAt: zod.coerce.date().nullish(),
+    createdAt: zod.coerce.date(),
+  }),
+  zod.null(),
+]);
+
+/**
+ * @summary List past wrap-ups for the current user
+ */
+export const listWrapupsQueryLimitDefault = 20;
+export const listWrapupsQueryOffsetDefault = 0;
+
+export const ListWrapupsQueryParams = zod.object({
+  kind: zod.enum(["weekly", "monthly"]).optional(),
+  limit: zod.coerce.number().default(listWrapupsQueryLimitDefault),
+  offset: zod.coerce.number().default(listWrapupsQueryOffsetDefault),
+});
+
+export const ListWrapupsResponseItem = zod.object({
+  id: zod.number(),
+  kind: zod.enum(["weekly", "monthly"]),
+  periodStart: zod
+    .string()
+    .describe("ISO date YYYY-MM-DD for the first day covered (UTC)."),
+  periodEnd: zod
+    .string()
+    .describe("ISO date YYYY-MM-DD for the last day covered (UTC)."),
+  content: zod.object({
+    greeting: zod.string(),
+    periodLabel: zod.string(),
+    supportGiven: zod.number(),
+    supportReceived: zod.number(),
+    topMoments: zod.array(
+      zod
+        .object({
+          kind: zod.enum([
+            "request_fulfilled",
+            "gratitude_received",
+            "gratitude_sent",
+            "top_comment",
+            "reaction_received",
+          ]),
+          headline: zod.string(),
+          detail: zod.string().nullish(),
+          circleName: zod.string().nullish(),
+          otherPersonName: zod.string().nullish(),
+        })
+        .describe("A single highlighted moment from the wrap-up period."),
+    ),
+    exchangedWith: zod.array(
+      zod.object({
+        userId: zod.number().nullish(),
+        name: zod.string(),
+        avatarObjectPath: zod.string().nullish(),
+      }),
+    ),
+    prompt: zod.string(),
+  }),
+  readAt: zod.coerce.date().nullish(),
+  deliveredAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListWrapupsResponse = zod.array(ListWrapupsResponseItem);
+
+/**
+ * @summary Mark a wrap-up as read
+ */
+export const MarkWrapupReadParams = zod.object({
+  wrapupId: zod.coerce.number(),
+});
+
+export const MarkWrapupReadResponse = zod.object({
+  id: zod.number(),
+  readAt: zod.coerce.date().nullish(),
 });

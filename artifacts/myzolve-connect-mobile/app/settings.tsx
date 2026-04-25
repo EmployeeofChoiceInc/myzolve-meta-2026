@@ -41,6 +41,8 @@ const LABELS: Record<string, string> = {
   care_calendar_reminder: "Care calendar reminders",
   copilot_invite_received: "Co-pilot invitations",
   copilot_post_made: "Posts made on your behalf",
+  wrapup_weekly: "Weekly wrap-up",
+  wrapup_monthly: "Monthly wrap-up",
 };
 
 export default function SettingsScreen() {

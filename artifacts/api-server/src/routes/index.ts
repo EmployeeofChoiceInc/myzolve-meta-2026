@@ -20,6 +20,7 @@ import messagesRouter from "./messages";
 import deviceTokensRouter from "./deviceTokens";
 import careDatesRouter from "./careDates";
 import copilotRouter from "./copilot";
+import wrapupsRouter from "./wrapups";
 
 const router: IRouter = Router();
 
@@ -44,5 +45,6 @@ router.use(messagesRouter);
 router.use(deviceTokensRouter);
 router.use(careDatesRouter);
 router.use(copilotRouter);
+router.use(wrapupsRouter);
 
 export default router;

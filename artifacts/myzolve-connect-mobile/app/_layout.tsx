@@ -152,6 +152,7 @@ function RootLayoutNav() {
       <Stack.Screen name="profile/[userId]" options={{ title: "Profile" }} />
       <Stack.Screen name="messages/[userId]" options={{ title: "" }} />
       <Stack.Screen name="invite/[token]" options={{ title: "Join circle" }} />
+      <Stack.Screen name="wrapup/index" options={{ title: "Your week" }} />
     </Stack>
   );
 }

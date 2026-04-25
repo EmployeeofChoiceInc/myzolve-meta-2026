@@ -52,6 +52,8 @@ tags:
     description: Care calendar (shared meaningful dates)
   - name: copilot
     description: Co-pilot grants (helpers acting on behalf of another circle member)
+  - name: wrapups
+    description: Weekly and monthly gratitude wrap-ups
 
 paths:
   /healthz:
@@ -2401,6 +2403,94 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  # ── Wrap-ups ────────────────────────────────────────────────────────────────
+  /wrapups/latest:
+    get:
+      operationId: getLatestWrapup
+      tags: [wrapups]
+      summary: Fetch the latest wrap-up of a given kind for the current user
+      description: |
+        Returns the most recent wrap-up for the authenticated user of the
+        requested kind (`weekly` or `monthly`). Marks it as delivered the
+        first time it is fetched but does not mark it read — use
+        `/wrapups/{wrapupId}/read` for that.
+      security: [{ clerk: [] }]
+      parameters:
+        - name: kind
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [weekly, monthly]
+      responses:
+        "200":
+          description: Latest wrap-up (or null when none has been generated yet)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WrapupOrNull"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /wrapups:
+    get:
+      operationId: listWrapups
+      tags: [wrapups]
+      summary: List past wrap-ups for the current user
+      security: [{ clerk: [] }]
+      parameters:
+        - name: kind
+          in: query
+          schema:
+            type: string
+            enum: [weekly, monthly]
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        "200":
+          description: Wrap-ups list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Wrapup"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /wrapups/{wrapupId}/read:
+    post:
+      operationId: markWrapupRead
+      tags: [wrapups]
+      summary: Mark a wrap-up as read
+      security: [{ clerk: [] }]
+      parameters:
+        - name: wrapupId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Wrap-up marked as read
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: integer }
+                  readAt:
+                    type: ["string", "null"]
+                    format: date-time
+                required: [id]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     clerk:
@@ -3665,6 +3755,8 @@ components:
                   - care_calendar_reminder
                   - copilot_invite_received
                   - copilot_post_made
+                  - wrapup_weekly
+                  - wrapup_monthly
               enabled:
                 type: boolean
             required: [notificationType, enabled]
@@ -4300,3 +4392,108 @@ components:
           description: ID of the circle member you want to invite as your co-pilot
       required:
         - helperUserId
+
+    # ── Wrap-ups ──────────────────────────────────────────────────────────────
+    WrapupPerson:
+      type: object
+      properties:
+        userId:
+          type: ["integer", "null"]
+        name:
+          type: string
+        avatarObjectPath:
+          type: ["string", "null"]
+      required:
+        - name
+
+    WrapupMoment:
+      type: object
+      description: A single highlighted moment from the wrap-up period.
+      properties:
+        kind:
+          type: string
+          enum:
+            - request_fulfilled
+            - gratitude_received
+            - gratitude_sent
+            - top_comment
+            - reaction_received
+        headline:
+          type: string
+        detail:
+          type: ["string", "null"]
+        circleName:
+          type: ["string", "null"]
+        otherPersonName:
+          type: ["string", "null"]
+      required:
+        - kind
+        - headline
+
+    WrapupContent:
+      type: object
+      properties:
+        greeting:
+          type: string
+        periodLabel:
+          type: string
+        supportGiven:
+          type: integer
+        supportReceived:
+          type: integer
+        topMoments:
+          type: array
+          items:
+            $ref: "#/components/schemas/WrapupMoment"
+        exchangedWith:
+          type: array
+          items:
+            $ref: "#/components/schemas/WrapupPerson"
+        prompt:
+          type: string
+      required:
+        - greeting
+        - periodLabel
+        - supportGiven
+        - supportReceived
+        - topMoments
+        - exchangedWith
+        - prompt
+
+    Wrapup:
+      type: object
+      properties:
+        id:
+          type: integer
+        kind:
+          type: string
+          enum: [weekly, monthly]
+        periodStart:
+          type: string
+          description: ISO date YYYY-MM-DD for the first day covered (UTC).
+        periodEnd:
+          type: string
+          description: ISO date YYYY-MM-DD for the last day covered (UTC).
+        content:
+          $ref: "#/components/schemas/WrapupContent"
+        readAt:
+          type: ["string", "null"]
+          format: date-time
+        deliveredAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - kind
+        - periodStart
+        - periodEnd
+        - content
+        - createdAt
+
+    WrapupOrNull:
+      oneOf:
+        - $ref: "#/components/schemas/Wrapup"
+        - type: "null"
