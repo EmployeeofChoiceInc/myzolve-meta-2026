@@ -10,13 +10,14 @@ import { tokenCache } from "@clerk/expo/token-cache";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { setBaseUrl, setAuthTokenGetter } from "@workspace/api-client-react";
 
+import { AnimatedSplash } from "@/components/AnimatedSplash";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useColors } from "@/hooks/useColors";
 import { CopilotProvider } from "@/lib/copilot";
@@ -36,6 +37,11 @@ try {
 }
 
 SplashScreen.preventAutoHideAsync();
+
+// Module-scoped flag — true only on the very first mount of the root layout
+// (i.e. cold launch from a killed app state). Background → foreground does
+// not re-mount _layout, so subsequent app opens skip the animation.
+let isColdLaunch = true;
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -174,11 +180,23 @@ export default function RootLayout() {
     PlusJakartaSans_700Bold,
   });
 
+  // Cold-launch only: first mount captures the flag, then flips it so
+  // future re-mounts within the same process won't re-play the animation.
+  const [showAnimatedSplash] = useState(() => isColdLaunch);
+  const [splashFinished, setSplashFinished] = useState(!isColdLaunch);
+  useEffect(() => {
+    isColdLaunch = false;
+  }, []);
+
   useEffect(() => {
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
+
+  const handleSplashComplete = useCallback(() => {
+    setSplashFinished(true);
+  }, []);
 
   if (!fontsLoaded && !fontError) return null;
 
@@ -198,6 +216,9 @@ export default function RootLayout() {
                     <KeyboardProvider>
                       <StatusBar style="dark" />
                       <RootLayoutNav />
+                      {showAnimatedSplash && !splashFinished ? (
+                        <AnimatedSplash onComplete={handleSplashComplete} />
+                      ) : null}
                     </KeyboardProvider>
                   </GestureHandlerRootView>
                 </CopilotProvider>
