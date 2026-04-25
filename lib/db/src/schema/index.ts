@@ -12,3 +12,4 @@ export * from "./attachments";
 export * from "./audit";
 export * from "./messages";
 export * from "./deviceTokens";
+export * from "./careDates";

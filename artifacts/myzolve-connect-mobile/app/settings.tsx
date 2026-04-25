@@ -28,6 +28,7 @@ const LABELS: Record<string, string> = {
   circle_update: "Circle updates",
   dispute_opened: "Disputes opened",
   dispute_resolved: "Disputes resolved",
+  care_calendar_reminder: "Care calendar reminders",
 };
 
 export default function SettingsScreen() {

@@ -1140,6 +1140,7 @@ export const UpdateNotificationPreferencesBodyPreferencesItemNotificationType =
     member_joined: "member_joined",
     circle_update: "circle_update",
     mention_received: "mention_received",
+    care_calendar_reminder: "care_calendar_reminder",
   } as const;
 
 export type UpdateNotificationPreferencesBodyPreferencesItem = {
@@ -1149,6 +1150,98 @@ export type UpdateNotificationPreferencesBodyPreferencesItem = {
 
 export interface UpdateNotificationPreferencesBody {
   preferences: UpdateNotificationPreferencesBodyPreferencesItem[];
+}
+
+export type CareDateKind = (typeof CareDateKind)[keyof typeof CareDateKind];
+
+export const CareDateKind = {
+  birthday: "birthday",
+  anniversary: "anniversary",
+  memorial: "memorial",
+  appointment: "appointment",
+  other: "other",
+} as const;
+
+export interface CareDate {
+  id: number;
+  circleId: number;
+  /** @nullable */
+  circleName?: string | null;
+  createdByUserId: number;
+  /** @nullable */
+  targetUserId?: number | null;
+  /** @nullable */
+  targetUserName?: string | null;
+  name: string;
+  /** Original date in YYYY-MM-DD form (the date the event was first set for). */
+  eventDate: string;
+  /** Next upcoming occurrence in YYYY-MM-DD form (today or later for annual entries; equal to eventDate for one-off entries). */
+  nextOccurrence: string;
+  kind: CareDateKind;
+  /** @nullable */
+  note?: string | null;
+  isAnnual: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateCareDateBodyKind =
+  (typeof CreateCareDateBodyKind)[keyof typeof CreateCareDateBodyKind];
+
+export const CreateCareDateBodyKind = {
+  birthday: "birthday",
+  anniversary: "anniversary",
+  memorial: "memorial",
+  appointment: "appointment",
+  other: "other",
+} as const;
+
+export interface CreateCareDateBody {
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  name: string;
+  /**
+   * YYYY-MM-DD
+   * @pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$
+   */
+  eventDate: string;
+  kind?: CreateCareDateBodyKind;
+  /** @maxLength 2000 */
+  note?: string;
+  isAnnual?: boolean;
+  targetUserId?: number;
+}
+
+export type UpdateCareDateBodyKind =
+  (typeof UpdateCareDateBodyKind)[keyof typeof UpdateCareDateBodyKind];
+
+export const UpdateCareDateBodyKind = {
+  birthday: "birthday",
+  anniversary: "anniversary",
+  memorial: "memorial",
+  appointment: "appointment",
+  other: "other",
+} as const;
+
+export interface UpdateCareDateBody {
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  name?: string;
+  /** @pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ */
+  eventDate?: string;
+  kind?: UpdateCareDateBodyKind;
+  /**
+   * @maxLength 2000
+   * @nullable
+   */
+  note?: string | null;
+  isAnnual?: boolean;
+  /** @nullable */
+  targetUserId?: number | null;
 }
 
 export type DeviceTokenPlatform =
@@ -1542,6 +1635,19 @@ export type ListDisputesParams = {
 export type ListAuditLogParams = {
   limit?: number;
   offset?: number;
+};
+
+export type ListUpcomingCareDatesParams = {
+  /**
+   * @minimum 1
+   * @maximum 50
+   */
+  limit?: number;
+  /**
+   * @minimum 1
+   * @maximum 365
+   */
+  withinDays?: number;
 };
 
 export type UnregisterDeviceToken200 = {

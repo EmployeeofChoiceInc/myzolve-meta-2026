@@ -18,6 +18,7 @@ import storageRouter from "./storage";
 import postsRouter from "./posts";
 import messagesRouter from "./messages";
 import deviceTokensRouter from "./deviceTokens";
+import careDatesRouter from "./careDates";
 
 const router: IRouter = Router();
 
@@ -40,5 +41,6 @@ router.use(storageRouter);
 router.use(postsRouter);
 router.use(messagesRouter);
 router.use(deviceTokensRouter);
+router.use(careDatesRouter);
 
 export default router;

@@ -24,6 +24,7 @@ const SECTIONS: {
   { key: "requests", title: "Requests", icon: "help-circle", subtitle: "Open asks for help" },
   { key: "services", title: "Services", icon: "tool", subtitle: "Skills offered" },
   { key: "wall", title: "Wall", icon: "edit-3", subtitle: "Notes & gratitude" },
+  { key: "calendar", title: "Calendar", icon: "calendar", subtitle: "Birthdays & memorable days" },
   { key: "members", title: "Members", icon: "users", subtitle: "Who's in this circle" },
   { key: "ledger", title: "Ledger", icon: "book-open", subtitle: "Money & support log" },
   { key: "activity", title: "Activity", icon: "activity", subtitle: "Recent happenings" },

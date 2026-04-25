@@ -21,6 +21,7 @@ import type {
   Attachment,
   AuditEntry,
   BadRequestResponse,
+  CareDate,
   Circle,
   CircleConnection,
   CircleInvitation,
@@ -29,6 +30,7 @@ import type {
   Comment,
   Contribution,
   CreateAttachmentBody,
+  CreateCareDateBody,
   CreateCircleBody,
   CreateCommentBody,
   CreateConnectionBody,
@@ -62,6 +64,7 @@ import type {
   ListNotificationsParams,
   ListServicePostsParams,
   ListSupportRequestsParams,
+  ListUpcomingCareDatesParams,
   MarkAllNotificationsRead200,
   MarkNotificationRead200,
   MatchServiceBody,
@@ -84,6 +87,7 @@ import type {
   TransferOwnershipBody,
   UnauthorizedResponse,
   UnregisterDeviceToken200,
+  UpdateCareDateBody,
   UpdateCircleBody,
   UpdateCircleMemberBody,
   UpdateCommentBody,
@@ -7893,6 +7897,477 @@ export function useGetCircleDashboard<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetCircleDashboardQueryOptions(circleId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List care dates for a circle (chronological, next occurrences)
+ */
+export const getListCareDatesUrl = (circleId: number) => {
+  return `/api/circles/${circleId}/care-dates`;
+};
+
+export const listCareDates = async (
+  circleId: number,
+  options?: RequestInit,
+): Promise<CareDate[]> => {
+  return customFetch<CareDate[]>(getListCareDatesUrl(circleId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListCareDatesQueryKey = (circleId: number) => {
+  return [`/api/circles/${circleId}/care-dates`] as const;
+};
+
+export const getListCareDatesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCareDates>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  circleId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCareDates>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListCareDatesQueryKey(circleId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listCareDates>>> = ({
+    signal,
+  }) => listCareDates(circleId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!circleId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCareDates>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCareDatesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCareDates>>
+>;
+export type ListCareDatesQueryError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary List care dates for a circle (chronological, next occurrences)
+ */
+
+export function useListCareDates<
+  TData = Awaited<ReturnType<typeof listCareDates>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  circleId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCareDates>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCareDatesQueryOptions(circleId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Add a new care date to a circle
+ */
+export const getCreateCareDateUrl = (circleId: number) => {
+  return `/api/circles/${circleId}/care-dates`;
+};
+
+export const createCareDate = async (
+  circleId: number,
+  createCareDateBody: CreateCareDateBody,
+  options?: RequestInit,
+): Promise<CareDate> => {
+  return customFetch<CareDate>(getCreateCareDateUrl(circleId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createCareDateBody),
+  });
+};
+
+export const getCreateCareDateMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCareDate>>,
+    TError,
+    { circleId: number; data: BodyType<CreateCareDateBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createCareDate>>,
+  TError,
+  { circleId: number; data: BodyType<CreateCareDateBody> },
+  TContext
+> => {
+  const mutationKey = ["createCareDate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createCareDate>>,
+    { circleId: number; data: BodyType<CreateCareDateBody> }
+  > = (props) => {
+    const { circleId, data } = props ?? {};
+
+    return createCareDate(circleId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateCareDateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createCareDate>>
+>;
+export type CreateCareDateMutationBody = BodyType<CreateCareDateBody>;
+export type CreateCareDateMutationError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Add a new care date to a circle
+ */
+export const useCreateCareDate = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCareDate>>,
+    TError,
+    { circleId: number; data: BodyType<CreateCareDateBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createCareDate>>,
+  TError,
+  { circleId: number; data: BodyType<CreateCareDateBody> },
+  TContext
+> => {
+  return useMutation(getCreateCareDateMutationOptions(options));
+};
+
+/**
+ * @summary Edit a care date
+ */
+export const getUpdateCareDateUrl = (circleId: number, careDateId: number) => {
+  return `/api/circles/${circleId}/care-dates/${careDateId}`;
+};
+
+export const updateCareDate = async (
+  circleId: number,
+  careDateId: number,
+  updateCareDateBody: UpdateCareDateBody,
+  options?: RequestInit,
+): Promise<CareDate> => {
+  return customFetch<CareDate>(getUpdateCareDateUrl(circleId, careDateId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateCareDateBody),
+  });
+};
+
+export const getUpdateCareDateMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCareDate>>,
+    TError,
+    {
+      circleId: number;
+      careDateId: number;
+      data: BodyType<UpdateCareDateBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateCareDate>>,
+  TError,
+  { circleId: number; careDateId: number; data: BodyType<UpdateCareDateBody> },
+  TContext
+> => {
+  const mutationKey = ["updateCareDate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateCareDate>>,
+    { circleId: number; careDateId: number; data: BodyType<UpdateCareDateBody> }
+  > = (props) => {
+    const { circleId, careDateId, data } = props ?? {};
+
+    return updateCareDate(circleId, careDateId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateCareDateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateCareDate>>
+>;
+export type UpdateCareDateMutationBody = BodyType<UpdateCareDateBody>;
+export type UpdateCareDateMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Edit a care date
+ */
+export const useUpdateCareDate = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCareDate>>,
+    TError,
+    {
+      circleId: number;
+      careDateId: number;
+      data: BodyType<UpdateCareDateBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateCareDate>>,
+  TError,
+  { circleId: number; careDateId: number; data: BodyType<UpdateCareDateBody> },
+  TContext
+> => {
+  return useMutation(getUpdateCareDateMutationOptions(options));
+};
+
+/**
+ * @summary Delete a care date
+ */
+export const getDeleteCareDateUrl = (circleId: number, careDateId: number) => {
+  return `/api/circles/${circleId}/care-dates/${careDateId}`;
+};
+
+export const deleteCareDate = async (
+  circleId: number,
+  careDateId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteCareDateUrl(circleId, careDateId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteCareDateMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCareDate>>,
+    TError,
+    { circleId: number; careDateId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteCareDate>>,
+  TError,
+  { circleId: number; careDateId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteCareDate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteCareDate>>,
+    { circleId: number; careDateId: number }
+  > = (props) => {
+    const { circleId, careDateId } = props ?? {};
+
+    return deleteCareDate(circleId, careDateId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteCareDateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteCareDate>>
+>;
+
+export type DeleteCareDateMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Delete a care date
+ */
+export const useDeleteCareDate = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCareDate>>,
+    TError,
+    { circleId: number; careDateId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteCareDate>>,
+  TError,
+  { circleId: number; careDateId: number },
+  TContext
+> => {
+  return useMutation(getDeleteCareDateMutationOptions(options));
+};
+
+/**
+ * @summary Upcoming care dates across all my circles
+ */
+export const getListUpcomingCareDatesUrl = (
+  params?: ListUpcomingCareDatesParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/care-dates/upcoming?${stringifiedParams}`
+    : `/api/care-dates/upcoming`;
+};
+
+export const listUpcomingCareDates = async (
+  params?: ListUpcomingCareDatesParams,
+  options?: RequestInit,
+): Promise<CareDate[]> => {
+  return customFetch<CareDate[]>(getListUpcomingCareDatesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListUpcomingCareDatesQueryKey = (
+  params?: ListUpcomingCareDatesParams,
+) => {
+  return [`/api/care-dates/upcoming`, ...(params ? [params] : [])] as const;
+};
+
+export const getListUpcomingCareDatesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listUpcomingCareDates>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  params?: ListUpcomingCareDatesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listUpcomingCareDates>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListUpcomingCareDatesQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listUpcomingCareDates>>
+  > = ({ signal }) =>
+    listUpcomingCareDates(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listUpcomingCareDates>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListUpcomingCareDatesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listUpcomingCareDates>>
+>;
+export type ListUpcomingCareDatesQueryError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Upcoming care dates across all my circles
+ */
+
+export function useListUpcomingCareDates<
+  TData = Awaited<ReturnType<typeof listUpcomingCareDates>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  params?: ListUpcomingCareDatesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listUpcomingCareDates>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListUpcomingCareDatesQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

@@ -1,8 +1,16 @@
 import { db } from "@workspace/db";
-import { supportRequestsTable, repaymentPlansTable } from "@workspace/db";
+import {
+  supportRequestsTable,
+  repaymentPlansTable,
+  careDatesTable,
+  circleMembersTable,
+  circlesTable,
+  usersTable,
+} from "@workspace/db";
 import { and, eq, inArray, lt, lte, gte, isNotNull } from "drizzle-orm";
 import { logger } from "./logger";
 import { createAuditLog, createNotification } from "./helpers";
+import { nextOccurrenceFor } from "../routes/careDates";
 
 const EXPIRY_CHECK_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 
@@ -93,14 +101,127 @@ async function sendRepaymentDueReminders(): Promise<void> {
   }
 }
 
+function todayIsoUTC(): string {
+  const now = new Date();
+  const y = now.getUTCFullYear();
+  const m = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(now.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function tomorrowIsoUTC(): string {
+  const now = new Date();
+  now.setUTCDate(now.getUTCDate() + 1);
+  const y = now.getUTCFullYear();
+  const m = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(now.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+const KIND_LEAD: Record<string, string> = {
+  birthday: "birthday",
+  anniversary: "anniversary",
+  memorial: "remembrance day",
+  appointment: "appointment",
+  other: "important day",
+};
+
+async function sendCareCalendarReminders(): Promise<void> {
+  try {
+    const today = todayIsoUTC();
+    const tomorrow = tomorrowIsoUTC();
+
+    const rows = await db
+      .select({
+        d: careDatesTable,
+        circle: circlesTable,
+        target: usersTable,
+      })
+      .from(careDatesTable)
+      .innerJoin(circlesTable, eq(careDatesTable.circleId, circlesTable.id))
+      .leftJoin(usersTable, eq(careDatesTable.targetUserId, usersTable.id));
+
+    const dueByCircle = new Map<number, { id: number; occurrence: string; entry: typeof rows[number] }[]>();
+    for (const r of rows) {
+      const occurrence = nextOccurrenceFor(r.d.eventDate, r.d.isAnnual, today);
+      if (occurrence !== tomorrow) continue;
+      if (r.d.lastRemindedFor === occurrence) continue;
+      const list = dueByCircle.get(r.d.circleId) ?? [];
+      list.push({ id: r.d.id, occurrence, entry: r });
+      dueByCircle.set(r.d.circleId, list);
+    }
+
+    if (dueByCircle.size === 0) return;
+
+    let sent = 0;
+    for (const [circleId, entries] of dueByCircle) {
+      // Members to remind: everyone in the circle except the target user
+      // themselves (it would be odd to remind you about your own birthday).
+      const members = await db
+        .select({ userId: circleMembersTable.userId })
+        .from(circleMembersTable)
+        .where(
+          and(
+            eq(circleMembersTable.circleId, circleId),
+            eq(circleMembersTable.status, "active"),
+            isNotNull(circleMembersTable.userId),
+          ),
+        );
+
+      for (const e of entries) {
+        const targetUserId = e.entry.d.targetUserId;
+        const recipients = members
+          .map((m) => m.userId!)
+          .filter((uid) => uid !== targetUserId);
+
+        const targetName = e.entry.target?.displayName ?? null;
+        const lead = KIND_LEAD[e.entry.d.kind] ?? "important day";
+        const title = targetName
+          ? `${targetName}'s ${lead} is tomorrow`
+          : `${e.entry.d.name} is tomorrow`;
+        const body = targetName
+          ? `In ${e.entry.circle.name}: send ${targetName} a note for "${e.entry.d.name}".`
+          : `In ${e.entry.circle.name}: "${e.entry.d.name}" is tomorrow.`;
+
+        for (const userId of recipients) {
+          await createNotification({
+            userId,
+            circleId,
+            notificationType: "care_calendar_reminder",
+            title,
+            body,
+            targetEntityType: "care_date",
+            targetEntityId: e.id,
+          });
+        }
+
+        await db
+          .update(careDatesTable)
+          .set({ lastRemindedFor: e.occurrence })
+          .where(eq(careDatesTable.id, e.id));
+        sent += recipients.length;
+      }
+    }
+
+    if (sent > 0) {
+      logger.info({ sent }, "Sent care_calendar_reminder notifications");
+    }
+  } catch (err) {
+    logger.error({ err }, "Error during care calendar reminder check");
+  }
+}
+
 async function runScheduledChecks(): Promise<void> {
   await expireUrgentRequests();
   await sendRepaymentDueReminders();
+  await sendCareCalendarReminders();
 }
 
 export function startScheduler(): void {
   runScheduledChecks();
   const interval = setInterval(runScheduledChecks, EXPIRY_CHECK_INTERVAL_MS);
   interval.unref();
-  logger.info("Scheduler started (request auto-expiry + repayment_due reminders, interval: 1h)");
+  logger.info(
+    "Scheduler started (request auto-expiry + repayment_due + care calendar reminders, interval: 1h)",
+  );
 }

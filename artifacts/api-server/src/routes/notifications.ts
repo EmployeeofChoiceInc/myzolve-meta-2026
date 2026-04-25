@@ -29,6 +29,7 @@ const updatePrefsSchema = z.object({
         "member_joined",
         "circle_update",
         "mention_received",
+        "care_calendar_reminder",
       ]),
       enabled: z.boolean(),
     }),
@@ -137,6 +138,26 @@ router.post("/notifications/read-all", requireAuth, async (req, res) => {
   res.json({ success: true });
 });
 
+// Keep this list in sync with UpdateNotificationPreferencesBody in the OpenAPI
+// spec so users always see every supported toggle in settings, even before
+// they've ever flipped one (which is when the row gets persisted).
+const ALL_PREFERENCE_TYPES = [
+  "new_request",
+  "support_received",
+  "repayment_due",
+  "repayment_received",
+  "service_match",
+  "new_comment",
+  "reaction_received",
+  "gratitude_received",
+  "dispute_opened",
+  "dispute_resolved",
+  "member_joined",
+  "circle_update",
+  "mention_received",
+  "care_calendar_reminder",
+] as const;
+
 router.get("/notifications/preferences", requireAuth, async (req, res) => {
   const userId = req.dbUser!.id;
 
@@ -145,10 +166,14 @@ router.get("/notifications/preferences", requireAuth, async (req, res) => {
     .from(notificationPreferencesTable)
     .where(eq(notificationPreferencesTable.userId, userId));
 
-  res.json(prefs.map((p) => ({
-    notificationType: p.notificationType,
-    enabled: p.enabled,
-  })));
+  const byType = new Map(prefs.map((p) => [p.notificationType, p.enabled]));
+
+  res.json(
+    ALL_PREFERENCE_TYPES.map((notificationType) => ({
+      notificationType,
+      enabled: byType.get(notificationType) ?? true,
+    })),
+  );
 });
 
 router.put(

@@ -1712,6 +1712,7 @@ export const UpdateNotificationPreferencesBody = zod.object({
         "member_joined",
         "circle_update",
         "mention_received",
+        "care_calendar_reminder",
       ]),
       enabled: zod.boolean(),
     }),
@@ -2240,6 +2241,197 @@ export const GetCircleDashboardResponse = zod.object({
   myOpenRequests: zod.number(),
   circleHealth: zod.enum(["quiet", "active", "busy"]),
 });
+
+/**
+ * @summary List care dates for a circle (chronological, next occurrences)
+ */
+export const ListCareDatesParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const ListCareDatesResponseItem = zod.object({
+  id: zod.number(),
+  circleId: zod.number(),
+  circleName: zod.string().nullish(),
+  createdByUserId: zod.number(),
+  targetUserId: zod.number().nullish(),
+  targetUserName: zod.string().nullish(),
+  name: zod.string(),
+  eventDate: zod
+    .string()
+    .describe(
+      "Original date in YYYY-MM-DD form (the date the event was first set for).",
+    ),
+  nextOccurrence: zod
+    .string()
+    .describe(
+      "Next upcoming occurrence in YYYY-MM-DD form (today or later for annual entries; equal to eventDate for one-off entries).",
+    ),
+  kind: zod.enum([
+    "birthday",
+    "anniversary",
+    "memorial",
+    "appointment",
+    "other",
+  ]),
+  note: zod.string().nullish(),
+  isAnnual: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListCareDatesResponse = zod.array(ListCareDatesResponseItem);
+
+/**
+ * @summary Add a new care date to a circle
+ */
+export const CreateCareDateParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const createCareDateBodyNameMax = 200;
+
+export const createCareDateBodyEventDateRegExp = new RegExp(
+  "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+);
+export const createCareDateBodyKindDefault = `other`;
+export const createCareDateBodyNoteMax = 2000;
+
+export const createCareDateBodyIsAnnualDefault = false;
+
+export const CreateCareDateBody = zod.object({
+  name: zod.string().min(1).max(createCareDateBodyNameMax),
+  eventDate: zod
+    .string()
+    .regex(createCareDateBodyEventDateRegExp)
+    .describe("YYYY-MM-DD"),
+  kind: zod
+    .enum(["birthday", "anniversary", "memorial", "appointment", "other"])
+    .default(createCareDateBodyKindDefault),
+  note: zod.string().max(createCareDateBodyNoteMax).optional(),
+  isAnnual: zod.boolean().default(createCareDateBodyIsAnnualDefault),
+  targetUserId: zod.number().optional(),
+});
+
+/**
+ * @summary Edit a care date
+ */
+export const UpdateCareDateParams = zod.object({
+  circleId: zod.coerce.number(),
+  careDateId: zod.coerce.number(),
+});
+
+export const updateCareDateBodyNameMax = 200;
+
+export const updateCareDateBodyEventDateRegExp = new RegExp(
+  "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+);
+export const updateCareDateBodyNoteMax = 2000;
+
+export const UpdateCareDateBody = zod.object({
+  name: zod.string().min(1).max(updateCareDateBodyNameMax).optional(),
+  eventDate: zod.string().regex(updateCareDateBodyEventDateRegExp).optional(),
+  kind: zod
+    .enum(["birthday", "anniversary", "memorial", "appointment", "other"])
+    .optional(),
+  note: zod.string().max(updateCareDateBodyNoteMax).nullish(),
+  isAnnual: zod.boolean().optional(),
+  targetUserId: zod.number().nullish(),
+});
+
+export const UpdateCareDateResponse = zod.object({
+  id: zod.number(),
+  circleId: zod.number(),
+  circleName: zod.string().nullish(),
+  createdByUserId: zod.number(),
+  targetUserId: zod.number().nullish(),
+  targetUserName: zod.string().nullish(),
+  name: zod.string(),
+  eventDate: zod
+    .string()
+    .describe(
+      "Original date in YYYY-MM-DD form (the date the event was first set for).",
+    ),
+  nextOccurrence: zod
+    .string()
+    .describe(
+      "Next upcoming occurrence in YYYY-MM-DD form (today or later for annual entries; equal to eventDate for one-off entries).",
+    ),
+  kind: zod.enum([
+    "birthday",
+    "anniversary",
+    "memorial",
+    "appointment",
+    "other",
+  ]),
+  note: zod.string().nullish(),
+  isAnnual: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a care date
+ */
+export const DeleteCareDateParams = zod.object({
+  circleId: zod.coerce.number(),
+  careDateId: zod.coerce.number(),
+});
+
+/**
+ * @summary Upcoming care dates across all my circles
+ */
+export const listUpcomingCareDatesQueryLimitDefault = 5;
+export const listUpcomingCareDatesQueryLimitMax = 50;
+
+export const listUpcomingCareDatesQueryWithinDaysDefault = 14;
+export const listUpcomingCareDatesQueryWithinDaysMax = 365;
+
+export const ListUpcomingCareDatesQueryParams = zod.object({
+  limit: zod.coerce
+    .number()
+    .min(1)
+    .max(listUpcomingCareDatesQueryLimitMax)
+    .default(listUpcomingCareDatesQueryLimitDefault),
+  withinDays: zod.coerce
+    .number()
+    .min(1)
+    .max(listUpcomingCareDatesQueryWithinDaysMax)
+    .default(listUpcomingCareDatesQueryWithinDaysDefault),
+});
+
+export const ListUpcomingCareDatesResponseItem = zod.object({
+  id: zod.number(),
+  circleId: zod.number(),
+  circleName: zod.string().nullish(),
+  createdByUserId: zod.number(),
+  targetUserId: zod.number().nullish(),
+  targetUserName: zod.string().nullish(),
+  name: zod.string(),
+  eventDate: zod
+    .string()
+    .describe(
+      "Original date in YYYY-MM-DD form (the date the event was first set for).",
+    ),
+  nextOccurrence: zod
+    .string()
+    .describe(
+      "Next upcoming occurrence in YYYY-MM-DD form (today or later for annual entries; equal to eventDate for one-off entries).",
+    ),
+  kind: zod.enum([
+    "birthday",
+    "anniversary",
+    "memorial",
+    "appointment",
+    "other",
+  ]),
+  note: zod.string().nullish(),
+  isAnnual: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListUpcomingCareDatesResponse = zod.array(
+  ListUpcomingCareDatesResponseItem,
+);
 
 /**
  * @summary Register a device push token for the current user

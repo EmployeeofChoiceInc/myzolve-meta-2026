@@ -2,13 +2,16 @@ import { useAuth, useUser } from "@clerk/expo";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import { hasAcknowledgedOnboarding } from "@/lib/onboardingFlag";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
+  getListUpcomingCareDatesQueryKey,
   useGetCircleDashboard,
   useListCircles,
   useListSupportRequests,
+  useListUpcomingCareDates,
+  type CareDate,
 } from "@workspace/api-client-react";
 
 import {
@@ -84,6 +87,13 @@ export default function HomeScreen() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     query: { enabled: authReady && !!firstCircle } as any,
   });
+  const upcomingDatesParams = { limit: 3, withinDays: 14 };
+  const upcomingDatesQuery = useListUpcomingCareDates(upcomingDatesParams, {
+    query: {
+      enabled: authReady,
+      queryKey: getListUpcomingCareDatesQueryKey(upcomingDatesParams),
+    },
+  });
 
   useEffect(() => {
     // Only auto-route to /onboarding the FIRST time a brand-new account
@@ -108,6 +118,7 @@ export default function HomeScreen() {
   const openRequests = (requestsQuery.data ?? [])
     .filter((r) => !["completed", "archived", "canceled"].includes(r.status))
     .slice(0, 3);
+  const upcomingDates = upcomingDatesQuery.data ?? [];
 
   return (
     <Screen
@@ -136,6 +147,18 @@ export default function HomeScreen() {
             style={{ flex: 1 }}
           />
         </Row>
+      )}
+
+      {upcomingDates.length > 0 && (
+        <UpcomingDatesCard
+          dates={upcomingDates}
+          onOpenCalendar={(circleId) =>
+            router.push(`/circle/${circleId}/calendar`)
+          }
+          onSendNote={(targetUserId) =>
+            router.push(`/messages/${targetUserId}` as never)
+          }
+        />
       )}
 
       <AppText variant="title" style={{ marginBottom: 12 }}>
@@ -354,5 +377,80 @@ export default function HomeScreen() {
         </>
       )}
     </Screen>
+  );
+}
+
+function formatRelative(iso: string): string {
+  const [y, m, d] = iso.split("-").map((s) => parseInt(s, 10));
+  const target = new Date(y, (m ?? 1) - 1, d ?? 1);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  target.setHours(0, 0, 0, 0);
+  const days = Math.round((target.getTime() - today.getTime()) / 86_400_000);
+  if (days === 0) return "Today";
+  if (days === 1) return "Tomorrow";
+  return target.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
+}
+
+function UpcomingDatesCard({
+  dates,
+  onOpenCalendar,
+  onSendNote,
+}: {
+  dates: CareDate[];
+  onOpenCalendar: (circleId: number) => void;
+  onSendNote: (targetUserId: number) => void;
+}) {
+  const c = useColors();
+  return (
+    <Card
+      style={{
+        backgroundColor: c.secondarySoft,
+        borderColor: c.secondarySoft,
+        marginBottom: 24,
+        gap: 10,
+      }}
+    >
+      <Row gap={8} align="center">
+        <Feather name="calendar" size={16} color={c.secondary} />
+        <AppText weight="semibold">This week in your circles</AppText>
+      </Row>
+      <View style={{ gap: 8 }}>
+        {dates.map((d) => (
+          <Pressable
+            key={d.id}
+            onPress={() => onOpenCalendar(d.circleId)}
+            style={({ pressed }) => ({
+              padding: 10,
+              borderRadius: 12,
+              backgroundColor: c.card,
+              opacity: pressed ? 0.85 : 1,
+            })}
+          >
+            <Row justify="space-between" align="center">
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <AppText weight="semibold">{d.name}</AppText>
+                <AppText variant="caption" color={c.mutedForeground} style={{ marginTop: 2 }}>
+                  {formatRelative(d.nextOccurrence)}
+                  {d.targetUserName ? ` · for ${d.targetUserName}` : ""}
+                  {d.circleName ? ` · ${d.circleName}` : ""}
+                </AppText>
+              </View>
+              {d.targetUserId ? (
+                <Button
+                  title="Send a note"
+                  size="sm"
+                  variant="outline"
+                  icon="message-circle"
+                  onPress={() => onSendNote(d.targetUserId!)}
+                />
+              ) : (
+                <Feather name="chevron-right" size={18} color={c.mutedForeground} />
+              )}
+            </Row>
+          </Pressable>
+        ))}
+      </View>
+    </Card>
   );
 }
