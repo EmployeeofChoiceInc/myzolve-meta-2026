@@ -9,10 +9,13 @@ import {
   useComments,
   useCreateComment,
   useCircleMediaUpload,
+  useUploadCircleMedia,
+  useAttachments,
+  useMyPlusStatus,
   objectPathToUrl,
   type CirclePost,
 } from "@/hooks/use-api";
-import { useGetCircle, getGetCircleQueryKey } from "@workspace/api-client-react";
+import { useGetCircle, getGetCircleQueryKey, customFetch } from "@workspace/api-client-react";
 import {
   ArrowLeft,
   PenSquare,
@@ -24,7 +27,12 @@ import {
   Heart,
   ImagePlus,
   X,
+  Video as VideoIcon,
 } from "lucide-react";
+import { VoiceRecorder } from "@/components/voice-recorder";
+import { MediaAttachmentList } from "@/components/media-attachment-display";
+import { PlusBadge } from "@/components/plus-badge";
+import { usePaywall } from "@/components/paywall-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -170,6 +178,7 @@ function PostCard({
   const canDelete = myUserId !== undefined && (post.authorUserId === myUserId || isAdmin);
   const imageUrl = objectPathToUrl(post.imageObjectPath);
   const authorAvatarUrl = objectPathToUrl(post.authorAvatarObjectPath);
+  const { data: attachments } = useAttachments(circleId, "circle_post", post.id);
 
   function handleDelete() {
     deletePost.mutate(post.id, {
@@ -224,6 +233,8 @@ function PostCard({
           />
         )}
 
+        <MediaAttachmentList attachments={attachments} circleId={circleId} />
+
         <div className="space-y-3 pt-1">
           <ReactionBar circleId={circleId} postId={post.id} />
           <CommentsSection circleId={circleId} postId={post.id} />
@@ -231,6 +242,38 @@ function PostCard({
       </CardContent>
     </Card>
   );
+}
+
+type PendingPhoto = { id: string; file: File; previewUrl: string };
+type PendingVoice = { file: File; durationMs: number; previewUrl: string };
+type PendingVideo = { file: File; previewUrl: string };
+
+const MAX_FREE_MEDIA_BYTES = 10 * 1024 * 1024;
+const MAX_PLUS_MEDIA_BYTES = 50 * 1024 * 1024;
+const MAX_PHOTOS_FREE = 3;
+const MAX_PHOTOS_PLUS = 8;
+const MAX_VIDEO_DURATION_MS = 30 * 1000;
+
+function formatMb(bytes: number) {
+  return `${Math.round(bytes / (1024 * 1024))} MB`;
+}
+
+async function readVideoDurationMs(file: File): Promise<number | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement("video");
+    v.preload = "metadata";
+    v.onloadedmetadata = () => {
+      const ms = isFinite(v.duration) ? Math.round(v.duration * 1000) : null;
+      URL.revokeObjectURL(url);
+      resolve(ms);
+    };
+    v.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(null);
+    };
+    v.src = url;
+  });
 }
 
 function ComposeDialog({
@@ -244,60 +287,261 @@ function ComposeDialog({
 }) {
   const createPost = useCreateCirclePost(circleId);
   const circleMediaUpload = useCircleMediaUpload(circleId);
+  const uploadCircleMedia = useUploadCircleMedia(circleId);
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const paywall = usePaywall();
+  const openPaywall = paywall.open;
+  const { data: plusStatus } = useMyPlusStatus();
+  const isPlus = !!plusStatus?.isPlus;
+
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<PendingPhoto[]>([]);
+  const [voice, setVoice] = useState<PendingVoice | null>(null);
+  const [video, setVideo] = useState<PendingVideo | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
+  function resetAll() {
+    setTitle("");
+    setBody("");
+    photos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+    setPhotos([]);
+    if (voice) URL.revokeObjectURL(voice.previewUrl);
+    setVoice(null);
+    if (video) URL.revokeObjectURL(video.previewUrl);
+    setVideo(null);
+    if (photoInputRef.current) photoInputRef.current.value = "";
+    if (videoInputRef.current) videoInputRef.current.value = "";
   }
 
-  function clearImage() {
-    setImageFile(null);
-    setImagePreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+  function handleClose(v: boolean) {
+    if (!v) resetAll();
+    onOpenChange(v);
   }
 
-  function handleCreate() {
-    if (!body.trim()) return;
+  function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (photoInputRef.current) photoInputRef.current.value = "";
+    if (files.length === 0) return;
 
-    const doCreate = (imageObjectPath?: string) => {
-      createPost.mutate(
-        { title: title.trim() || undefined, body: body.trim(), imageObjectPath },
-        {
-          onSuccess: () => {
-            onOpenChange(false);
-            setTitle("");
-            setBody("");
-            clearImage();
-            toast({ title: "Post shared" });
-          },
-          onError: () => toast({ title: "Could not share post", variant: "destructive" }),
-        },
-      );
-    };
+    const cap = isPlus ? MAX_PHOTOS_PLUS : MAX_PHOTOS_FREE;
+    const sizeCap = isPlus ? MAX_PLUS_MEDIA_BYTES : MAX_FREE_MEDIA_BYTES;
 
-    if (imageFile) {
-      circleMediaUpload.mutate(imageFile, {
-        onSuccess: (objectPath) => doCreate(objectPath),
-        onError: () => toast({ title: "Could not upload image", variant: "destructive" }),
+    const tooBig = files.find((f) => f.size > sizeCap);
+    if (tooBig) {
+      toast({
+        title: "Photo too large",
+        description: `Each photo must be under ${formatMb(sizeCap)}.`,
+        variant: "destructive",
       });
-    } else {
-      doCreate();
+      return;
+    }
+
+    const remaining = cap - photos.length;
+    if (remaining <= 0) {
+      if (!isPlus) openPaywall("extra_photos");
+      else toast({ title: `Up to ${cap} photos per post.`, variant: "destructive" });
+      return;
+    }
+
+    const accepted = files.slice(0, remaining);
+    const rejected = files.length - accepted.length;
+
+    setPhotos((prev) => [
+      ...prev,
+      ...accepted.map((file) => ({
+        id: `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`,
+        file,
+        previewUrl: URL.createObjectURL(file),
+      })),
+    ]);
+
+    if (rejected > 0) {
+      if (!isPlus) openPaywall("extra_photos");
+      else toast({ title: `Up to ${cap} photos per post.`, description: `Skipped ${rejected}.`, variant: "destructive" });
     }
   }
 
-  const isBusy = circleMediaUpload.isPending || createPost.isPending;
+  function removePhoto(id: string) {
+    setPhotos((prev) => {
+      const target = prev.find((p) => p.id === id);
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((p) => p.id !== id);
+    });
+  }
+
+  async function handleVideoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    if (!isPlus) {
+      openPaywall("video");
+      return;
+    }
+
+    if (file.size > MAX_PLUS_MEDIA_BYTES) {
+      toast({
+        title: "Video too large",
+        description: `Videos must be under ${formatMb(MAX_PLUS_MEDIA_BYTES)}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const durationMs = await readVideoDurationMs(file);
+    if (durationMs != null && durationMs > MAX_VIDEO_DURATION_MS) {
+      toast({
+        title: "Video too long",
+        description: `Videos must be 30 seconds or less.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (video) URL.revokeObjectURL(video.previewUrl);
+    setVideo({ file, previewUrl: URL.createObjectURL(file) });
+  }
+
+  function clearVideo() {
+    if (video) URL.revokeObjectURL(video.previewUrl);
+    setVideo(null);
+  }
+
+  function handleVoiceCapture(file: File, durationMs: number) {
+    if (!isPlus) {
+      openPaywall("voice_note");
+      return;
+    }
+    if (voice) URL.revokeObjectURL(voice.previewUrl);
+    setVoice({ file, durationMs, previewUrl: URL.createObjectURL(file) });
+  }
+
+  function clearVoice() {
+    if (voice) URL.revokeObjectURL(voice.previewUrl);
+    setVoice(null);
+  }
+
+  async function handleCreate() {
+    if (!body.trim() || submitting) return;
+
+    if (!isPlus) {
+      if (photos.length > 1) {
+        openPaywall("extra_photos");
+        return;
+      }
+      if (voice) {
+        openPaywall("voice_note");
+        return;
+      }
+      if (video) {
+        openPaywall("video");
+        return;
+      }
+    }
+
+    setSubmitting(true);
+    try {
+      // Pre-upload everything BEFORE creating the post so a failed
+      // upload doesn't leave behind a half-baked text-only post.
+      let firstPhotoObjectPath: string | undefined;
+      if (photos.length > 0) {
+        firstPhotoObjectPath = await new Promise<string>((resolve, reject) => {
+          circleMediaUpload.mutate(photos[0].file, { onSuccess: resolve, onError: reject });
+        });
+      }
+
+      const extraUploads: { file: File; storageKey: string }[] = [];
+      for (const p of photos.slice(1)) {
+        const { storageKey } = await uploadCircleMedia.mutateAsync({
+          file: p.file,
+          fileName: p.file.name,
+          mimeType: p.file.type || "image/jpeg",
+        });
+        extraUploads.push({ file: p.file, storageKey });
+      }
+
+      let voiceUpload: { storageKey: string } | undefined;
+      if (voice) {
+        voiceUpload = await uploadCircleMedia.mutateAsync({
+          file: voice.file,
+          fileName: voice.file.name,
+          mimeType: voice.file.type || "audio/webm",
+        });
+      }
+
+      let videoUpload: { storageKey: string } | undefined;
+      if (video) {
+        videoUpload = await uploadCircleMedia.mutateAsync({
+          file: video.file,
+          fileName: video.file.name,
+          mimeType: video.file.type || "video/mp4",
+        });
+      }
+
+      // All media is uploaded. Now create the post.
+      const newPost = await new Promise<CirclePost>((resolve, reject) => {
+        createPost.mutate(
+          {
+            title: title.trim() || undefined,
+            body: body.trim(),
+            imageObjectPath: firstPhotoObjectPath,
+          },
+          { onSuccess: resolve, onError: reject },
+        );
+      });
+
+      for (const u of extraUploads) {
+        await postAttachment(circleId, newPost.id, {
+          kind: "photo",
+          fileName: u.file.name,
+          fileSize: u.file.size,
+          mimeType: u.file.type || "image/jpeg",
+          storageKey: u.storageKey,
+        });
+      }
+
+      if (voice && voiceUpload) {
+        await postAttachment(circleId, newPost.id, {
+          kind: "voice",
+          fileName: voice.file.name,
+          fileSize: voice.file.size,
+          mimeType: voice.file.type || "audio/webm",
+          durationMs: voice.durationMs,
+          storageKey: voiceUpload.storageKey,
+        });
+      }
+
+      if (video && videoUpload) {
+        await postAttachment(circleId, newPost.id, {
+          kind: "video",
+          fileName: video.file.name,
+          fileSize: video.file.size,
+          mimeType: video.file.type || "video/mp4",
+          storageKey: videoUpload.storageKey,
+        });
+      }
+
+      toast({ title: "Post shared" });
+      onOpenChange(false);
+      resetAll();
+    } catch (err) {
+      if (!paywall.handleApiError(err)) {
+        toast({ title: "Could not share post", variant: "destructive" });
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const isBusy = submitting;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] rounded-3xl">
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[520px] rounded-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>New Post</DialogTitle>
           <DialogDescription>Share something with your circle.</DialogDescription>
@@ -308,6 +552,7 @@ function ComposeDialog({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="rounded-xl"
+            data-testid="input-post-title"
           />
           <Textarea
             placeholder="What's on your mind?"
@@ -315,37 +560,114 @@ function ComposeDialog({
             onChange={(e) => setBody(e.target.value)}
             rows={5}
             className="resize-none rounded-xl"
+            data-testid="input-post-body"
           />
 
-          {imagePreview ? (
+          {photos.length > 0 ? (
+            <div className="grid grid-cols-3 gap-2">
+              {photos.map((p) => (
+                <div key={p.id} className="relative">
+                  <img
+                    src={p.previewUrl}
+                    alt="Preview"
+                    className="rounded-2xl w-full aspect-square object-cover"
+                  />
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="absolute top-1 right-1 h-6 w-6 rounded-full"
+                    onClick={() => removePhoto(p.id)}
+                    disabled={isBusy}
+                    data-testid={`remove-photo-${p.id}`}
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {video ? (
             <div className="relative">
-              <img src={imagePreview} alt="Preview" className="rounded-2xl w-full object-cover max-h-52" />
+              <video src={video.previewUrl} controls className="rounded-2xl w-full max-h-60 bg-black" />
               <Button
                 variant="secondary"
                 size="icon"
                 className="absolute top-2 right-2 h-7 w-7 rounded-full"
-                onClick={clearImage}
+                onClick={clearVideo}
+                disabled={isBusy}
+              >
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          ) : null}
+
+          {voice ? (
+            <div className="rounded-2xl border border-border/60 bg-muted/30 p-3 flex items-center gap-3">
+              <audio src={voice.previewUrl} controls className="flex-1 h-9" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 rounded-full text-muted-foreground hover:text-destructive"
+                onClick={clearVoice}
                 disabled={isBusy}
               >
                 <X className="w-3.5 h-3.5" />
               </Button>
             </div>
           ) : (
+            <VoiceRecorder onCapture={handleVoiceCapture} disabled={isBusy} />
+          )}
+
+          <div className="flex flex-wrap gap-3 text-sm">
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => photoInputRef.current?.click()}
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+              disabled={isBusy}
+              data-testid="add-photo"
             >
-              <ImagePlus className="w-4 h-4" /> Add a photo
+              <ImagePlus className="w-4 h-4" /> Add photo
+              {photos.length > 0 && !isPlus ? <PlusBadge size="sm" /> : null}
             </button>
-          )}
-          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+            <button
+              type="button"
+              onClick={() => videoInputRef.current?.click()}
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+              disabled={isBusy}
+              data-testid="add-video"
+            >
+              <VideoIcon className="w-4 h-4" /> Add video
+              {!isPlus ? <PlusBadge size="sm" /> : null}
+            </button>
+          </div>
 
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" className="rounded-full" onClick={() => onOpenChange(false)} disabled={isBusy}>
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={handlePhotoSelect}
+          />
+          <input
+            ref={videoInputRef}
+            type="file"
+            accept="video/*"
+            className="hidden"
+            onChange={handleVideoSelect}
+          />
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="outline" className="rounded-full" onClick={() => handleClose(false)} disabled={isBusy}>
               Cancel
             </Button>
-            <Button className="rounded-full" disabled={!body.trim() || isBusy} onClick={handleCreate}>
+            <Button
+              className="rounded-full"
+              disabled={!body.trim() || isBusy}
+              onClick={handleCreate}
+              data-testid="button-share-post"
+            >
               {isBusy ? "Posting..." : "Share with circle"}
             </Button>
           </div>
@@ -353,6 +675,24 @@ function ComposeDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+async function postAttachment(
+  circleId: number,
+  postId: number,
+  data: {
+    kind: "photo" | "voice" | "video";
+    fileName: string;
+    fileSize: number;
+    mimeType: string;
+    storageKey: string;
+    durationMs?: number;
+  },
+) {
+  await customFetch(`/api/circles/${circleId}/attachments/circle_post/${postId}`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 }
 
 export default function WallPage() {

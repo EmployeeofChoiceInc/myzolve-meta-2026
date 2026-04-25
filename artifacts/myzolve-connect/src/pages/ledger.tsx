@@ -7,6 +7,7 @@ import { ArrowLeft, BookOpen, ArrowDownRight, ArrowUpRight, ArrowLeftRight } fro
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { LedgerProSection } from "@/components/ledger-pro-section";
 
 export default function LedgerPage() {
   const { id } = useParams<{ id: string }>();
@@ -94,6 +95,8 @@ export default function LedgerPage() {
           </Card>
         </div>
       )}
+
+      <LedgerProSection circleId={circleId} />
 
       <Card className="rounded-3xl border-border/50 shadow-none overflow-hidden">
         <CardHeader className="bg-muted/20 border-b border-border/50 pb-4">

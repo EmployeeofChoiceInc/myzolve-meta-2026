@@ -14,6 +14,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { VerifiedBadge } from "@/components/verified-badge";
 
 const circleFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -189,7 +190,12 @@ export default function CirclesPage() {
                       </div>
                     )}
                   </div>
-                  <CardTitle className="text-xl">{circle.name}</CardTitle>
+                  <CardTitle className="text-xl flex items-center gap-1.5">
+                    <span className="truncate">{circle.name}</span>
+                    {(circle as { verificationStatus?: string }).verificationStatus === "verified" ? (
+                      <VerifiedBadge size="sm" />
+                    ) : null}
+                  </CardTitle>
                   <CardDescription className="line-clamp-2 mt-2 text-sm">
                     {circle.description || "A trusted circle for mutual support."}
                   </CardDescription>

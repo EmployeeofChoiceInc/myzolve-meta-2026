@@ -33,7 +33,11 @@ import {
   useResolveDispute,
   useAuditLogs,
   useCirclePosts,
+  useMyPlusStatus,
 } from "@/hooks/use-api";
+import { VerifiedBadge } from "@/components/verified-badge";
+import { ApplyVerificationDialog } from "@/components/apply-verification-dialog";
+import { ShieldCheck } from "lucide-react";
 
 interface DisputeResolution {
   disputeId: number;
@@ -97,6 +101,9 @@ export default function CircleDetailPage() {
   const [placeholderOpen, setPlaceholderOpen] = useState(false);
   const [connectionOpen, setConnectionOpen] = useState(false);
   const [adminExpanded, setAdminExpanded] = useState(false);
+  const [applyVerifyOpen, setApplyVerifyOpen] = useState(false);
+  const { data: plusStatus } = useMyPlusStatus();
+  const ownerHasPlus = !!plusStatus?.isPlus;
   const initialized = useRef(false);
   
   const { data: circle, isLoading: circleLoading } = useGetCircle(circleId, { 
@@ -268,6 +275,7 @@ export default function CircleDetailPage() {
 
   const isAdmin = circle.myRole === 'owner' || circle.myRole === 'admin';
   const isOwner = circle.myRole === 'owner';
+  const verificationStatus = (circle as { verificationStatus?: string }).verificationStatus ?? "none";
 
   const openDisputes = disputes?.filter((d) => d.status === "open") ?? [];
 
@@ -286,13 +294,37 @@ export default function CircleDetailPage() {
                 <Users className="w-4 h-4 mr-1" /> {circle.memberCount || 1} members
               </span>
             </div>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-3">{circle.name}</h1>
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-3 flex items-center gap-2 flex-wrap">
+              <span>{circle.name}</span>
+              {verificationStatus === "verified" ? <VerifiedBadge /> : null}
+              {verificationStatus === "pending" ? (
+                <Badge variant="outline" className="rounded-full text-xs font-medium bg-muted text-muted-foreground border-transparent">
+                  Verification pending
+                </Badge>
+              ) : null}
+            </h1>
             <p className="text-muted-foreground text-lg leading-relaxed">
               {circle.description || "A trusted space for mutual support."}
             </p>
           </div>
           
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
+            {isOwner && (verificationStatus === "none" || verificationStatus === "rejected") && (
+              <Button
+                variant="outline"
+                className="rounded-full bg-card"
+                onClick={() => {
+                  if (!ownerHasPlus) {
+                    toast({ title: "Verification needs Plus", description: "Activate Plus on iPhone to apply for the verified badge." });
+                    return;
+                  }
+                  setApplyVerifyOpen(true);
+                }}
+                data-testid="button-apply-verification"
+              >
+                <ShieldCheck className="w-4 h-4 mr-2" /> Apply for verification
+              </Button>
+            )}
             {isAdmin && (
               <Button variant="outline" className="rounded-full bg-card" onClick={() => setSettingsOpen(true)}>
                 <Settings className="w-4 h-4 mr-2" /> Settings
@@ -804,6 +836,12 @@ export default function CircleDetailPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ApplyVerificationDialog
+        circleId={circleId}
+        open={applyVerifyOpen}
+        onOpenChange={setApplyVerifyOpen}
+      />
 
       {/* Dispute resolution dialog */}
       <Dialog open={!!disputeDialog} onOpenChange={(open) => { if (!open) setDisputeDialog(null); }}>

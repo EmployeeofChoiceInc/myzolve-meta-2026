@@ -11,8 +11,12 @@ import {
   useCreateCircleInvitation,
   type CircleInvitation
 } from "@workspace/api-client-react";
-import { useJoinRequests, useApproveJoinRequest, useDeclineJoinRequest } from "@/hooks/use-api";
+import { useJoinRequests, useApproveJoinRequest, useDeclineJoinRequest, useMyPlusStatus } from "@/hooks/use-api";
 import { ArrowLeft, UserPlus, Mail, ShieldAlert, Link2, Copy, MoreHorizontal, UserMinus, Shield, UserCheck } from "lucide-react";
+import { RolePickerDialog } from "@/components/role-picker-dialog";
+import { PlusBadge } from "@/components/plus-badge";
+import { rolePillClasses, ROLE_LABELS, isPlusGatedRole, type AssignableRole, type CircleRole } from "@/lib/circle-roles";
+import { usePaywall } from "@/components/paywall-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -37,10 +41,6 @@ const inviteFormSchema = z.object({
   customMessage: z.string().optional(),
 });
 
-const changeRoleFormSchema = z.object({
-  role: z.enum(["member", "admin", "guest"]),
-});
-
 type CircleMember = {
   id: number;
   userId: number;
@@ -63,11 +63,11 @@ export default function MembersPage() {
   });
 
   const { data: members, isLoading: membersLoading } = useListCircleMembers(circleId, {
-    query: { enabled: !!circleId, queryKey: ["circle-members", circleId] as const }
+    query: { enabled: !!circleId, queryKey: getListCircleMembersQueryKey(circleId) }
   });
-  
+
   const { data: invitations, isLoading: invitationsLoading } = useListCircleInvitations(circleId, {
-    query: { enabled: !!circleId, queryKey: ["circle-invitations", circleId] as const }
+    query: { enabled: !!circleId, queryKey: getListCircleInvitationsQueryKey(circleId) }
   });
 
   const createInvitation = useCreateCircleInvitation();
@@ -81,6 +81,9 @@ export default function MembersPage() {
   const isAdminOrOwner = myRole === "owner" || myRole === "admin";
 
   const { data: joinRequests } = useJoinRequests(circleId, isAdminOrOwner);
+  const { data: plusStatus } = useMyPlusStatus();
+  const ownerHasPlus = !!plusStatus?.isPlus;
+  const paywall = usePaywall();
 
   function handleRevokeInvitation(invitationId: number) {
     revokeInvitation.mutate(
@@ -121,11 +124,6 @@ export default function MembersPage() {
     },
   });
 
-  const changeRoleForm = useForm<z.infer<typeof changeRoleFormSchema>>({
-    resolver: zodResolver(changeRoleFormSchema),
-    defaultValues: { role: "member" },
-  });
-
   function onSubmitInvite(values: z.infer<typeof inviteFormSchema>) {
     const payload = {
       role: values.role,
@@ -137,7 +135,7 @@ export default function MembersPage() {
       data: payload
     }, {
       onSuccess: (data: CircleInvitation & { inviteLink?: string }) => {
-        queryClient.invalidateQueries({ queryKey: ['/api/circles', circleId, 'invitations'] });
+        queryClient.invalidateQueries({ queryKey: getListCircleInvitationsQueryKey(circleId) });
         inviteForm.reset();
         const link = data?.inviteLink ? `${window.location.origin}${data.inviteLink}` : null;
         setInviteLink(link);
@@ -153,18 +151,22 @@ export default function MembersPage() {
     });
   }
 
-  function onSubmitChangeRole(values: z.infer<typeof changeRoleFormSchema>) {
+  function onConfirmChangeRole(role: AssignableRole) {
     if (!roleDialogMember) return;
     updateMember.mutate(
-      { circleId, memberId: roleDialogMember.id, data: { role: values.role } },
+      // The orval-generated role enum doesn't yet include the Plus
+      // sub-roles (host/treasurer/scribe). The server accepts them.
+      { circleId, memberId: roleDialogMember.id, data: { role: role as never } },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListCircleMembersQueryKey(circleId) });
           setRoleDialogMember(null);
           toast({ title: "Role updated", description: `${roleDialogMember.displayName ?? "Member"}'s role has been updated.` });
         },
-        onError: () => {
-          toast({ title: "Could not update role", variant: "destructive" });
+        onError: (err: unknown) => {
+          if (!paywall.handleApiError(err)) {
+            toast({ title: "Could not update role", variant: "destructive" });
+          }
         },
       }
     );
@@ -322,28 +324,25 @@ export default function MembersPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className={`rounded-full px-2.5 py-0.5 capitalize border-transparent ${
-                          member.role === 'owner' ? 'bg-primary/10 text-primary' : 
-                          member.role === 'admin' ? 'bg-secondary/10 text-secondary' : 
-                          member.role === 'guest' ? 'bg-muted text-muted-foreground' :
-                          'bg-muted text-muted-foreground'
-                        }`}>
-                          {member.role}
+                        <Badge
+                          variant="outline"
+                          className={`rounded-full px-2.5 py-0.5 capitalize border-transparent ${rolePillClasses(member.role)}`}
+                          data-testid={`member-role-${member.id}`}
+                        >
+                          {ROLE_LABELS[member.role as CircleRole] ?? member.role}
                         </Badge>
+                        {isPlusGatedRole(member.role) ? <PlusBadge size="sm" /> : null}
                         {isAdminOrOwner && member.role !== 'owner' && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" data-testid={`member-actions-${member.id}`}>
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="rounded-2xl">
                               <DropdownMenuItem
                                 className="gap-2 cursor-pointer"
-                                onClick={() => {
-                                  changeRoleForm.setValue("role", member.role as "member" | "admin" | "guest");
-                                  setRoleDialogMember(member);
-                                }}
+                                onClick={() => setRoleDialogMember(member)}
                               >
                                 <Shield className="h-4 w-4" /> Change Role
                               </DropdownMenuItem>
@@ -478,50 +477,21 @@ export default function MembersPage() {
         </div>
       </div>
 
-      <Dialog open={!!roleDialogMember} onOpenChange={(v) => { if (!v) setRoleDialogMember(null); }}>
-        <DialogContent className="sm:max-w-[360px] rounded-3xl">
-          <DialogHeader>
-            <DialogTitle>Change Role</DialogTitle>
-            <DialogDescription>
-              Update {roleDialogMember?.displayName ?? "this member"}'s role in the circle.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...changeRoleForm}>
-            <form onSubmit={changeRoleForm.handleSubmit(onSubmitChangeRole)} className="space-y-4 pt-2">
-              <FormField
-                control={changeRoleForm.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>New Role</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="rounded-xl">
-                          <SelectValue placeholder="Select a role" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="member">Member</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="guest">Guest (view only)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="flex justify-end gap-3 pt-2">
-                <Button type="button" variant="outline" className="rounded-full" onClick={() => setRoleDialogMember(null)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={updateMember.isPending} className="rounded-full">
-                  {updateMember.isPending ? "Saving..." : "Save Role"}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
+      {roleDialogMember ? (
+        <RolePickerDialog
+          open={!!roleDialogMember}
+          onOpenChange={(v) => { if (!v) setRoleDialogMember(null); }}
+          currentRole={roleDialogMember.role}
+          memberName={roleDialogMember.displayName ?? "this member"}
+          ownerHasPlus={ownerHasPlus}
+          saving={updateMember.isPending}
+          onConfirm={onConfirmChangeRole}
+          onPlusGated={() => {
+            setRoleDialogMember(null);
+            paywall.open("circle_role");
+          }}
+        />
+      ) : null}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Heart, Home, Users, Bell, Settings, LogOut, Menu, Check, Compass, MessageCircle } from "lucide-react";
+import { Heart, Home, Users, Bell, Settings, LogOut, Menu, Check, Compass, MessageCircle, Star } from "lucide-react";
 import { useClerk, useUser } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -7,7 +7,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useUnreadCount, useMessageInbox, useNotifications, useMarkNotificationRead } from "@/hooks/use-api";
+import { useUnreadCount, useMessageInbox, useNotifications, useMarkNotificationRead, useMyPlusStatus } from "@/hooks/use-api";
+import { PlusBadge } from "@/components/plus-badge";
 import { displayEmail } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 
@@ -104,12 +105,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { user } = useUser();
   const { data: inbox } = useMessageInbox();
   const unreadMessages = (inbox ?? []).reduce((acc, t) => acc + t.unreadCount, 0);
+  const { data: plusStatus } = useMyPlusStatus();
+  const isPlus = !!plusStatus?.isPlus;
 
   type NavItem = {
     icon: typeof Home;
     label: string;
     href: string;
     badge?: number;
+    plus?: boolean;
   };
 
   const navItems: NavItem[] = [
@@ -117,28 +121,44 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { icon: Users, label: "My Circles", href: "/circles" },
     { icon: Compass, label: "Find a Circle", href: "/discover" },
     { icon: MessageCircle, label: "Messages", href: "/messages", badge: unreadMessages },
+    { icon: Star, label: "Plus", href: "/plus", plus: true },
   ];
 
   const NavLinks = () => (
     <>
-      {navItems.map((item) => (
-        <Link key={item.href} href={item.href} className={`relative flex items-center gap-3 px-3 py-2 rounded-xl transition-colors ${location.startsWith(item.href) && item.href !== "/dashboard" ? "bg-primary/10 text-primary font-medium" : location === item.href ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
-          <div className="relative">
-            <item.icon className="w-5 h-5" />
+      {navItems.map((item) => {
+        const active =
+          (location.startsWith(item.href) && item.href !== "/dashboard") ||
+          location === item.href;
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={`relative flex items-center gap-3 px-3 py-2 rounded-xl transition-colors ${
+              active
+                ? "bg-primary/10 text-primary font-medium"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+            data-testid={`nav-${item.href.replace(/\//g, "")}`}
+          >
+            <div className="relative">
+              <item.icon className={`w-5 h-5 ${item.plus ? "text-[#B47A2A]" : ""}`} />
+              {(item.badge ?? 0) > 0 && (
+                <span className="absolute -top-1 -right-1 h-3.5 min-w-3.5 px-0.5 text-[9px] font-bold flex items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  {(item.badge ?? 0) > 9 ? "9+" : item.badge}
+                </span>
+              )}
+            </div>
+            {item.label}
+            {item.plus && isPlus ? <PlusBadge size="sm" className="ml-auto" /> : null}
             {(item.badge ?? 0) > 0 && (
-              <span className="absolute -top-1 -right-1 h-3.5 min-w-3.5 px-0.5 text-[9px] font-bold flex items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <Badge className="ml-auto h-4 min-w-4 px-1 text-[10px] rounded-full bg-primary">
                 {(item.badge ?? 0) > 9 ? "9+" : item.badge}
-              </span>
+              </Badge>
             )}
-          </div>
-          {item.label}
-          {(item.badge ?? 0) > 0 && (
-            <Badge className="ml-auto h-4 min-w-4 px-1 text-[10px] rounded-full bg-primary">
-              {(item.badge ?? 0) > 9 ? "9+" : item.badge}
-            </Badge>
-          )}
-        </Link>
-      ))}
+          </Link>
+        );
+      })}
     </>
   );
 

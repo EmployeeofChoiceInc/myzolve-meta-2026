@@ -281,9 +281,13 @@ export interface Attachment {
   uploadedByUserId: number;
   targetEntityType: string;
   targetEntityId: number;
+  kind?: "photo" | "voice" | "video";
   fileName: string;
   fileSize: number;
   mimeType: string;
+  durationMs?: number | null;
+  width?: number | null;
+  height?: number | null;
   storageKey: string;
   downloadUrl: string;
   status: string;
@@ -312,7 +316,16 @@ export function useRequestUploadUrl() {
 export function useCreateAttachment(circleId: number, entityType: string, entityId: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { fileName: string; fileSize: number; mimeType: string; storageKey: string }) =>
+    mutationFn: (data: {
+      kind?: "photo" | "voice" | "video";
+      fileName: string;
+      fileSize: number;
+      mimeType: string;
+      storageKey: string;
+      durationMs?: number;
+      width?: number;
+      height?: number;
+    }) =>
       customFetch<Attachment>(`/api/circles/${circleId}/attachments/${entityType}/${entityId}`, {
         method: "POST",
         body: JSON.stringify(data),
@@ -398,7 +411,7 @@ export function useApproveJoinRequest(circleId: number) {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["join-requests", circleId] });
-      qc.invalidateQueries({ queryKey: ["circle-members", circleId] });
+      qc.invalidateQueries({ queryKey: [`/api/circles/${circleId}/members`] });
     },
   });
 }
@@ -642,4 +655,193 @@ export function useCircleMediaUpload(circleId: number) {
       return objectPath;
     },
   });
+}
+
+// ---------------------------------------------------------------------------
+// Plus suite — status, plan management, verification, ledger pro, media
+// ---------------------------------------------------------------------------
+
+export type PlusSource = "direct" | "family" | "none";
+export type PlanKind = "solo" | "family";
+
+export interface PlusStatus {
+  isPlus: boolean;
+  source: PlusSource;
+  planKind: PlanKind;
+  familyCircleId?: number | null;
+  familyCircleMemberCount?: number | null;
+  familyCircleMemberCap: number;
+  gifterUserId?: number | null;
+  gifterName?: string | null;
+  gifterCircleId?: number | null;
+  graceUntil?: string | null;
+}
+
+export const PLUS_STATUS_KEY = ["/api/me/plus-status"] as const;
+
+export function useMyPlusStatus() {
+  return useQuery({
+    queryKey: PLUS_STATUS_KEY,
+    queryFn: () => customFetch<PlusStatus>("/api/me/plus-status"),
+    staleTime: 60_000,
+  });
+}
+
+export function useUpdateMyPlusPlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { planKind: PlanKind; familyCircleId?: number | null }) =>
+      customFetch<PlusStatus>("/api/me/plus-plan", {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (status) => {
+      qc.setQueryData(PLUS_STATUS_KEY, status);
+      qc.invalidateQueries({ queryKey: ["/api/me"] });
+    },
+  });
+}
+
+export interface ApplyVerificationBody {
+  legalName: string;
+  orgType: "nonprofit" | "religious" | "school" | "neighborhood" | "other";
+  description: string;
+  contactEmail: string;
+  supportingUrl?: string | null;
+}
+
+export function useApplyCircleVerification(circleId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: ApplyVerificationBody) =>
+      customFetch(`/api/circles/${circleId}/verification`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["circles"] });
+    },
+  });
+}
+
+// ---- Ledger Pro ----------------------------------------------------------
+
+export interface LedgerProMonth {
+  month: number;
+  given: number;
+  received: number;
+  repaid: number;
+  forgiven: number;
+}
+
+export interface LedgerProPerson {
+  userId?: number | null;
+  name: string;
+  avatarObjectPath?: string | null;
+  amount: number;
+  count: number;
+}
+
+export interface LedgerProView {
+  circleId: number;
+  circleName: string;
+  year: number;
+  currency: string;
+  totalGiven: number;
+  totalReceived: number;
+  totalRepaid: number;
+  totalForgiven: number;
+  netBalance: number;
+  entryCount: number;
+  months: LedgerProMonth[];
+  topSupported: LedgerProPerson[];
+  topSupporters: LedgerProPerson[];
+  availableYears: number[];
+  softMessage: string;
+}
+
+export interface LedgerExport {
+  circleId: number;
+  year: number;
+  pdfUrl: string;
+  csvUrl: string;
+  expiresAt: string;
+}
+
+export function useLedgerProYears(circleId: number, enabled = true) {
+  return useQuery({
+    queryKey: ["ledger-pro-years", circleId],
+    queryFn: () =>
+      customFetch<{ years: number[]; defaultYear: number }>(
+        `/api/circles/${circleId}/ledger/pro/years`,
+      ),
+    enabled: !!circleId && enabled,
+    retry: false,
+  });
+}
+
+export function useLedgerPro(circleId: number, year: number | null, enabled = true) {
+  return useQuery({
+    queryKey: ["ledger-pro", circleId, year],
+    queryFn: () =>
+      customFetch<LedgerProView>(
+        `/api/circles/${circleId}/ledger/pro?year=${year}`,
+      ),
+    enabled: !!circleId && !!year && enabled,
+    retry: false,
+  });
+}
+
+export function useExportLedger(circleId: number) {
+  return useMutation({
+    mutationFn: (year: number) =>
+      customFetch<LedgerExport>(`/api/circles/${circleId}/ledger/export`, {
+        method: "POST",
+        body: JSON.stringify({ year }),
+      }),
+  });
+}
+
+// ---- Rich media uploads (voice / video) ----------------------------------
+
+export interface RichMediaUploadResult {
+  storageKey: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  durationMs?: number;
+}
+
+export function useUploadCircleMedia(circleId: number) {
+  return useMutation({
+    mutationFn: async (input: { file: File | Blob; fileName: string; mimeType: string }) => {
+      const { file, fileName, mimeType } = input;
+      const size = file.size;
+      const { uploadURL, objectPath } = await customFetch<{
+        uploadURL: string;
+        objectPath: string;
+      }>("/api/storage/circle-media/request-url", {
+        method: "POST",
+        body: JSON.stringify({ name: fileName, size, contentType: mimeType, circleId }),
+      });
+      const putRes = await fetch(uploadURL, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": mimeType },
+      });
+      if (!putRes.ok) throw new Error("Upload failed");
+      return {
+        storageKey: objectPath,
+        fileName,
+        fileSize: size,
+        mimeType,
+      } satisfies RichMediaUploadResult;
+    },
+  });
+}
+
+export interface MyOwnedCircle {
+  id: number;
+  name: string;
+  ownerId: number;
 }

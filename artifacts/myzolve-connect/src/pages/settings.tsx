@@ -17,9 +17,12 @@ import {
   useAvatarUpload,
   useNotificationPreferences,
   useUpdateNotificationPreferences,
+  useMyPlusStatus,
   objectPathToUrl,
 } from "@/hooks/use-api";
-import { Camera } from "lucide-react";
+import { Camera, Star, ChevronRight } from "lucide-react";
+import { Link } from "wouter";
+import { PlusBadge } from "@/components/plus-badge";
 
 const profileFormSchema = z.object({
   firstName: z.string().max(100).optional(),
@@ -360,7 +363,42 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      <PlusSummaryCard />
+
       <NotificationPreferencesCard />
     </div>
+  );
+}
+
+function PlusSummaryCard() {
+  const { data: status } = useMyPlusStatus();
+  const isPlus = !!status?.isPlus;
+
+  return (
+    <Link href="/plus" data-testid="settings-plus-row">
+      <Card className="rounded-3xl border-border/50 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+        <CardContent className="p-5 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-[#F5E6CC] text-[#B47A2A] flex items-center justify-center shrink-0">
+            <Star className="w-6 h-6" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-base">MyZolve Connect Plus</p>
+              {isPlus ? <PlusBadge size="sm" /> : null}
+            </div>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {isPlus
+                ? status?.source === "family"
+                  ? `Plus via ${status?.gifterName ?? "family"}`
+                  : status?.planKind === "family"
+                    ? "Family plan — share Plus with your circle"
+                    : "Solo plan — Plus is active"
+                : "Bigger circles, voice notes, video, ledger pro, and more."}
+            </p>
+          </div>
+          <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
+        </CardContent>
+      </Card>
+    </Link>
   );
 }

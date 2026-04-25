@@ -29,6 +29,8 @@ import DiscoverPage from "@/pages/discover";
 import ProfilePage from "@/pages/profile";
 import WallPage from "@/pages/wall";
 import MessagesPage from "@/pages/messages";
+import PlusPage from "@/pages/plus";
+import { PaywallProvider } from "@/components/paywall-dialog";
 
 const queryClient = new QueryClient();
 
@@ -146,6 +148,7 @@ function ClerkProviderWithRoutes() {
       <QueryClientProvider client={queryClient}>
         <ClerkQueryClientCacheInvalidator />
         <AnalyticsTracker />
+        <PaywallProvider>
         <Switch>
           <Route path="/" component={HomeRedirect} />
           <Route path="/sign-in/*?" component={SignInPage} />
@@ -170,9 +173,11 @@ function ClerkProviderWithRoutes() {
           <Route path="/profile/:userId"><ProtectedRoute component={ProfilePage} /></Route>
           <Route path="/messages/:userId"><ProtectedRoute component={MessagesPage} /></Route>
           <Route path="/messages"><ProtectedRoute component={MessagesPage} /></Route>
+          <Route path="/plus"><ProtectedRoute component={PlusPage} /></Route>
           <Route path="/invite/:token" component={InviteAcceptPage} />
           <Route component={NotFound} />
         </Switch>
+        </PaywallProvider>
       </QueryClientProvider>
     </ClerkProvider>
   );
