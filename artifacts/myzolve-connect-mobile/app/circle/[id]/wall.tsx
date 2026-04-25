@@ -1,5 +1,5 @@
 import { Feather } from "@expo/vector-icons";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Modal, Pressable, View } from "react-native";
 import { Image } from "expo-image";
@@ -31,6 +31,7 @@ import {
   MAX_POST_IMAGE_BYTES,
   type LocalPostImage,
 } from "@/lib/postApi";
+import { safeBack } from "@/lib/safeBack";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
@@ -126,6 +127,7 @@ function inferFileName(asset: ImagePicker.ImagePickerAsset, contentType: string)
 export default function WallScreen() {
   const c = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
   const circleId = Number(params.id);
   const { data: posts, isLoading, refetch, isRefetching } = useCirclePosts(circleId);
@@ -258,14 +260,15 @@ export default function WallScreen() {
         onRefresh={refetch}
       >
         <Row justify="space-between" align="center" style={{ marginBottom: 16 }}>
-          <View style={{ flex: 1 }}>
-            <AppText variant="h1">Wall</AppText>
-            <AppText color={c.mutedForeground} style={{ marginTop: 4 }}>
-              Notes, gratitude and shared moments.
-            </AppText>
-          </View>
+          <IconButton icon="arrow-left" onPress={() => safeBack(router)} />
           <IconButton icon="edit-3" bg={c.primary} color="#fff" onPress={() => setOpen(true)} />
         </Row>
+        <View style={{ marginBottom: 16 }}>
+          <AppText variant="h1">Wall</AppText>
+          <AppText color={c.mutedForeground} style={{ marginTop: 4 }}>
+            Notes, gratitude and shared moments.
+          </AppText>
+        </View>
 
         {isLoading ? (
           <Skeleton height={150} />

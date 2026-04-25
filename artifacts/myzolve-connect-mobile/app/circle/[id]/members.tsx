@@ -28,6 +28,7 @@ import {
 } from "@/components/UI";
 import { Screen } from "@/components/Screen";
 import { useColors } from "@/hooks/useColors";
+import { safeBack } from "@/lib/safeBack";
 
 export default function MembersScreen() {
   const c = useColors();
@@ -69,7 +70,7 @@ export default function MembersScreen() {
       <Stack.Screen options={{ title: "Members" }} />
       <Screen contentStyle={{ paddingTop: insets.top + 12 }}>
         <Row justify="space-between" align="center" style={{ marginBottom: 16 }}>
-          <IconButton icon="arrow-left" onPress={() => router.back()} />
+          <IconButton icon="arrow-left" onPress={() => safeBack(router)} />
           <IconButton
             icon="user-plus"
             bg={c.primary}

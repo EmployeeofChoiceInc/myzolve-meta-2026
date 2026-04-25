@@ -11,6 +11,7 @@ import {
 
 import { AppText, Button, Field, IconButton, Input, Row } from "@/components/UI";
 import { useColors } from "@/hooks/useColors";
+import { safeBack } from "@/lib/safeBack";
 
 const URGENCIES: { value: string; label: string }[] = [
   { value: "low", label: "Low" },
@@ -83,7 +84,7 @@ export default function NewRequestScreen() {
           align="center"
           style={{ paddingHorizontal: 16, paddingTop: insets.top + 12, paddingBottom: 8 }}
         >
-          <IconButton icon="arrow-left" onPress={() => router.back()} />
+          <IconButton icon="arrow-left" onPress={() => safeBack(router)} />
           <AppText weight="semibold">Ask for support</AppText>
           <View style={{ width: 40 }} />
         </Row>

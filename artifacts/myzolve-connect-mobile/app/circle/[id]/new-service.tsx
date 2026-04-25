@@ -11,6 +11,7 @@ import {
 
 import { AppText, Button, Field, IconButton, Input, Row } from "@/components/UI";
 import { useColors } from "@/hooks/useColors";
+import { safeBack } from "@/lib/safeBack";
 
 const SERVICE_TYPES: { value: string; label: string }[] = [
   { value: "offer", label: "I'm offering" },
@@ -117,7 +118,7 @@ export default function NewServiceScreen() {
           align="center"
           style={{ paddingHorizontal: 16, paddingTop: insets.top + 12, paddingBottom: 8 }}
         >
-          <IconButton icon="arrow-left" onPress={() => router.back()} />
+          <IconButton icon="arrow-left" onPress={() => safeBack(router)} />
           <AppText weight="semibold">Offer help</AppText>
           <View style={{ width: 40 }} />
         </Row>

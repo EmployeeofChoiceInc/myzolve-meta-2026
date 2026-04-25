@@ -17,6 +17,7 @@ import {
 } from "@/components/UI";
 import { useColors } from "@/hooks/useColors";
 import { formatMoney } from "@/lib/circleTypes";
+import { safeBack } from "@/lib/safeBack";
 
 export default function ServiceDetailScreen() {
   const c = useColors();
@@ -35,7 +36,7 @@ export default function ServiceDetailScreen() {
           align="center"
           style={{ paddingHorizontal: 16, paddingTop: insets.top + 12, paddingBottom: 8 }}
         >
-          <IconButton icon="arrow-left" onPress={() => router.back()} />
+          <IconButton icon="arrow-left" onPress={() => safeBack(router)} />
           <View style={{ width: 40 }} />
         </Row>
 

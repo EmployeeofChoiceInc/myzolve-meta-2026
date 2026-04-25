@@ -22,6 +22,7 @@ import {
   Row,
 } from "@/components/UI";
 import { useColors } from "@/hooks/useColors";
+import { safeBack } from "@/lib/safeBack";
 import {
   MAX_AVATAR_BYTES,
   useAvatarUpload,
@@ -199,7 +200,7 @@ export default function EditProfileScreen() {
     updateMe.mutate(payload, {
       onSuccess: () => {
         Alert.alert("Profile updated", "Your changes have been saved.", [
-          { text: "OK", onPress: () => router.back() },
+          { text: "OK", onPress: () => safeBack(router) },
         ]);
       },
       onError: () => {
@@ -221,7 +222,7 @@ export default function EditProfileScreen() {
             paddingBottom: 8,
           }}
         >
-          <IconButton icon="arrow-left" onPress={() => router.back()} />
+          <IconButton icon="arrow-left" onPress={() => safeBack(router)} />
           <AppText weight="semibold">Edit profile</AppText>
           <View style={{ width: 40 }} />
         </Row>

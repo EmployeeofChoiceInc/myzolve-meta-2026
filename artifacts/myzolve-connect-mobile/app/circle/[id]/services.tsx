@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React from "react";
 import { View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useListServicePosts } from "@workspace/api-client-react";
 
 import {
@@ -17,10 +18,12 @@ import {
 import { Screen } from "@/components/Screen";
 import { useColors } from "@/hooks/useColors";
 import { formatMoney } from "@/lib/circleTypes";
+import { safeBack } from "@/lib/safeBack";
 
 export default function ServicesScreen() {
   const c = useColors();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string }>();
   const circleId = Number(params.id);
   const { data, isLoading, refetch, isRefetching } = useListServicePosts(circleId);
@@ -28,14 +31,13 @@ export default function ServicesScreen() {
   return (
     <>
       <Stack.Screen options={{ title: "Services" }} />
-      <Screen refreshing={isRefetching} onRefresh={refetch}>
+      <Screen
+        contentStyle={{ paddingTop: insets.top + 12 }}
+        refreshing={isRefetching}
+        onRefresh={refetch}
+      >
         <Row justify="space-between" align="center" style={{ marginBottom: 16 }}>
-          <View style={{ flex: 1 }}>
-            <AppText variant="h1">Services</AppText>
-            <AppText color={c.mutedForeground} style={{ marginTop: 4 }}>
-              Skills, time and care being offered.
-            </AppText>
-          </View>
+          <IconButton icon="arrow-left" onPress={() => safeBack(router)} />
           <IconButton
             icon="plus"
             bg={c.primary}
@@ -43,6 +45,12 @@ export default function ServicesScreen() {
             onPress={() => router.push(`/circle/${circleId}/new-service`)}
           />
         </Row>
+        <View style={{ marginBottom: 16 }}>
+          <AppText variant="h1">Services</AppText>
+          <AppText color={c.mutedForeground} style={{ marginTop: 4 }}>
+            Skills, time and care being offered.
+          </AppText>
+        </View>
 
         {isLoading ? (
           <Skeleton height={140} />

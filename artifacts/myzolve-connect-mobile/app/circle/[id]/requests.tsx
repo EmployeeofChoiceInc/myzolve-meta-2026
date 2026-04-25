@@ -1,6 +1,7 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React from "react";
 import { View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useListSupportRequests } from "@workspace/api-client-react";
 
 import {
@@ -22,10 +23,12 @@ import {
   URGENCY_LABELS,
   formatMoney,
 } from "@/lib/circleTypes";
+import { safeBack } from "@/lib/safeBack";
 
 export default function RequestsScreen() {
   const c = useColors();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string }>();
   const circleId = Number(params.id);
   const { data, isLoading, refetch, isRefetching } = useListSupportRequests(circleId);
@@ -33,14 +36,13 @@ export default function RequestsScreen() {
   return (
     <>
       <Stack.Screen options={{ title: "Requests" }} />
-      <Screen refreshing={isRefetching} onRefresh={refetch}>
+      <Screen
+        contentStyle={{ paddingTop: insets.top + 12 }}
+        refreshing={isRefetching}
+        onRefresh={refetch}
+      >
         <Row justify="space-between" align="center" style={{ marginBottom: 16 }}>
-          <View style={{ flex: 1 }}>
-            <AppText variant="h1">Requests</AppText>
-            <AppText color={c.mutedForeground} style={{ marginTop: 4 }}>
-              Asks for support in this circle.
-            </AppText>
-          </View>
+          <IconButton icon="arrow-left" onPress={() => safeBack(router)} />
           <IconButton
             icon="plus"
             bg={c.primary}
@@ -48,6 +50,12 @@ export default function RequestsScreen() {
             onPress={() => router.push(`/circle/${circleId}/new-request`)}
           />
         </Row>
+        <View style={{ marginBottom: 16 }}>
+          <AppText variant="h1">Requests</AppText>
+          <AppText color={c.mutedForeground} style={{ marginTop: 4 }}>
+            Asks for support in this circle.
+          </AppText>
+        </View>
 
         {isLoading ? (
           <Skeleton height={140} />

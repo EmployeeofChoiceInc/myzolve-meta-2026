@@ -9,6 +9,7 @@ import { useGetMe } from "@workspace/api-client-react";
 
 import { AppText, Avatar, IconButton, Row, Skeleton } from "@/components/UI";
 import { useColors } from "@/hooks/useColors";
+import { safeBack } from "@/lib/safeBack";
 import {
   useMarkThreadRead,
   useMessageThread,
@@ -68,7 +69,7 @@ export default function MessageThreadScreen() {
             borderBottomColor: c.border,
           }}
         >
-          <IconButton icon="arrow-left" onPress={() => router.back()} />
+          <IconButton icon="arrow-left" onPress={() => safeBack(router)} />
           {partner && (
             <Pressable
               onPress={() => router.push(`/profile/${partner.id}`)}

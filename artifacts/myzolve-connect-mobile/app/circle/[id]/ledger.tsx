@@ -1,7 +1,8 @@
 import { Feather } from "@expo/vector-icons";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React from "react";
 import { View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { format } from "date-fns";
 import {
   useGetCircle,
@@ -9,10 +10,11 @@ import {
   useGetCircleLedger,
 } from "@workspace/api-client-react";
 
-import { AppText, Card, Empty, Row, Skeleton } from "@/components/UI";
+import { AppText, Card, Empty, IconButton, Row, Skeleton } from "@/components/UI";
 import { Screen } from "@/components/Screen";
 import { useColors } from "@/hooks/useColors";
 import { formatMoney } from "@/lib/circleTypes";
+import { safeBack } from "@/lib/safeBack";
 
 const KIND_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
   money_given: "arrow-up-right",
@@ -36,6 +38,8 @@ const KIND_LABELS: Record<string, string> = {
 
 export default function LedgerScreen() {
   const c = useColors();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ id: string }>();
   const circleId = Number(params.id);
   const { data: circle } = useGetCircle(circleId);
@@ -47,7 +51,14 @@ export default function LedgerScreen() {
   return (
     <>
       <Stack.Screen options={{ title: "Ledger" }} />
-      <Screen refreshing={isRefetching} onRefresh={refetch}>
+      <Screen
+        contentStyle={{ paddingTop: insets.top + 12 }}
+        refreshing={isRefetching}
+        onRefresh={refetch}
+      >
+        <Row align="center" style={{ marginBottom: 16 }}>
+          <IconButton icon="arrow-left" onPress={() => safeBack(router)} />
+        </Row>
         <AppText variant="h1">Ledger</AppText>
         <AppText color={c.mutedForeground} style={{ marginTop: 4, marginBottom: 20 }}>
           A clear, kind record of support flowing through this circle.

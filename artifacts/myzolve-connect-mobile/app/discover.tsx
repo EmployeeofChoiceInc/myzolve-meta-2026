@@ -22,6 +22,7 @@ import {
 import { Screen } from "@/components/Screen";
 import { useColors } from "@/hooks/useColors";
 import { CIRCLE_TYPE_LABELS } from "@/lib/circleTypes";
+import { safeBack } from "@/lib/safeBack";
 
 type DiscoverCircle = {
   id: number;
@@ -103,7 +104,7 @@ export default function DiscoverScreen() {
         onRefresh={refetch}
       >
         <Row align="center" gap={6} style={{ marginBottom: 16 }}>
-          <IconButton icon="arrow-left" onPress={() => router.back()} />
+          <IconButton icon="arrow-left" onPress={() => safeBack(router)} />
         </Row>
         <AppText variant="h1">Discover</AppText>
         <AppText color={c.mutedForeground} style={{ marginTop: 4, marginBottom: 20 }}>

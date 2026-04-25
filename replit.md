@@ -253,3 +253,23 @@ Review for accounts that have zero circles:
    `useGetCircle` errors, so any other code path that lands a
    non-member here (deep links, push notifications, stale lists)
    never gets stranded on a blank skeleton again.
+5. **Trapped on circle subscreens (force-quit-to-escape).**
+   `circle/[id]/_layout.tsx` is a Stack with `headerShown:false`,
+   so each subscreen is responsible for drawing its own header.
+   Five of them — `requests`, `activity`, `ledger`, `services`,
+   `wall` — were drawing the title only, with no back button at
+   all.  iOS edge-swipe was the only way out, which most users
+   never discover; the user had to force-quit and reopen the app to
+   leave "View requests".  Eleven other screens did have a back
+   arrow but called bare `router.back()`, which silently no-ops
+   when the screen is reached with no history (deep links, push
+   notifications, cold-start to a deep route).  Fix: a tiny shared
+   helper `lib/safeBack.ts` that does
+   `canGoBack() ? back() : replace("/(tabs)")`.  Every back arrow
+   in the app now uses it (members, new-request, new-service,
+   settings, discover, messages, profile/edit, profile/[userId],
+   request/[id], service/[id], circle/[id]/index — and the
+   previously trapped five, which all grew a real back arrow + safe
+   area padding).  The two auth screens (sign-in/sign-up) keep
+   bare `router.back()` since their natural fallback (the auth
+   gate) already handles the empty-history case.

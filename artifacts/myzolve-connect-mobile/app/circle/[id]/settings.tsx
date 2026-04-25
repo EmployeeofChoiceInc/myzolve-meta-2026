@@ -23,6 +23,7 @@ import {
   Skeleton,
 } from "@/components/UI";
 import { useColors } from "@/hooks/useColors";
+import { safeBack } from "@/lib/safeBack";
 
 type PrivacyMode = "private" | "hidden" | "open" | "community";
 
@@ -107,7 +108,7 @@ export default function CircleSettingsScreen() {
           qc.invalidateQueries({ queryKey: getGetCircleQueryKey(circleId) });
           qc.invalidateQueries({ queryKey: getListCirclesQueryKey() });
           qc.invalidateQueries({ queryKey: getDiscoverCirclesQueryKey() });
-          router.back();
+          safeBack(router);
         },
         onError: () =>
           Alert.alert("Couldn't save", "Please try again in a moment."),
@@ -128,7 +129,7 @@ export default function CircleSettingsScreen() {
             paddingBottom: 8,
           }}
         >
-          <IconButton icon="arrow-left" onPress={() => router.back()} />
+          <IconButton icon="arrow-left" onPress={() => safeBack(router)} />
           <AppText weight="semibold">Circle Settings</AppText>
           <View style={{ width: 40 }} />
         </Row>
