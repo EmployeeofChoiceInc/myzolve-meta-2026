@@ -21,6 +21,11 @@ export const supportRequestsTable = pgTable("support_requests", {
   createdByUserId: integer("created_by_user_id")
     .notNull()
     .references(() => usersTable.id),
+  actingForUserId: integer("acting_for_user_id").references(
+    () => usersTable.id,
+    { onDelete: "set null" },
+  ),
+  copilotReview: text("copilot_review"),
   onBehalfOfPlaceholderId: integer("on_behalf_of_placeholder_id").references(
     () => placeholderMembersTable.id,
     { onDelete: "set null" },

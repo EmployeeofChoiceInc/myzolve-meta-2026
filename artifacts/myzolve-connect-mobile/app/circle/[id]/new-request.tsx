@@ -10,7 +10,9 @@ import {
 } from "@workspace/api-client-react";
 
 import { AppText, Button, Field, IconButton, Input, Row } from "@/components/UI";
+import { CopilotSwitcher } from "@/components/CopilotSwitcher";
 import { useColors } from "@/hooks/useColors";
+import { useActingForInCircle } from "@/lib/copilot";
 import { safeBack } from "@/lib/safeBack";
 
 const URGENCIES: { value: string; label: string }[] = [
@@ -34,6 +36,7 @@ export default function NewRequestScreen() {
   const circleId = Number(params.id);
   const qc = useQueryClient();
   const create = useCreateSupportRequest();
+  const actingForUserId = useActingForInCircle(circleId);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -63,6 +66,7 @@ export default function NewRequestScreen() {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           urgencyLevel: urgency as any,
           currency: "USD",
+          ...(actingForUserId ? { actingForUserId } : {}),
         },
       },
       {
@@ -96,6 +100,8 @@ export default function NewRequestScreen() {
           <AppText color={c.mutedForeground} style={{ marginBottom: 20 }}>
             Share what would help. Your circle is here for you.
           </AppText>
+
+          <CopilotSwitcher circleId={circleId} testID="new-request-copilot-switcher" />
 
           <Field label="Title">
             <Input

@@ -13,8 +13,8 @@ import {
   servicePostsTable,
   circlePostsTable,
 } from "@workspace/db";
-import { eq, and, desc, isNull, count, inArray } from "drizzle-orm";
-import { assertCircleMember, createNotification, notifyMentions } from "../lib/helpers";
+import { eq, and, desc, isNull, count, inArray, sql } from "drizzle-orm";
+import { assertCircleMember, createNotification, notifyMentions, resolveActingFor } from "../lib/helpers";
 
 const router = Router();
 
@@ -31,6 +31,7 @@ const commentIdParam = z.object({
 const createCommentSchema = z.object({
   body: z.string().min(1).max(2000),
   parentCommentId: z.number().int().positive().optional(),
+  actingForUserId: z.number().int().positive().optional(),
 });
 
 const updateCommentSchema = z.object({
@@ -46,14 +47,24 @@ const gratitudeNoteSchema = z.object({
   targetEntityType: z.enum(["support_request", "service_post"]),
   targetEntityId: z.number().int().positive(),
   recipientUserIds: z.array(z.number().int().positive()).min(1),
+  actingForUserId: z.number().int().positive().optional(),
 });
 
-function commentToApi(comment: typeof commentsTable.$inferSelect, authorName: string, replyCount?: number) {
+function commentToApi(
+  comment: typeof commentsTable.$inferSelect,
+  authorName: string,
+  replyCount?: number,
+  actingFor?: { name: string | null; avatarObjectPath: string | null } | null,
+) {
   return {
     id: comment.id,
     circleId: comment.circleId,
     authorUserId: comment.authorUserId,
     authorName,
+    actingForUserId: comment.actingForUserId ?? null,
+    actingForName: actingFor?.name ?? null,
+    actingForAvatarObjectPath: actingFor?.avatarObjectPath ?? null,
+    copilotReview: comment.copilotReview ?? null,
     targetEntityType: comment.targetEntityType,
     targetEntityId: comment.targetEntityId,
     parentCommentId: comment.parentCommentId,
@@ -63,6 +74,16 @@ function commentToApi(comment: typeof commentsTable.$inferSelect, authorName: st
     createdAt: comment.createdAt,
     updatedAt: comment.updatedAt,
   };
+}
+
+async function loadActingForMap(userIds: (number | null | undefined)[]) {
+  const ids = Array.from(new Set(userIds.filter((v): v is number => typeof v === "number" && v > 0)));
+  if (ids.length === 0) return new Map<number, { name: string | null; avatarObjectPath: string | null }>();
+  const rows = await db
+    .select({ id: usersTable.id, displayName: usersTable.displayName, avatarObjectPath: usersTable.avatarObjectPath })
+    .from(usersTable)
+    .where(sql`${usersTable.id} = ANY(${ids})`);
+  return new Map(rows.map((r) => [r.id, { name: r.displayName, avatarObjectPath: r.avatarObjectPath ?? null }]));
 }
 
 async function assertEntityInCircle(
@@ -151,7 +172,13 @@ router.get(
       .limit(limit)
       .offset(offset);
 
-    res.json(rows.map((r) => commentToApi(r.comment, r.author?.displayName ?? "Someone")));
+    const actingForMap = await loadActingForMap(rows.map((r) => r.comment.actingForUserId));
+    res.json(
+      rows.map((r) => {
+        const af = r.comment.actingForUserId ? actingForMap.get(r.comment.actingForUserId) ?? null : null;
+        return commentToApi(r.comment, r.author?.displayName ?? "Someone", undefined, af);
+      }),
+    );
   },
 );
 
@@ -214,7 +241,13 @@ router.get(
       }
     }
 
-    res.json(rows.map((r) => commentToApi(r.comment, r.author?.displayName ?? "Someone", replyCounts[r.comment.id] ?? 0)));
+    const actingForMap = await loadActingForMap(rows.map((r) => r.comment.actingForUserId));
+    res.json(
+      rows.map((r) => {
+        const af = r.comment.actingForUserId ? actingForMap.get(r.comment.actingForUserId) ?? null : null;
+        return commentToApi(r.comment, r.author?.displayName ?? "Someone", replyCounts[r.comment.id] ?? 0, af);
+      }),
+    );
   },
 );
 
@@ -226,7 +259,7 @@ router.post(
   async (req, res) => {
     const userId = req.dbUser!.id;
     const { circleId, entityType, entityId } = req.params as unknown as { circleId: number; entityType: string; entityId: number };
-    const { body, parentCommentId } = req.body;
+    const { body, parentCommentId, actingForUserId } = req.body;
 
     const member = await assertCircleMember(circleId, userId);
     if (!member) {
@@ -262,11 +295,23 @@ router.post(
       }
     }
 
+    let actingFor: { actingForUserId: number; actingForName: string } | null = null;
+    if (actingForUserId) {
+      try {
+        actingFor = await resolveActingFor({ circleId, helperUserId: userId, actingForUserId });
+      } catch (e) {
+        res.status(403).json({ error: e instanceof Error ? e.message : "Co-pilot check failed" });
+        return;
+      }
+    }
+
     const [comment] = await db
       .insert(commentsTable)
       .values({
         circleId,
         authorUserId: userId,
+        actingForUserId: actingFor?.actingForUserId ?? null,
+        copilotReview: actingFor ? "pending" : null,
         targetEntityType: entityType,
         targetEntityId: entityId,
         parentCommentId: parentCommentId ?? null,
@@ -276,6 +321,7 @@ router.post(
       .returning();
 
     const authorName = req.dbUser!.displayName;
+    const attribution = actingFor ? `${authorName} (for ${actingFor.actingForName})` : authorName;
 
     if (entity.ownerId && entity.ownerId !== userId) {
       await createNotification({
@@ -283,7 +329,7 @@ router.post(
         circleId,
         notificationType: "new_comment",
         title: "New comment on your post",
-        body: `${authorName}: "${body.slice(0, 120)}${body.length > 120 ? "…" : ""}"`,
+        body: `${attribution}: "${body.slice(0, 120)}${body.length > 120 ? "…" : ""}"`,
         targetEntityType: entityType,
         targetEntityId: entityId,
       });
@@ -293,14 +339,27 @@ router.post(
       circleId,
       body,
       actorUserId: userId,
-      actorName: authorName,
+      actorName: attribution,
       targetEntityType: entityType,
       targetEntityId: entityId,
       excludeUserIds: entity.ownerId ? [entity.ownerId] : [],
       context: entityType === "circle_post" ? "in a wall comment" : "in a comment",
     });
 
-    res.status(201).json(commentToApi(comment, authorName));
+    if (actingFor) {
+      await createNotification({
+        userId: actingFor.actingForUserId,
+        circleId,
+        notificationType: "copilot_post_made",
+        title: `${authorName} commented for you`,
+        body: `"${body.slice(0, 120)}${body.length > 120 ? "…" : ""}"`,
+        targetEntityType: "comment",
+        targetEntityId: comment.id,
+      });
+    }
+
+    const actingForInfo = actingFor ? { name: actingFor.actingForName, avatarObjectPath: null } : null;
+    res.status(201).json(commentToApi(comment, authorName, undefined, actingForInfo));
   },
 );
 
@@ -499,7 +558,7 @@ router.post(
   async (req, res) => {
     const userId = req.dbUser!.id;
     const circleId = parseInt(String(req.params.circleId));
-    const { message, targetEntityType, targetEntityId, recipientUserIds } = req.body;
+    const { message, targetEntityType, targetEntityId, recipientUserIds, actingForUserId } = req.body;
 
     const member = await assertCircleMember(circleId, userId);
     if (!member) {
@@ -523,11 +582,23 @@ router.post(
       return;
     }
 
+    let actingFor: { actingForUserId: number; actingForName: string } | null = null;
+    if (actingForUserId) {
+      try {
+        actingFor = await resolveActingFor({ circleId, helperUserId: userId, actingForUserId });
+      } catch (e) {
+        res.status(403).json({ error: e instanceof Error ? e.message : "Co-pilot check failed" });
+        return;
+      }
+    }
+
     const [note] = await db
       .insert(gratitudeNotesTable)
       .values({
         circleId,
         senderUserId: userId,
+        actingForUserId: actingFor?.actingForUserId ?? null,
+        copilotReview: actingFor ? "pending" : null,
         targetEntityType,
         targetEntityId,
         recipientUserIds: JSON.stringify(recipientUserIds),
@@ -536,15 +607,28 @@ router.post(
       .returning();
 
     const senderName = req.dbUser!.displayName;
+    const attribution = actingFor ? `${senderName} (for ${actingFor.actingForName})` : senderName;
     for (const recipientId of recipientUserIds) {
       await createNotification({
         userId: recipientId,
         circleId,
         notificationType: "gratitude_received",
         title: "You received a gratitude note",
-        body: `${senderName} sent you a thank-you: "${message.slice(0, 80)}${message.length > 80 ? "…" : ""}"`,
+        body: `${attribution} sent you a thank-you: "${message.slice(0, 80)}${message.length > 80 ? "…" : ""}"`,
         targetEntityType,
         targetEntityId,
+      });
+    }
+
+    if (actingFor) {
+      await createNotification({
+        userId: actingFor.actingForUserId,
+        circleId,
+        notificationType: "copilot_post_made",
+        title: `${senderName} sent gratitude for you`,
+        body: `"${message.slice(0, 120)}${message.length > 120 ? "…" : ""}"`,
+        targetEntityType: "gratitude_note",
+        targetEntityId: note.id,
       });
     }
 
@@ -552,6 +636,10 @@ router.post(
       id: note.id,
       circleId: note.circleId,
       senderUserId: note.senderUserId,
+      senderName,
+      actingForUserId: note.actingForUserId ?? null,
+      actingForName: actingFor?.actingForName ?? null,
+      copilotReview: note.copilotReview ?? null,
       targetEntityType: note.targetEntityType,
       targetEntityId: note.targetEntityId,
       recipientUserIds,

@@ -15,6 +15,7 @@ import {
   Row,
   Skeleton,
 } from "@/components/UI";
+import { CopilotAttribution } from "@/components/CopilotSwitcher";
 import { Screen } from "@/components/Screen";
 import { useColors } from "@/hooks/useColors";
 import {
@@ -98,6 +99,14 @@ export default function RequestsScreen() {
                   <AppText variant="caption" color={c.mutedForeground} style={{ marginTop: 2 }}>
                     by {req.createdByName}
                   </AppText>
+                  {req.actingForUserId && req.actingForName ? (
+                    <CopilotAttribution
+                      helperName={req.createdByName}
+                      forName={req.actingForName}
+                      review={req.copilotReview}
+                      size="compact"
+                    />
+                  ) : null}
                   {req.description ? (
                     <AppText
                       color={c.mutedForeground}

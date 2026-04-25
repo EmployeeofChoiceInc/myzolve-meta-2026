@@ -431,6 +431,19 @@ export interface CreateInvitationBody {
   customMessage?: string;
 }
 
+/**
+ * @nullable
+ */
+export type SupportRequestCopilotReview =
+  | (typeof SupportRequestCopilotReview)[keyof typeof SupportRequestCopilotReview]
+  | null;
+
+export const SupportRequestCopilotReview = {
+  pending: "pending",
+  approved: "approved",
+  flagged: "flagged",
+} as const;
+
 export type SupportRequestRequestType =
   (typeof SupportRequestRequestType)[keyof typeof SupportRequestRequestType];
 
@@ -503,6 +516,14 @@ export interface SupportRequest {
   /** @nullable */
   onBehalfOfPlaceholderId?: number | null;
   createdByName: string;
+  /** @nullable */
+  actingForUserId?: number | null;
+  /** @nullable */
+  actingForName?: string | null;
+  /** @nullable */
+  actingForAvatarObjectPath?: string | null;
+  /** @nullable */
+  copilotReview?: SupportRequestCopilotReview;
   title: string;
   /** @nullable */
   description?: string | null;
@@ -673,6 +694,8 @@ export interface CreateSupportRequestBody {
   dueDate?: string;
   /** ID of a placeholder member this request is being made on behalf of (must belong to the same circle) */
   onBehalfOfPlaceholderId?: number;
+  /** ID of a circle member you have an active co-pilot grant for; the request is attributed to them with you as the helper */
+  actingForUserId?: number;
 }
 
 export type UpdateSupportRequestBodyUrgencyLevel =
@@ -1141,6 +1164,8 @@ export const UpdateNotificationPreferencesBodyPreferencesItemNotificationType =
     circle_update: "circle_update",
     mention_received: "mention_received",
     care_calendar_reminder: "care_calendar_reminder",
+    copilot_invite_received: "copilot_invite_received",
+    copilot_post_made: "copilot_post_made",
   } as const;
 
 export type UpdateNotificationPreferencesBodyPreferencesItem = {
@@ -1277,11 +1302,32 @@ export interface RegisterDeviceTokenBody {
   platform: RegisterDeviceTokenBodyPlatform;
 }
 
+/**
+ * @nullable
+ */
+export type CommentCopilotReview =
+  | (typeof CommentCopilotReview)[keyof typeof CommentCopilotReview]
+  | null;
+
+export const CommentCopilotReview = {
+  pending: "pending",
+  approved: "approved",
+  flagged: "flagged",
+} as const;
+
 export interface Comment {
   id: number;
   circleId: number;
   authorUserId: number;
   authorName: string;
+  /** @nullable */
+  actingForUserId?: number | null;
+  /** @nullable */
+  actingForName?: string | null;
+  /** @nullable */
+  actingForAvatarObjectPath?: string | null;
+  /** @nullable */
+  copilotReview?: CommentCopilotReview;
   targetEntityType: string;
   targetEntityId: number;
   /** @nullable */
@@ -1300,6 +1346,8 @@ export interface CreateCommentBody {
    */
   body: string;
   parentCommentId?: number;
+  /** ID of a circle member you have an active co-pilot grant for; the comment is attributed to them with you as the helper */
+  actingForUserId?: number;
 }
 
 export type ReactionSummaryCounts = { [key: string]: number };
@@ -1315,10 +1363,31 @@ export interface ReactionToggleResult {
   reactionType: string;
 }
 
+/**
+ * @nullable
+ */
+export type GratitudeNoteCopilotReview =
+  | (typeof GratitudeNoteCopilotReview)[keyof typeof GratitudeNoteCopilotReview]
+  | null;
+
+export const GratitudeNoteCopilotReview = {
+  pending: "pending",
+  approved: "approved",
+  flagged: "flagged",
+} as const;
+
 export interface GratitudeNote {
   id: number;
   circleId: number;
   senderUserId: number;
+  /** @nullable */
+  senderName?: string | null;
+  /** @nullable */
+  actingForUserId?: number | null;
+  /** @nullable */
+  actingForName?: string | null;
+  /** @nullable */
+  copilotReview?: GratitudeNoteCopilotReview;
   targetEntityType: string;
   targetEntityId: number;
   recipientUserIds: number[];
@@ -1344,6 +1413,8 @@ export interface CreateGratitudeNoteBody {
   targetEntityId: number;
   /** @minItems 1 */
   recipientUserIds: number[];
+  /** ID of a circle member you have an active co-pilot grant for; the gratitude is attributed to them with you as the helper */
+  actingForUserId?: number;
 }
 
 export type DisputeTargetEntityType =
@@ -1538,6 +1609,51 @@ export interface UploadUrlResponse {
   metadata?: UploadUrlRequest;
 }
 
+export type CopilotGrantStatus =
+  (typeof CopilotGrantStatus)[keyof typeof CopilotGrantStatus];
+
+export const CopilotGrantStatus = {
+  pending: "pending",
+  active: "active",
+  declined: "declined",
+  revoked: "revoked",
+} as const;
+
+export interface CopilotGrant {
+  id: number;
+  circleId: number;
+  /** @nullable */
+  circleName?: string | null;
+  grantorUserId: number;
+  /** @nullable */
+  grantorName?: string | null;
+  /** @nullable */
+  grantorAvatarObjectPath?: string | null;
+  helperUserId: number;
+  /** @nullable */
+  helperName?: string | null;
+  /** @nullable */
+  helperAvatarObjectPath?: string | null;
+  status: CopilotGrantStatus;
+  invitedAt: string;
+  /** @nullable */
+  respondedAt?: string | null;
+  /** @nullable */
+  revokedAt?: string | null;
+}
+
+export interface CopilotGrantLists {
+  /** Grants where I am the represented member (helpers acting on my behalf) */
+  peopleWhoHelpMe: CopilotGrant[];
+  /** Grants where I am the helper (acting on someone else's behalf) */
+  peopleIHelp: CopilotGrant[];
+}
+
+export interface InviteCopilotBody {
+  /** ID of the circle member you want to invite as your co-pilot */
+  helperUserId: number;
+}
+
 /**
  * Bad request
  */
@@ -1652,4 +1768,22 @@ export type ListUpcomingCareDatesParams = {
 
 export type UnregisterDeviceToken200 = {
   success: boolean;
+};
+
+export type ReviewCopilotPostBodyReview =
+  (typeof ReviewCopilotPostBodyReview)[keyof typeof ReviewCopilotPostBodyReview];
+
+export const ReviewCopilotPostBodyReview = {
+  approved: "approved",
+  flagged: "flagged",
+} as const;
+
+export type ReviewCopilotPostBody = {
+  review: ReviewCopilotPostBodyReview;
+};
+
+export type ReviewCopilotPost200 = {
+  entityType: string;
+  entityId: number;
+  review: string;
 };

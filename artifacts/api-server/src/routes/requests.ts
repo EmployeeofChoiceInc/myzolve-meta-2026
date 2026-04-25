@@ -18,7 +18,7 @@ import {
   type Repayment,
 } from "@workspace/db";
 import { eq, and, sql, desc } from "drizzle-orm";
-import { createNotification, createAuditLog, assertCircleMember, getUserName } from "../lib/helpers";
+import { createNotification, createAuditLog, assertCircleMember, getUserName, resolveActingFor } from "../lib/helpers";
 
 const router = Router();
 
@@ -36,6 +36,7 @@ const createRequestSchema = z.object({
   privacyLevel: z.enum(["standard", "sensitive", "fully_private"]).optional().default("standard"),
   dueDate: z.string().datetime().optional(),
   onBehalfOfPlaceholderId: z.number().int().positive().optional(),
+  actingForUserId: z.number().int().positive().optional(),
 });
 
 const createContributionSchema = z.object({
@@ -106,7 +107,11 @@ async function getRequestWithVisibilityCheck(requestId: number, userId: number) 
   return { req: row, member, isAdminOrOwner, isCreator };
 }
 
-function requestToApi(req: SupportRequest, createdByName: string) {
+function requestToApi(
+  req: SupportRequest,
+  createdByName: string,
+  actingFor?: { name: string | null; avatarObjectPath: string | null } | null,
+) {
   const isEmergencyExpired =
     req.dueDate &&
     req.dueDate < new Date() &&
@@ -118,6 +123,10 @@ function requestToApi(req: SupportRequest, createdByName: string) {
     createdByUserId: req.createdByUserId,
     onBehalfOfPlaceholderId: req.onBehalfOfPlaceholderId ?? null,
     createdByName,
+    actingForUserId: req.actingForUserId ?? null,
+    actingForName: actingFor?.name ?? null,
+    actingForAvatarObjectPath: actingFor?.avatarObjectPath ?? null,
+    copilotReview: req.copilotReview ?? null,
     title: req.title,
     description: req.description,
     amountRequested: parseFloat(req.amountRequested),
@@ -136,6 +145,28 @@ function requestToApi(req: SupportRequest, createdByName: string) {
     createdAt: req.createdAt,
     updatedAt: req.updatedAt,
   };
+}
+
+async function loadActingForOne(actingForUserId: number | null | undefined) {
+  if (!actingForUserId) return null;
+  const row = await db
+    .select({ displayName: usersTable.displayName, avatarObjectPath: usersTable.avatarObjectPath })
+    .from(usersTable)
+    .where(eq(usersTable.id, actingForUserId))
+    .limit(1)
+    .then((r) => r[0] ?? null);
+  if (!row) return null;
+  return { name: row.displayName, avatarObjectPath: row.avatarObjectPath ?? null };
+}
+
+async function loadActingForMap(userIds: (number | null | undefined)[]) {
+  const ids = Array.from(new Set(userIds.filter((v): v is number => typeof v === "number" && v > 0)));
+  if (ids.length === 0) return new Map<number, { name: string | null; avatarObjectPath: string | null }>();
+  const rows = await db
+    .select({ id: usersTable.id, displayName: usersTable.displayName, avatarObjectPath: usersTable.avatarObjectPath })
+    .from(usersTable)
+    .where(sql`${usersTable.id} = ANY(${ids})`);
+  return new Map(rows.map((r) => [r.id, { name: r.displayName, avatarObjectPath: r.avatarObjectPath ?? null }]));
 }
 
 function contributionToApi(c: Contribution, contributorName: string) {
@@ -194,8 +225,12 @@ router.get("/circles/:circleId/requests", requireAuth, validateParams(circleIdPa
     filtered = filtered.filter((r) => r.req.category === category);
   }
 
+  const actingForMap = await loadActingForMap(filtered.map((r) => r.req.actingForUserId));
   res.json(
-    filtered.map((r) => requestToApi(r.req, r.user.displayName)),
+    filtered.map((r) => {
+      const af = r.req.actingForUserId ? actingForMap.get(r.req.actingForUserId) ?? null : null;
+      return requestToApi(r.req, r.user.displayName, af);
+    }),
   );
 });
 
@@ -223,6 +258,7 @@ router.post("/circles/:circleId/requests", requireAuth, validateParams(circleIdP
     privacyLevel = "standard",
     dueDate,
     onBehalfOfPlaceholderId,
+    actingForUserId,
   } = req.body;
 
   if (onBehalfOfPlaceholderId != null) {
@@ -236,12 +272,24 @@ router.post("/circles/:circleId/requests", requireAuth, validateParams(circleIdP
     }
   }
 
+  let actingFor: { actingForUserId: number; actingForName: string } | null = null;
+  if (actingForUserId) {
+    try {
+      actingFor = await resolveActingFor({ circleId, helperUserId: userId, actingForUserId });
+    } catch (e) {
+      res.status(403).json({ error: e instanceof Error ? e.message : "Co-pilot check failed" });
+      return;
+    }
+  }
+
   const [supportReq] = await db
     .insert(supportRequestsTable)
     .values({
       circleId,
       createdByUserId: userId,
       onBehalfOfPlaceholderId: onBehalfOfPlaceholderId ?? null,
+      actingForUserId: actingFor?.actingForUserId ?? null,
+      copilotReview: actingFor ? "pending" : null,
       title,
       description,
       amountRequested: String(amountRequested),
@@ -259,6 +307,7 @@ router.post("/circles/:circleId/requests", requireAuth, validateParams(circleIdP
     .returning();
 
   const userName = await getUserName(userId);
+  const attribution = actingFor ? `${userName} (for ${actingFor.actingForName})` : userName;
 
   await db.insert(activityFeedItemsTable).values({
     circleId,
@@ -266,7 +315,7 @@ router.post("/circles/:circleId/requests", requireAuth, validateParams(circleIdP
     activityType: "request_posted",
     targetEntityType: "support_request",
     targetEntityId: supportReq.id,
-    summaryText: `${userName} posted a support request: "${title}"`,
+    summaryText: `${attribution} posted a support request: "${title}"`,
   });
 
   await createAuditLog({
@@ -275,7 +324,13 @@ router.post("/circles/:circleId/requests", requireAuth, validateParams(circleIdP
     action: "request_created",
     targetEntityType: "support_request",
     targetEntityId: supportReq.id,
-    metadata: { title, amountRequested, requestType, visibilityScope },
+    metadata: {
+      title,
+      amountRequested,
+      requestType,
+      visibilityScope,
+      ...(actingFor && { actingForUserId: actingFor.actingForUserId, viaCopilot: true }),
+    },
   });
 
   const circleMembers = await db
@@ -290,14 +345,29 @@ router.post("/circles/:circleId/requests", requireAuth, validateParams(circleIdP
       userId: cm.memberId,
       circleId,
       notificationType: "new_request",
-      title: `${urgencyPrefix}${userName} posted a support request`,
+      title: `${urgencyPrefix}${attribution} posted a support request`,
       body: `"${title}" — $${amountRequested} needed`,
       targetEntityType: "support_request",
       targetEntityId: supportReq.id,
     });
   }
 
-  res.status(201).json(requestToApi(supportReq, userName));
+  if (actingFor) {
+    await createNotification({
+      userId: actingFor.actingForUserId,
+      circleId,
+      notificationType: "copilot_post_made",
+      title: `${userName} posted a request for you`,
+      body: `"${title}" — tap to review or flag`,
+      targetEntityType: "support_request",
+      targetEntityId: supportReq.id,
+    });
+  }
+
+  const actingForInfo = actingFor
+    ? { name: actingFor.actingForName, avatarObjectPath: null }
+    : null;
+  res.status(201).json(requestToApi(supportReq, userName, actingForInfo));
 });
 
 router.get("/requests/:requestId", requireAuth, validateParams(requestIdParam), async (req, res) => {
@@ -353,8 +423,11 @@ router.get("/requests/:requestId", requireAuth, validateParams(requestIdParam), 
     .limit(1)
     .then((r) => r[0] ?? null);
 
+  const actingForMap = await loadActingForMap([row.req.actingForUserId]);
+  const actingForInfo = row.req.actingForUserId ? actingForMap.get(row.req.actingForUserId) ?? null : null;
+
   res.json({
-    ...requestToApi(row.req, row.user.displayName),
+    ...requestToApi(row.req, row.user.displayName, actingForInfo),
     contributions,
     repaymentPlan: repaymentPlan
       ? {
@@ -414,7 +487,8 @@ router.patch("/requests/:requestId", requireAuth, validateParams(requestIdParam)
     .returning();
 
   const userName = await getUserName(updated.createdByUserId);
-  res.json(requestToApi(updated, userName));
+  const actingFor = await loadActingForOne(updated.actingForUserId);
+  res.json(requestToApi(updated, userName, actingFor));
 });
 
 router.post("/requests/:requestId/cancel", requireAuth, validateParams(requestIdParam), async (req, res) => {
@@ -439,7 +513,8 @@ router.post("/requests/:requestId/cancel", requireAuth, validateParams(requestId
     .returning();
 
   const userName = await getUserName(updated.createdByUserId);
-  res.json(requestToApi(updated, userName));
+  const actingFor = await loadActingForOne(updated.actingForUserId);
+  res.json(requestToApi(updated, userName, actingFor));
 });
 
 router.post("/requests/:requestId/complete", requireAuth, validateParams(requestIdParam), async (req, res) => {
@@ -474,7 +549,8 @@ router.post("/requests/:requestId/complete", requireAuth, validateParams(request
     summaryText: `"${access.req.title}" has been marked as completed`,
   });
 
-  res.json(requestToApi(updated, userName));
+  const actingFor = await loadActingForOne(updated.actingForUserId);
+  res.json(requestToApi(updated, userName, actingFor));
 });
 
 router.post("/requests/:requestId/expire", requireAuth, validateParams(requestIdParam), async (req, res) => {
@@ -522,7 +598,8 @@ router.post("/requests/:requestId/expire", requireAuth, validateParams(requestId
     metadata: { urgencyLevel: existing.urgencyLevel, requestType: existing.requestType, dueDate: existing.dueDate },
   });
 
-  res.json(requestToApi(updated, userName));
+  const actingFor = await loadActingForOne(updated.actingForUserId);
+  res.json(requestToApi(updated, userName, actingFor));
 });
 
 router.get("/requests/:requestId/contributions", requireAuth, validateParams(requestIdParam), async (req, res) => {
@@ -696,7 +773,8 @@ router.post("/requests/:requestId/confirm-receipt", requireAuth, validateParams(
     .returning();
 
   const userName = await getUserName(userId);
-  res.json(requestToApi(updated, userName));
+  const actingFor = await loadActingForOne(updated.actingForUserId);
+  res.json(requestToApi(updated, userName, actingFor));
 });
 
 router.post("/contributions/:contributionId/forgive", requireAuth, validateParams(contributionIdParam), async (req, res) => {

@@ -11,6 +11,10 @@ export interface CirclePost {
   body: string;
   imageObjectPath: string | null;
   createdAt: string;
+  actingForUserId?: number | null;
+  actingForName?: string | null;
+  actingForAvatarObjectPath?: string | null;
+  copilotReview?: string | null;
 }
 
 export interface UserProfile {
@@ -40,7 +44,12 @@ export function useCirclePosts(circleId: number) {
 export function useCreateCirclePost(circleId: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { title?: string; body: string; imageObjectPath?: string }) =>
+    mutationFn: (data: {
+      title?: string;
+      body: string;
+      imageObjectPath?: string;
+      actingForUserId?: number;
+    }) =>
       customFetch<CirclePost>(`/api/circles/${circleId}/posts`, {
         method: "POST",
         body: JSON.stringify(data),

@@ -128,6 +128,11 @@ export const circlePostsTable = pgTable("circle_posts", {
   authorUserId: integer("author_user_id")
     .notNull()
     .references(() => usersTable.id, { onDelete: "cascade" }),
+  actingForUserId: integer("acting_for_user_id").references(
+    () => usersTable.id,
+    { onDelete: "set null" },
+  ),
+  copilotReview: text("copilot_review"),
   title: text("title"),
   body: text("body").notNull(),
   imageObjectPath: text("image_object_path"),

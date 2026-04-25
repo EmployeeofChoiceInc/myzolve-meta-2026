@@ -50,6 +50,8 @@ tags:
     description: Push notification device token registration
   - name: care-calendar
     description: Care calendar (shared meaningful dates)
+  - name: copilot
+    description: Co-pilot grants (helpers acting on behalf of another circle member)
 
 paths:
   /healthz:
@@ -2214,6 +2216,191 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  # ── Co-pilot grants ───────────────────────────────────────────────────────────
+  /copilot/grants:
+    get:
+      operationId: listCopilotGrants
+      tags: [copilot]
+      summary: List co-pilot grants where I am the grantor or the helper
+      security: [{ clerk: [] }]
+      responses:
+        "200":
+          description: Both directions of co-pilot relationships
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CopilotGrantLists"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /circles/{circleId}/copilot/grants:
+    get:
+      operationId: listCircleCopilotGrants
+      tags: [copilot]
+      summary: List co-pilot grants in a circle that involve the current user
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      responses:
+        "200":
+          description: Co-pilot grants in this circle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CopilotGrantLists"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: inviteCopilot
+      tags: [copilot]
+      summary: Invite another circle member to be my co-pilot in this circle
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InviteCopilotBody"
+      responses:
+        "201":
+          description: Pending grant created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CopilotGrant"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /copilot/grants/{grantId}/accept:
+    post:
+      operationId: acceptCopilotGrant
+      tags: [copilot]
+      summary: Helper accepts a pending co-pilot invitation
+      security: [{ clerk: [] }]
+      parameters:
+        - name: grantId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Grant activated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CopilotGrant"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /copilot/grants/{grantId}/decline:
+    post:
+      operationId: declineCopilotGrant
+      tags: [copilot]
+      summary: Helper declines a pending co-pilot invitation
+      security: [{ clerk: [] }]
+      parameters:
+        - name: grantId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Grant declined
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CopilotGrant"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /copilot/grants/{grantId}/revoke:
+    post:
+      operationId: revokeCopilotGrant
+      tags: [copilot]
+      summary: Either party revokes an active or pending co-pilot grant
+      security: [{ clerk: [] }]
+      parameters:
+        - name: grantId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Grant revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CopilotGrant"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /copilot/posts/{entityType}/{entityId}/review:
+    post:
+      operationId: reviewCopilotPost
+      tags: [copilot]
+      summary: Represented member marks a co-piloted post as approved or flagged
+      security: [{ clerk: [] }]
+      parameters:
+        - name: entityType
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [support_request, comment, gratitude_note, circle_post]
+        - name: entityId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                review:
+                  type: string
+                  enum: [approved, flagged]
+              required: [review]
+      responses:
+        "200":
+          description: Review recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entityType: { type: string }
+                  entityId: { type: integer }
+                  review: { type: string }
+                required: [entityType, entityId, review]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     clerk:
@@ -2704,6 +2891,15 @@ components:
           type: ["integer", "null"]
         createdByName:
           type: string
+        actingForUserId:
+          type: ["integer", "null"]
+        actingForName:
+          type: ["string", "null"]
+        actingForAvatarObjectPath:
+          type: ["string", "null"]
+        copilotReview:
+          type: ["string", "null"]
+          enum: [pending, approved, flagged, null]
         title:
           type: string
         description:
@@ -2827,6 +3023,9 @@ components:
         onBehalfOfPlaceholderId:
           type: integer
           description: ID of a placeholder member this request is being made on behalf of (must belong to the same circle)
+        actingForUserId:
+          type: integer
+          description: ID of a circle member you have an active co-pilot grant for; the request is attributed to them with you as the helper
       required:
         - title
         - amountRequested
@@ -3464,6 +3663,8 @@ components:
                   - circle_update
                   - mention_received
                   - care_calendar_reminder
+                  - copilot_invite_received
+                  - copilot_post_made
               enabled:
                 type: boolean
             required: [notificationType, enabled]
@@ -3604,6 +3805,15 @@ components:
           type: integer
         authorName:
           type: string
+        actingForUserId:
+          type: ["integer", "null"]
+        actingForName:
+          type: ["string", "null"]
+        actingForAvatarObjectPath:
+          type: ["string", "null"]
+        copilotReview:
+          type: ["string", "null"]
+          enum: [pending, approved, flagged, null]
         targetEntityType:
           type: string
         targetEntityId:
@@ -3644,6 +3854,9 @@ components:
           maxLength: 2000
         parentCommentId:
           type: integer
+        actingForUserId:
+          type: integer
+          description: ID of a circle member you have an active co-pilot grant for; the comment is attributed to them with you as the helper
       required:
         - body
 
@@ -3685,6 +3898,15 @@ components:
           type: integer
         senderUserId:
           type: integer
+        senderName:
+          type: ["string", "null"]
+        actingForUserId:
+          type: ["integer", "null"]
+        actingForName:
+          type: ["string", "null"]
+        copilotReview:
+          type: ["string", "null"]
+          enum: [pending, approved, flagged, null]
         targetEntityType:
           type: string
         targetEntityId:
@@ -3725,6 +3947,9 @@ components:
           items:
             type: integer
           minItems: 1
+        actingForUserId:
+          type: integer
+          description: ID of a circle member you have an active co-pilot grant for; the gratitude is attributed to them with you as the helper
       required:
         - message
         - targetEntityType
@@ -4007,3 +4232,71 @@ components:
       required:
         - uploadURL
         - objectPath
+
+    # ── Co-pilot grants ───────────────────────────────────────────────────────
+    CopilotGrant:
+      type: object
+      properties:
+        id:
+          type: integer
+        circleId:
+          type: integer
+        circleName:
+          type: ["string", "null"]
+        grantorUserId:
+          type: integer
+        grantorName:
+          type: ["string", "null"]
+        grantorAvatarObjectPath:
+          type: ["string", "null"]
+        helperUserId:
+          type: integer
+        helperName:
+          type: ["string", "null"]
+        helperAvatarObjectPath:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, active, declined, revoked]
+        invitedAt:
+          type: string
+          format: date-time
+        respondedAt:
+          type: ["string", "null"]
+          format: date-time
+        revokedAt:
+          type: ["string", "null"]
+          format: date-time
+      required:
+        - id
+        - circleId
+        - grantorUserId
+        - helperUserId
+        - status
+        - invitedAt
+
+    CopilotGrantLists:
+      type: object
+      properties:
+        peopleWhoHelpMe:
+          type: array
+          description: Grants where I am the represented member (helpers acting on my behalf)
+          items:
+            $ref: "#/components/schemas/CopilotGrant"
+        peopleIHelp:
+          type: array
+          description: Grants where I am the helper (acting on someone else's behalf)
+          items:
+            $ref: "#/components/schemas/CopilotGrant"
+      required:
+        - peopleWhoHelpMe
+        - peopleIHelp
+
+    InviteCopilotBody:
+      type: object
+      properties:
+        helperUserId:
+          type: integer
+          description: ID of the circle member you want to invite as your co-pilot
+      required:
+        - helperUserId

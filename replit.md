@@ -109,6 +109,14 @@ All endpoints prefixed with `/api`.
 - `GET /circles/:id/ledger` — ledger entries
 - `GET /circles/:id/ledger/summary` — ledger summary
 - `GET /circles/:id/dashboard` — dashboard summary
+- `GET /copilot/grants` — list co-pilot grants for current user (helpers + grantors)
+- `GET/POST /circles/:id/copilot/grants` — list circle co-pilot grants / invite a co-pilot
+- `POST /copilot/grants/:id/accept|decline|revoke` — co-pilot grant lifecycle
+- `POST /copilot/posts/:entityType/:entityId/review` — grantor approve/flag a co-pilot's post
+
+## Co-pilot for elders
+
+A circle member can invite a trusted helper (free) to post requests, comments, gratitude, and wall posts on their behalf. Every entry created by a helper carries an `actingForUserId` plus a `copilotReview` workflow state ("pending", "approved", or "flagged"). The grantor is notified via `copilot_post_made` and can approve or flag inline from the alerts tab. Mobile shows a tinted "Posting as Helper for [Member]" switcher in compose flows when grants exist, and renders a clear `[Helper] posted for [Member]` attribution on cards/details. Settings exposes "People who help me" (active + pending invitations) and "People I help" (active arrangements + pending invites to accept/decline) with invite, accept, decline and revoke actions. Web is deferred.
 
 ## Language Rules (Product Voice)
 

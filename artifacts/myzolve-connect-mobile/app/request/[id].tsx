@@ -32,6 +32,7 @@ import {
   Row,
   Skeleton,
 } from "@/components/UI";
+import { CopilotAttribution } from "@/components/CopilotSwitcher";
 import { useColors } from "@/hooks/useColors";
 import { safeBack } from "@/lib/safeBack";
 import {
@@ -225,13 +226,20 @@ export default function RequestDetailScreen() {
               <AppText variant="h1">{req.title}</AppText>
               <Row gap={10} align="center" style={{ marginTop: 12 }}>
                 <Avatar name={req.createdByName} size={36} />
-                <View>
+                <View style={{ flex: 1 }}>
                   <AppText weight="medium">{req.createdByName}</AppText>
                   <AppText variant="caption" color={c.mutedForeground}>
                     {formatDistanceToNow(new Date(req.createdAt), { addSuffix: true })}
                   </AppText>
                 </View>
               </Row>
+              {req.actingForUserId && req.actingForName ? (
+                <CopilotAttribution
+                  helperName={req.createdByName}
+                  forName={req.actingForName}
+                  review={req.copilotReview}
+                />
+              ) : null}
 
               {req.description ? (
                 <Card style={{ marginTop: 16 }}>

@@ -1,5 +1,5 @@
 import { db } from "@workspace/db";
-import { circleMembersTable, usersTable, notificationsTable, auditLogsTable, notificationPreferencesTable } from "@workspace/db";
+import { circleMembersTable, usersTable, notificationsTable, auditLogsTable, notificationPreferencesTable, copilotGrantsTable } from "@workspace/db";
 import { eq, and, inArray, ne } from "drizzle-orm";
 import { dispatchPushToUser } from "./pushNotifications";
 
@@ -136,6 +136,60 @@ export async function notifyMentions(params: {
       });
     }
   }
+}
+
+/**
+ * Returns an active co-pilot grant for the given (circle, helper -> grantor) pair,
+ * or null when no such active grant exists. Used to authorize "acting for" actions.
+ */
+export async function getActiveCopilotGrant(params: {
+  circleId: number;
+  helperUserId: number;
+  grantorUserId: number;
+}) {
+  return db
+    .select()
+    .from(copilotGrantsTable)
+    .where(
+      and(
+        eq(copilotGrantsTable.circleId, params.circleId),
+        eq(copilotGrantsTable.helperUserId, params.helperUserId),
+        eq(copilotGrantsTable.grantorUserId, params.grantorUserId),
+        eq(copilotGrantsTable.status, "active"),
+      ),
+    )
+    .limit(1)
+    .then((r) => r[0] ?? null);
+}
+
+/**
+ * Validates an incoming actingForUserId on a create call and returns the
+ * resolved IDs and grantor display name. Throws an Error with a friendly
+ * message when the request is not allowed.
+ */
+export async function resolveActingFor(params: {
+  circleId: number;
+  helperUserId: number;
+  actingForUserId: number;
+}): Promise<{ actingForUserId: number; actingForName: string } | null> {
+  if (!params.actingForUserId) return null;
+  if (params.actingForUserId === params.helperUserId) {
+    throw new Error("You cannot act on behalf of yourself");
+  }
+  const grantorMember = await assertCircleMember(params.circleId, params.actingForUserId);
+  if (!grantorMember) {
+    throw new Error("The represented member is not part of this circle");
+  }
+  const grant = await getActiveCopilotGrant({
+    circleId: params.circleId,
+    helperUserId: params.helperUserId,
+    grantorUserId: params.actingForUserId,
+  });
+  if (!grant) {
+    throw new Error("You do not have an active co-pilot grant for this member in this circle");
+  }
+  const actingForName = await getUserName(params.actingForUserId);
+  return { actingForUserId: params.actingForUserId, actingForName };
 }
 
 export async function createAuditLog(params: {

@@ -12,6 +12,11 @@ export const commentsTable = pgTable("comments", {
   authorUserId: integer("author_user_id")
     .notNull()
     .references(() => usersTable.id),
+  actingForUserId: integer("acting_for_user_id").references(
+    () => usersTable.id,
+    { onDelete: "set null" },
+  ),
+  copilotReview: text("copilot_review"),
   targetEntityType: text("target_entity_type").notNull(),
   targetEntityId: integer("target_entity_id").notNull(),
   parentCommentId: integer("parent_comment_id"),
@@ -49,6 +54,11 @@ export const gratitudeNotesTable = pgTable("gratitude_notes", {
   senderUserId: integer("sender_user_id")
     .notNull()
     .references(() => usersTable.id),
+  actingForUserId: integer("acting_for_user_id").references(
+    () => usersTable.id,
+    { onDelete: "set null" },
+  ),
+  copilotReview: text("copilot_review"),
   targetEntityType: text("target_entity_type").notNull(),
   targetEntityId: integer("target_entity_id").notNull(),
   recipientUserIds: text("recipient_user_ids").notNull().default("[]"),

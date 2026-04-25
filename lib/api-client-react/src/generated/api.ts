@@ -29,6 +29,8 @@ import type {
   CircleStats,
   Comment,
   Contribution,
+  CopilotGrant,
+  CopilotGrantLists,
   CreateAttachmentBody,
   CreateCareDateBody,
   CreateCircleBody,
@@ -55,6 +57,7 @@ import type {
   GetNotificationUnreadCount200,
   GratitudeNote,
   HealthStatus,
+  InviteCopilotBody,
   JoinRequest,
   LedgerEntry,
   LedgerSummary,
@@ -79,6 +82,8 @@ import type {
   RepaymentPlan,
   ResolveDisputeBody,
   RespondConnectionBody,
+  ReviewCopilotPost200,
+  ReviewCopilotPostBody,
   ServiceBoardSummary,
   ServicePost,
   SupportRequest,
@@ -8548,4 +8553,679 @@ export const useUnregisterDeviceToken = <
   TContext
 > => {
   return useMutation(getUnregisterDeviceTokenMutationOptions(options));
+};
+
+/**
+ * @summary List co-pilot grants where I am the grantor or the helper
+ */
+export const getListCopilotGrantsUrl = () => {
+  return `/api/copilot/grants`;
+};
+
+export const listCopilotGrants = async (
+  options?: RequestInit,
+): Promise<CopilotGrantLists> => {
+  return customFetch<CopilotGrantLists>(getListCopilotGrantsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListCopilotGrantsQueryKey = () => {
+  return [`/api/copilot/grants`] as const;
+};
+
+export const getListCopilotGrantsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCopilotGrants>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listCopilotGrants>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListCopilotGrantsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listCopilotGrants>>
+  > = ({ signal }) => listCopilotGrants({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCopilotGrants>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCopilotGrantsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCopilotGrants>>
+>;
+export type ListCopilotGrantsQueryError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary List co-pilot grants where I am the grantor or the helper
+ */
+
+export function useListCopilotGrants<
+  TData = Awaited<ReturnType<typeof listCopilotGrants>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listCopilotGrants>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCopilotGrantsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List co-pilot grants in a circle that involve the current user
+ */
+export const getListCircleCopilotGrantsUrl = (circleId: number) => {
+  return `/api/circles/${circleId}/copilot/grants`;
+};
+
+export const listCircleCopilotGrants = async (
+  circleId: number,
+  options?: RequestInit,
+): Promise<CopilotGrantLists> => {
+  return customFetch<CopilotGrantLists>(
+    getListCircleCopilotGrantsUrl(circleId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListCircleCopilotGrantsQueryKey = (circleId: number) => {
+  return [`/api/circles/${circleId}/copilot/grants`] as const;
+};
+
+export const getListCircleCopilotGrantsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCircleCopilotGrants>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  circleId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCircleCopilotGrants>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListCircleCopilotGrantsQueryKey(circleId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listCircleCopilotGrants>>
+  > = ({ signal }) =>
+    listCircleCopilotGrants(circleId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!circleId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCircleCopilotGrants>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCircleCopilotGrantsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCircleCopilotGrants>>
+>;
+export type ListCircleCopilotGrantsQueryError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary List co-pilot grants in a circle that involve the current user
+ */
+
+export function useListCircleCopilotGrants<
+  TData = Awaited<ReturnType<typeof listCircleCopilotGrants>>,
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+>(
+  circleId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCircleCopilotGrants>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCircleCopilotGrantsQueryOptions(
+    circleId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Invite another circle member to be my co-pilot in this circle
+ */
+export const getInviteCopilotUrl = (circleId: number) => {
+  return `/api/circles/${circleId}/copilot/grants`;
+};
+
+export const inviteCopilot = async (
+  circleId: number,
+  inviteCopilotBody: InviteCopilotBody,
+  options?: RequestInit,
+): Promise<CopilotGrant> => {
+  return customFetch<CopilotGrant>(getInviteCopilotUrl(circleId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(inviteCopilotBody),
+  });
+};
+
+export const getInviteCopilotMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof inviteCopilot>>,
+    TError,
+    { circleId: number; data: BodyType<InviteCopilotBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof inviteCopilot>>,
+  TError,
+  { circleId: number; data: BodyType<InviteCopilotBody> },
+  TContext
+> => {
+  const mutationKey = ["inviteCopilot"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof inviteCopilot>>,
+    { circleId: number; data: BodyType<InviteCopilotBody> }
+  > = (props) => {
+    const { circleId, data } = props ?? {};
+
+    return inviteCopilot(circleId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type InviteCopilotMutationResult = NonNullable<
+  Awaited<ReturnType<typeof inviteCopilot>>
+>;
+export type InviteCopilotMutationBody = BodyType<InviteCopilotBody>;
+export type InviteCopilotMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Invite another circle member to be my co-pilot in this circle
+ */
+export const useInviteCopilot = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof inviteCopilot>>,
+    TError,
+    { circleId: number; data: BodyType<InviteCopilotBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof inviteCopilot>>,
+  TError,
+  { circleId: number; data: BodyType<InviteCopilotBody> },
+  TContext
+> => {
+  return useMutation(getInviteCopilotMutationOptions(options));
+};
+
+/**
+ * @summary Helper accepts a pending co-pilot invitation
+ */
+export const getAcceptCopilotGrantUrl = (grantId: number) => {
+  return `/api/copilot/grants/${grantId}/accept`;
+};
+
+export const acceptCopilotGrant = async (
+  grantId: number,
+  options?: RequestInit,
+): Promise<CopilotGrant> => {
+  return customFetch<CopilotGrant>(getAcceptCopilotGrantUrl(grantId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getAcceptCopilotGrantMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof acceptCopilotGrant>>,
+    TError,
+    { grantId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof acceptCopilotGrant>>,
+  TError,
+  { grantId: number },
+  TContext
+> => {
+  const mutationKey = ["acceptCopilotGrant"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof acceptCopilotGrant>>,
+    { grantId: number }
+  > = (props) => {
+    const { grantId } = props ?? {};
+
+    return acceptCopilotGrant(grantId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AcceptCopilotGrantMutationResult = NonNullable<
+  Awaited<ReturnType<typeof acceptCopilotGrant>>
+>;
+
+export type AcceptCopilotGrantMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Helper accepts a pending co-pilot invitation
+ */
+export const useAcceptCopilotGrant = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof acceptCopilotGrant>>,
+    TError,
+    { grantId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof acceptCopilotGrant>>,
+  TError,
+  { grantId: number },
+  TContext
+> => {
+  return useMutation(getAcceptCopilotGrantMutationOptions(options));
+};
+
+/**
+ * @summary Helper declines a pending co-pilot invitation
+ */
+export const getDeclineCopilotGrantUrl = (grantId: number) => {
+  return `/api/copilot/grants/${grantId}/decline`;
+};
+
+export const declineCopilotGrant = async (
+  grantId: number,
+  options?: RequestInit,
+): Promise<CopilotGrant> => {
+  return customFetch<CopilotGrant>(getDeclineCopilotGrantUrl(grantId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getDeclineCopilotGrantMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof declineCopilotGrant>>,
+    TError,
+    { grantId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof declineCopilotGrant>>,
+  TError,
+  { grantId: number },
+  TContext
+> => {
+  const mutationKey = ["declineCopilotGrant"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof declineCopilotGrant>>,
+    { grantId: number }
+  > = (props) => {
+    const { grantId } = props ?? {};
+
+    return declineCopilotGrant(grantId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeclineCopilotGrantMutationResult = NonNullable<
+  Awaited<ReturnType<typeof declineCopilotGrant>>
+>;
+
+export type DeclineCopilotGrantMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Helper declines a pending co-pilot invitation
+ */
+export const useDeclineCopilotGrant = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof declineCopilotGrant>>,
+    TError,
+    { grantId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof declineCopilotGrant>>,
+  TError,
+  { grantId: number },
+  TContext
+> => {
+  return useMutation(getDeclineCopilotGrantMutationOptions(options));
+};
+
+/**
+ * @summary Either party revokes an active or pending co-pilot grant
+ */
+export const getRevokeCopilotGrantUrl = (grantId: number) => {
+  return `/api/copilot/grants/${grantId}/revoke`;
+};
+
+export const revokeCopilotGrant = async (
+  grantId: number,
+  options?: RequestInit,
+): Promise<CopilotGrant> => {
+  return customFetch<CopilotGrant>(getRevokeCopilotGrantUrl(grantId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRevokeCopilotGrantMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof revokeCopilotGrant>>,
+    TError,
+    { grantId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof revokeCopilotGrant>>,
+  TError,
+  { grantId: number },
+  TContext
+> => {
+  const mutationKey = ["revokeCopilotGrant"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof revokeCopilotGrant>>,
+    { grantId: number }
+  > = (props) => {
+    const { grantId } = props ?? {};
+
+    return revokeCopilotGrant(grantId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RevokeCopilotGrantMutationResult = NonNullable<
+  Awaited<ReturnType<typeof revokeCopilotGrant>>
+>;
+
+export type RevokeCopilotGrantMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Either party revokes an active or pending co-pilot grant
+ */
+export const useRevokeCopilotGrant = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof revokeCopilotGrant>>,
+    TError,
+    { grantId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof revokeCopilotGrant>>,
+  TError,
+  { grantId: number },
+  TContext
+> => {
+  return useMutation(getRevokeCopilotGrantMutationOptions(options));
+};
+
+/**
+ * @summary Represented member marks a co-piloted post as approved or flagged
+ */
+export const getReviewCopilotPostUrl = (
+  entityType: "support_request" | "comment" | "gratitude_note" | "circle_post",
+  entityId: number,
+) => {
+  return `/api/copilot/posts/${entityType}/${entityId}/review`;
+};
+
+export const reviewCopilotPost = async (
+  entityType: "support_request" | "comment" | "gratitude_note" | "circle_post",
+  entityId: number,
+  reviewCopilotPostBody: ReviewCopilotPostBody,
+  options?: RequestInit,
+): Promise<ReviewCopilotPost200> => {
+  return customFetch<ReviewCopilotPost200>(
+    getReviewCopilotPostUrl(entityType, entityId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(reviewCopilotPostBody),
+    },
+  );
+};
+
+export const getReviewCopilotPostMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reviewCopilotPost>>,
+    TError,
+    {
+      entityType:
+        | "support_request"
+        | "comment"
+        | "gratitude_note"
+        | "circle_post";
+      entityId: number;
+      data: BodyType<ReviewCopilotPostBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reviewCopilotPost>>,
+  TError,
+  {
+    entityType:
+      | "support_request"
+      | "comment"
+      | "gratitude_note"
+      | "circle_post";
+    entityId: number;
+    data: BodyType<ReviewCopilotPostBody>;
+  },
+  TContext
+> => {
+  const mutationKey = ["reviewCopilotPost"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reviewCopilotPost>>,
+    {
+      entityType:
+        | "support_request"
+        | "comment"
+        | "gratitude_note"
+        | "circle_post";
+      entityId: number;
+      data: BodyType<ReviewCopilotPostBody>;
+    }
+  > = (props) => {
+    const { entityType, entityId, data } = props ?? {};
+
+    return reviewCopilotPost(entityType, entityId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReviewCopilotPostMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reviewCopilotPost>>
+>;
+export type ReviewCopilotPostMutationBody = BodyType<ReviewCopilotPostBody>;
+export type ReviewCopilotPostMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Represented member marks a co-piloted post as approved or flagged
+ */
+export const useReviewCopilotPost = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reviewCopilotPost>>,
+    TError,
+    {
+      entityType:
+        | "support_request"
+        | "comment"
+        | "gratitude_note"
+        | "circle_post";
+      entityId: number;
+      data: BodyType<ReviewCopilotPostBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof reviewCopilotPost>>,
+  TError,
+  {
+    entityType:
+      | "support_request"
+      | "comment"
+      | "gratitude_note"
+      | "circle_post";
+    entityId: number;
+    data: BodyType<ReviewCopilotPostBody>;
+  },
+  TContext
+> => {
+  return useMutation(getReviewCopilotPostMutationOptions(options));
 };

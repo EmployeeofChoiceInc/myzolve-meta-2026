@@ -13,3 +13,4 @@ export * from "./audit";
 export * from "./messages";
 export * from "./deviceTokens";
 export * from "./careDates";
+export * from "./copilot";

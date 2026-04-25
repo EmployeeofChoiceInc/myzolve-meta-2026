@@ -23,7 +23,9 @@ import {
 } from "@/components/UI";
 import { Screen } from "@/components/Screen";
 import { ImageViewer } from "@/components/ImageViewer";
+import { CopilotAttribution, CopilotSwitcher } from "@/components/CopilotSwitcher";
 import { useColors } from "@/hooks/useColors";
+import { useActingForInCircle } from "@/lib/copilot";
 import {
   useCirclePosts,
   useCreateCirclePost,
@@ -133,6 +135,7 @@ export default function WallScreen() {
   const { data: posts, isLoading, refetch, isRefetching } = useCirclePosts(circleId);
   const create = useCreateCirclePost(circleId);
   const upload = useCircleMediaUpload(circleId);
+  const actingForUserId = useActingForInCircle(circleId);
 
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -227,7 +230,12 @@ export default function WallScreen() {
 
     const finish = (imageObjectPath?: string) => {
       create.mutate(
-        { title: title.trim() || undefined, body: body.trim(), imageObjectPath },
+        {
+          title: title.trim() || undefined,
+          body: body.trim(),
+          imageObjectPath,
+          ...(actingForUserId ? { actingForUserId } : {}),
+        },
         {
           onSuccess: () => {
             resetComposer();
@@ -296,6 +304,13 @@ export default function WallScreen() {
                     </AppText>
                   </View>
                 </Row>
+                {p.actingForUserId && p.actingForName ? (
+                  <CopilotAttribution
+                    helperName={p.authorName}
+                    forName={p.actingForName}
+                    review={p.copilotReview}
+                  />
+                ) : null}
                 {p.title ? (
                   <AppText variant="title" style={{ marginBottom: 6 }}>
                     {p.title}
@@ -356,6 +371,7 @@ export default function WallScreen() {
             bottomOffset={40}
             keyboardShouldPersistTaps="handled"
           >
+            <CopilotSwitcher circleId={circleId} testID="wall-copilot-switcher" />
             <Field label="Title (optional)">
               <Input
                 value={title}

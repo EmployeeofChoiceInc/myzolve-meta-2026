@@ -30,6 +30,8 @@ const updatePrefsSchema = z.object({
         "circle_update",
         "mention_received",
         "care_calendar_reminder",
+        "copilot_invite_received",
+        "copilot_post_made",
       ]),
       enabled: z.boolean(),
     }),
@@ -156,6 +158,8 @@ const ALL_PREFERENCE_TYPES = [
   "circle_update",
   "mention_received",
   "care_calendar_reminder",
+  "copilot_invite_received",
+  "copilot_post_made",
 ] as const;
 
 router.get("/notifications/preferences", requireAuth, async (req, res) => {

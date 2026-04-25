@@ -19,6 +19,7 @@ import { setBaseUrl, setAuthTokenGetter } from "@workspace/api-client-react";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useColors } from "@/hooks/useColors";
+import { CopilotProvider } from "@/lib/copilot";
 import {
   configureNotificationHandler,
   registerForPushNotificationsAsync,
@@ -181,12 +182,14 @@ export default function RootLayout() {
         >
           <QueryClientProvider client={queryClient}>
             <AuthBridge>
-              <GestureHandlerRootView style={{ flex: 1 }}>
-                <KeyboardProvider>
-                  <StatusBar style="dark" />
-                  <RootLayoutNav />
-                </KeyboardProvider>
-              </GestureHandlerRootView>
+              <CopilotProvider>
+                <GestureHandlerRootView style={{ flex: 1 }}>
+                  <KeyboardProvider>
+                    <StatusBar style="dark" />
+                    <RootLayoutNav />
+                  </KeyboardProvider>
+                </GestureHandlerRootView>
+              </CopilotProvider>
             </AuthBridge>
           </QueryClientProvider>
         </ClerkProvider>

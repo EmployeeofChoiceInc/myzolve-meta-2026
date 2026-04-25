@@ -561,6 +561,17 @@ export const ListSupportRequestsResponseItem = zod.object({
   createdByUserId: zod.number(),
   onBehalfOfPlaceholderId: zod.number().nullish(),
   createdByName: zod.string(),
+  actingForUserId: zod.number().nullish(),
+  actingForName: zod.string().nullish(),
+  actingForAvatarObjectPath: zod.string().nullish(),
+  copilotReview: zod
+    .union([
+      zod.literal("pending"),
+      zod.literal("approved"),
+      zod.literal("flagged"),
+      zod.literal(null),
+    ])
+    .nullish(),
   title: zod.string(),
   description: zod.string().nullish(),
   amountRequested: zod.number(),
@@ -654,6 +665,12 @@ export const CreateSupportRequestBody = zod.object({
     .describe(
       "ID of a placeholder member this request is being made on behalf of (must belong to the same circle)",
     ),
+  actingForUserId: zod
+    .number()
+    .optional()
+    .describe(
+      "ID of a circle member you have an active co-pilot grant for; the request is attributed to them with you as the helper",
+    ),
 });
 
 /**
@@ -670,6 +687,17 @@ export const GetSupportRequestResponse = zod
     createdByUserId: zod.number(),
     onBehalfOfPlaceholderId: zod.number().nullish(),
     createdByName: zod.string(),
+    actingForUserId: zod.number().nullish(),
+    actingForName: zod.string().nullish(),
+    actingForAvatarObjectPath: zod.string().nullish(),
+    copilotReview: zod
+      .union([
+        zod.literal("pending"),
+        zod.literal("approved"),
+        zod.literal("flagged"),
+        zod.literal(null),
+      ])
+      .nullish(),
     title: zod.string(),
     description: zod.string().nullish(),
     amountRequested: zod.number(),
@@ -816,6 +844,17 @@ export const UpdateSupportRequestResponse = zod.object({
   createdByUserId: zod.number(),
   onBehalfOfPlaceholderId: zod.number().nullish(),
   createdByName: zod.string(),
+  actingForUserId: zod.number().nullish(),
+  actingForName: zod.string().nullish(),
+  actingForAvatarObjectPath: zod.string().nullish(),
+  copilotReview: zod
+    .union([
+      zod.literal("pending"),
+      zod.literal("approved"),
+      zod.literal("flagged"),
+      zod.literal(null),
+    ])
+    .nullish(),
   title: zod.string(),
   description: zod.string().nullish(),
   amountRequested: zod.number(),
@@ -865,6 +904,17 @@ export const CancelSupportRequestResponse = zod.object({
   createdByUserId: zod.number(),
   onBehalfOfPlaceholderId: zod.number().nullish(),
   createdByName: zod.string(),
+  actingForUserId: zod.number().nullish(),
+  actingForName: zod.string().nullish(),
+  actingForAvatarObjectPath: zod.string().nullish(),
+  copilotReview: zod
+    .union([
+      zod.literal("pending"),
+      zod.literal("approved"),
+      zod.literal("flagged"),
+      zod.literal(null),
+    ])
+    .nullish(),
   title: zod.string(),
   description: zod.string().nullish(),
   amountRequested: zod.number(),
@@ -914,6 +964,17 @@ export const CompleteSupportRequestResponse = zod.object({
   createdByUserId: zod.number(),
   onBehalfOfPlaceholderId: zod.number().nullish(),
   createdByName: zod.string(),
+  actingForUserId: zod.number().nullish(),
+  actingForName: zod.string().nullish(),
+  actingForAvatarObjectPath: zod.string().nullish(),
+  copilotReview: zod
+    .union([
+      zod.literal("pending"),
+      zod.literal("approved"),
+      zod.literal("flagged"),
+      zod.literal(null),
+    ])
+    .nullish(),
   title: zod.string(),
   description: zod.string().nullish(),
   amountRequested: zod.number(),
@@ -963,6 +1024,17 @@ export const ExpireSupportRequestResponse = zod.object({
   createdByUserId: zod.number(),
   onBehalfOfPlaceholderId: zod.number().nullish(),
   createdByName: zod.string(),
+  actingForUserId: zod.number().nullish(),
+  actingForName: zod.string().nullish(),
+  actingForAvatarObjectPath: zod.string().nullish(),
+  copilotReview: zod
+    .union([
+      zod.literal("pending"),
+      zod.literal("approved"),
+      zod.literal("flagged"),
+      zod.literal(null),
+    ])
+    .nullish(),
   title: zod.string(),
   description: zod.string().nullish(),
   amountRequested: zod.number(),
@@ -1069,6 +1141,17 @@ export const ConfirmReceiptResponse = zod.object({
   createdByUserId: zod.number(),
   onBehalfOfPlaceholderId: zod.number().nullish(),
   createdByName: zod.string(),
+  actingForUserId: zod.number().nullish(),
+  actingForName: zod.string().nullish(),
+  actingForAvatarObjectPath: zod.string().nullish(),
+  copilotReview: zod
+    .union([
+      zod.literal("pending"),
+      zod.literal("approved"),
+      zod.literal("flagged"),
+      zod.literal(null),
+    ])
+    .nullish(),
   title: zod.string(),
   description: zod.string().nullish(),
   amountRequested: zod.number(),
@@ -1713,6 +1796,8 @@ export const UpdateNotificationPreferencesBody = zod.object({
         "circle_update",
         "mention_received",
         "care_calendar_reminder",
+        "copilot_invite_received",
+        "copilot_post_made",
       ]),
       enabled: zod.boolean(),
     }),
@@ -1749,6 +1834,17 @@ export const ListCommentsResponseItem = zod.object({
   circleId: zod.number(),
   authorUserId: zod.number(),
   authorName: zod.string(),
+  actingForUserId: zod.number().nullish(),
+  actingForName: zod.string().nullish(),
+  actingForAvatarObjectPath: zod.string().nullish(),
+  copilotReview: zod
+    .union([
+      zod.literal("pending"),
+      zod.literal("approved"),
+      zod.literal("flagged"),
+      zod.literal(null),
+    ])
+    .nullish(),
   targetEntityType: zod.string(),
   targetEntityId: zod.number(),
   parentCommentId: zod.number().nullish(),
@@ -1774,6 +1870,12 @@ export const createCommentBodyBodyMax = 2000;
 export const CreateCommentBody = zod.object({
   body: zod.string().min(1).max(createCommentBodyBodyMax),
   parentCommentId: zod.number().optional(),
+  actingForUserId: zod
+    .number()
+    .optional()
+    .describe(
+      "ID of a circle member you have an active co-pilot grant for; the comment is attributed to them with you as the helper",
+    ),
 });
 
 /**
@@ -1795,6 +1897,17 @@ export const UpdateCommentResponse = zod.object({
   circleId: zod.number(),
   authorUserId: zod.number(),
   authorName: zod.string(),
+  actingForUserId: zod.number().nullish(),
+  actingForName: zod.string().nullish(),
+  actingForAvatarObjectPath: zod.string().nullish(),
+  copilotReview: zod
+    .union([
+      zod.literal("pending"),
+      zod.literal("approved"),
+      zod.literal("flagged"),
+      zod.literal(null),
+    ])
+    .nullish(),
   targetEntityType: zod.string(),
   targetEntityId: zod.number(),
   parentCommentId: zod.number().nullish(),
@@ -1860,6 +1973,12 @@ export const SendGratitudeNoteBody = zod.object({
   targetEntityType: zod.enum(["support_request", "service_post"]),
   targetEntityId: zod.number(),
   recipientUserIds: zod.array(zod.number()).min(1),
+  actingForUserId: zod
+    .number()
+    .optional()
+    .describe(
+      "ID of a circle member you have an active co-pilot grant for; the gratitude is attributed to them with you as the helper",
+    ),
 });
 
 /**
@@ -2458,4 +2577,205 @@ export const UnregisterDeviceTokenParams = zod.object({
 
 export const UnregisterDeviceTokenResponse = zod.object({
   success: zod.boolean(),
+});
+
+/**
+ * @summary List co-pilot grants where I am the grantor or the helper
+ */
+export const ListCopilotGrantsResponse = zod.object({
+  peopleWhoHelpMe: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        circleId: zod.number(),
+        circleName: zod.string().nullish(),
+        grantorUserId: zod.number(),
+        grantorName: zod.string().nullish(),
+        grantorAvatarObjectPath: zod.string().nullish(),
+        helperUserId: zod.number(),
+        helperName: zod.string().nullish(),
+        helperAvatarObjectPath: zod.string().nullish(),
+        status: zod.enum(["pending", "active", "declined", "revoked"]),
+        invitedAt: zod.coerce.date(),
+        respondedAt: zod.coerce.date().nullish(),
+        revokedAt: zod.coerce.date().nullish(),
+      }),
+    )
+    .describe(
+      "Grants where I am the represented member (helpers acting on my behalf)",
+    ),
+  peopleIHelp: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        circleId: zod.number(),
+        circleName: zod.string().nullish(),
+        grantorUserId: zod.number(),
+        grantorName: zod.string().nullish(),
+        grantorAvatarObjectPath: zod.string().nullish(),
+        helperUserId: zod.number(),
+        helperName: zod.string().nullish(),
+        helperAvatarObjectPath: zod.string().nullish(),
+        status: zod.enum(["pending", "active", "declined", "revoked"]),
+        invitedAt: zod.coerce.date(),
+        respondedAt: zod.coerce.date().nullish(),
+        revokedAt: zod.coerce.date().nullish(),
+      }),
+    )
+    .describe("Grants where I am the helper (acting on someone else's behalf)"),
+});
+
+/**
+ * @summary List co-pilot grants in a circle that involve the current user
+ */
+export const ListCircleCopilotGrantsParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const ListCircleCopilotGrantsResponse = zod.object({
+  peopleWhoHelpMe: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        circleId: zod.number(),
+        circleName: zod.string().nullish(),
+        grantorUserId: zod.number(),
+        grantorName: zod.string().nullish(),
+        grantorAvatarObjectPath: zod.string().nullish(),
+        helperUserId: zod.number(),
+        helperName: zod.string().nullish(),
+        helperAvatarObjectPath: zod.string().nullish(),
+        status: zod.enum(["pending", "active", "declined", "revoked"]),
+        invitedAt: zod.coerce.date(),
+        respondedAt: zod.coerce.date().nullish(),
+        revokedAt: zod.coerce.date().nullish(),
+      }),
+    )
+    .describe(
+      "Grants where I am the represented member (helpers acting on my behalf)",
+    ),
+  peopleIHelp: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        circleId: zod.number(),
+        circleName: zod.string().nullish(),
+        grantorUserId: zod.number(),
+        grantorName: zod.string().nullish(),
+        grantorAvatarObjectPath: zod.string().nullish(),
+        helperUserId: zod.number(),
+        helperName: zod.string().nullish(),
+        helperAvatarObjectPath: zod.string().nullish(),
+        status: zod.enum(["pending", "active", "declined", "revoked"]),
+        invitedAt: zod.coerce.date(),
+        respondedAt: zod.coerce.date().nullish(),
+        revokedAt: zod.coerce.date().nullish(),
+      }),
+    )
+    .describe("Grants where I am the helper (acting on someone else's behalf)"),
+});
+
+/**
+ * @summary Invite another circle member to be my co-pilot in this circle
+ */
+export const InviteCopilotParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const InviteCopilotBody = zod.object({
+  helperUserId: zod
+    .number()
+    .describe("ID of the circle member you want to invite as your co-pilot"),
+});
+
+/**
+ * @summary Helper accepts a pending co-pilot invitation
+ */
+export const AcceptCopilotGrantParams = zod.object({
+  grantId: zod.coerce.number(),
+});
+
+export const AcceptCopilotGrantResponse = zod.object({
+  id: zod.number(),
+  circleId: zod.number(),
+  circleName: zod.string().nullish(),
+  grantorUserId: zod.number(),
+  grantorName: zod.string().nullish(),
+  grantorAvatarObjectPath: zod.string().nullish(),
+  helperUserId: zod.number(),
+  helperName: zod.string().nullish(),
+  helperAvatarObjectPath: zod.string().nullish(),
+  status: zod.enum(["pending", "active", "declined", "revoked"]),
+  invitedAt: zod.coerce.date(),
+  respondedAt: zod.coerce.date().nullish(),
+  revokedAt: zod.coerce.date().nullish(),
+});
+
+/**
+ * @summary Helper declines a pending co-pilot invitation
+ */
+export const DeclineCopilotGrantParams = zod.object({
+  grantId: zod.coerce.number(),
+});
+
+export const DeclineCopilotGrantResponse = zod.object({
+  id: zod.number(),
+  circleId: zod.number(),
+  circleName: zod.string().nullish(),
+  grantorUserId: zod.number(),
+  grantorName: zod.string().nullish(),
+  grantorAvatarObjectPath: zod.string().nullish(),
+  helperUserId: zod.number(),
+  helperName: zod.string().nullish(),
+  helperAvatarObjectPath: zod.string().nullish(),
+  status: zod.enum(["pending", "active", "declined", "revoked"]),
+  invitedAt: zod.coerce.date(),
+  respondedAt: zod.coerce.date().nullish(),
+  revokedAt: zod.coerce.date().nullish(),
+});
+
+/**
+ * @summary Either party revokes an active or pending co-pilot grant
+ */
+export const RevokeCopilotGrantParams = zod.object({
+  grantId: zod.coerce.number(),
+});
+
+export const RevokeCopilotGrantResponse = zod.object({
+  id: zod.number(),
+  circleId: zod.number(),
+  circleName: zod.string().nullish(),
+  grantorUserId: zod.number(),
+  grantorName: zod.string().nullish(),
+  grantorAvatarObjectPath: zod.string().nullish(),
+  helperUserId: zod.number(),
+  helperName: zod.string().nullish(),
+  helperAvatarObjectPath: zod.string().nullish(),
+  status: zod.enum(["pending", "active", "declined", "revoked"]),
+  invitedAt: zod.coerce.date(),
+  respondedAt: zod.coerce.date().nullish(),
+  revokedAt: zod.coerce.date().nullish(),
+});
+
+/**
+ * @summary Represented member marks a co-piloted post as approved or flagged
+ */
+export const ReviewCopilotPostParams = zod.object({
+  entityType: zod.enum([
+    "support_request",
+    "comment",
+    "gratitude_note",
+    "circle_post",
+  ]),
+  entityId: zod.coerce.number(),
+});
+
+export const ReviewCopilotPostBody = zod.object({
+  review: zod.enum(["approved", "flagged"]),
+});
+
+export const ReviewCopilotPostResponse = zod.object({
+  entityType: zod.string(),
+  entityId: zod.number(),
+  review: zod.string(),
 });
