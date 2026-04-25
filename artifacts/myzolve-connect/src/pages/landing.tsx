@@ -1,7 +1,10 @@
 import { Link } from "wouter";
-import { Heart, Users, Shield, ArrowRight, Sparkles } from "lucide-react";
+import { Heart, Users, Shield, ArrowRight, Sparkles, Apple } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SiteFooter from "@/components/site-footer";
+
+const APP_STORE_URL =
+  "https://apps.apple.com/us/app/myzolve-connect-mobile/id6762488844";
 
 export default function LandingPage() {
   return (
@@ -38,12 +41,28 @@ export default function LandingPage() {
           Request financial support, track gentle reminders, and exchange services with the people you trust most. No cold fintech energy. Just care.
         </p>
         
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full justify-center max-w-md">
-          <Link href="/sign-up" className="w-full">
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full justify-center max-w-xl">
+          <Link href="/sign-up" className="w-full sm:flex-1">
             <Button size="lg" className="w-full rounded-full text-lg h-14">
               Get Started <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
           </Link>
+          <a
+            href={APP_STORE_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="w-full sm:flex-1"
+            data-testid="link-app-store-hero"
+          >
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full rounded-full text-lg h-14"
+            >
+              <Apple className="mr-2 w-5 h-5 fill-current" />
+              Download on the App Store
+            </Button>
+          </a>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mt-32 text-left">

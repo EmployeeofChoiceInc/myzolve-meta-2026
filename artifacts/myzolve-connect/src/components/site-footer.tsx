@@ -1,5 +1,8 @@
 import { Link } from "wouter";
-import { Heart } from "lucide-react";
+import { Heart, Apple } from "lucide-react";
+
+const APP_STORE_URL =
+  "https://apps.apple.com/us/app/myzolve-connect-mobile/id6762488844";
 
 export default function SiteFooter() {
   const year = new Date().getFullYear();
@@ -20,6 +23,16 @@ export default function SiteFooter() {
           </a>
         </div>
         <nav className="flex items-center gap-6 text-muted-foreground">
+          <a
+            href={APP_STORE_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors"
+            data-testid="link-app-store-footer"
+          >
+            <Apple className="w-4 h-4 fill-current" />
+            iOS app
+          </a>
           <Link href="/privacy" className="hover:text-foreground transition-colors">
             Privacy
           </Link>
