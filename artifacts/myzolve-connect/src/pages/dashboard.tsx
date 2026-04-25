@@ -1,11 +1,68 @@
 import { Link, useLocation } from "wouter";
 import { useEffect } from "react";
-import { Plus, HandHeart, CalendarClock, ArrowRight, AlertCircle } from "lucide-react";
+import { Plus, HandHeart, CalendarClock, ArrowRight, AlertCircle, Cake, Stethoscope, Heart, Sparkles, Bell } from "lucide-react";
+import { format, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { useListCircles, useGetCircleDashboard, useListSupportRequests } from "@workspace/api-client-react";
+import {
+  useListCircles,
+  useGetCircleDashboard,
+  useListSupportRequests,
+  useListUpcomingCareDates,
+  type CareDate,
+} from "@workspace/api-client-react";
+
+const CARE_DATE_ICON: Record<CareDate["kind"], typeof Cake> = {
+  birthday: Cake,
+  anniversary: Heart,
+  memorial: Sparkles,
+  appointment: Stethoscope,
+  other: Bell,
+};
+
+function UpcomingCareDatesCard() {
+  const { data, isLoading } = useListUpcomingCareDates({ withinDays: 7 });
+  if (isLoading) {
+    return <div className="h-20 bg-muted/30 rounded-2xl animate-pulse" />;
+  }
+  const items = data ?? [];
+  if (items.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground text-center py-4">
+        Nothing on the calendar this week.
+      </p>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      {items.slice(0, 4).map((d) => {
+        const Icon = CARE_DATE_ICON[d.kind] ?? Bell;
+        return (
+          <Link key={d.id} href={`/circles/${d.circleId}/calendar`}>
+            <div
+              className="flex items-center gap-3 p-3 rounded-xl bg-card hover:bg-muted/40 transition-colors cursor-pointer border border-border/40"
+              data-testid={`upcoming-care-date-${d.id}`}
+            >
+              <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <Icon className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{d.name}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {format(parseISO(d.nextOccurrence), "EEE, MMM d")}
+                  {d.circleName ? ` · ${d.circleName}` : ""}
+                </p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
+            </div>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
 
 function CircleDashboardSection({ circleId }: { circleId: number }) {
   const { data: dashboard, isLoading } = useGetCircleDashboard(circleId);
@@ -210,6 +267,25 @@ export default function DashboardPage() {
         </div>
 
         <div className="space-y-8">
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Coming up this week</h2>
+              {firstCircleId && (
+                <Link
+                  href={`/circles/${firstCircleId}/calendar`}
+                  className="text-sm text-primary hover:underline flex items-center gap-1"
+                >
+                  Calendar <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              )}
+            </div>
+            <Card className="rounded-3xl border-border/50 shadow-none">
+              <CardContent className="p-6">
+                <UpcomingCareDatesCard />
+              </CardContent>
+            </Card>
+          </section>
+
           <section>
             <h2 className="text-lg font-semibold mb-4">Gentle Reminders</h2>
             <Card className="rounded-3xl border-secondary/20 bg-secondary/5 shadow-none">

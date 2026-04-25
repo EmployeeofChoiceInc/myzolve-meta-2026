@@ -19,6 +19,10 @@ export interface Comment {
   circleId: number;
   authorUserId: number;
   authorName: string;
+  actingForUserId?: number | null;
+  actingForName?: string | null;
+  actingForAvatarObjectPath?: string | null;
+  copilotReview?: string | null;
   targetEntityType: string;
   targetEntityId: number;
   parentCommentId: number | null;
@@ -159,7 +163,7 @@ export function useComments(circleId: number, entityType: string, entityId: numb
 export function useCreateComment(circleId: number, entityType: string, entityId: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { body: string; parentCommentId?: number }) =>
+    mutationFn: (data: { body: string; parentCommentId?: number; actingForUserId?: number }) =>
       customFetch<Comment>(
         `/api/circles/${circleId}/comments/${entityType}/${entityId}`,
         { method: "POST", body: JSON.stringify(data) },
@@ -435,6 +439,10 @@ export interface CirclePost {
   authorUserId: number;
   authorName: string;
   authorAvatarObjectPath: string | null;
+  actingForUserId?: number | null;
+  actingForName?: string | null;
+  actingForAvatarObjectPath?: string | null;
+  copilotReview?: string | null;
   title: string | null;
   body: string;
   imageObjectPath: string | null;
@@ -468,7 +476,7 @@ export function useCirclePosts(circleId: number) {
 export function useCreateCirclePost(circleId: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { title?: string; body: string; imageObjectPath?: string }) =>
+    mutationFn: (data: { title?: string; body: string; imageObjectPath?: string; actingForUserId?: number }) =>
       customFetch<CirclePost>(`/api/circles/${circleId}/posts`, {
         method: "POST",
         body: JSON.stringify(data),

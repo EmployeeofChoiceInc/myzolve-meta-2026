@@ -9,7 +9,7 @@ import {
   useListCircleConnections,
   useCreateCircleConnection,
 } from "@workspace/api-client-react";
-import { Heart, HandHeart, Sparkles, BookOpen, Users, Settings, Trash2, UserPlus, Link2, AlertTriangle, ClipboardList, Shield, ChevronDown, ChevronRight, PenSquare } from "lucide-react";
+import { Heart, HandHeart, Sparkles, BookOpen, Users, Settings, Trash2, UserPlus, Link2, AlertTriangle, ClipboardList, Shield, ChevronDown, ChevronRight, PenSquare, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -441,6 +441,18 @@ export default function CircleDetailPage() {
               </div>
               <CardTitle>Circle Wall</CardTitle>
               <CardDescription>Updates, announcements, and posts from your circle.</CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+
+        <Link href={`/circles/${circle.id}/calendar`}>
+          <Card className="rounded-3xl hover:shadow-md transition-shadow cursor-pointer h-full border-border/50 group" data-testid="link-circle-calendar">
+            <CardHeader>
+              <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-4 group-hover:scale-105 transition-transform">
+                <CalendarDays className="w-6 h-6" />
+              </div>
+              <CardTitle>Care Calendar</CardTitle>
+              <CardDescription>Birthdays, appointments, and gentle reminders.</CardDescription>
             </CardHeader>
           </Card>
         </Link>
