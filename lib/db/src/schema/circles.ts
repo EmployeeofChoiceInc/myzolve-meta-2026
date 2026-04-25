@@ -14,6 +14,11 @@ export const circlesTable = pgTable("circles", {
   currency: text("currency").notNull().default("USD"),
   privacyMode: text("privacy_mode").notNull().default("private"),
   ledgerMode: text("ledger_mode").notNull().default("private"),
+  // Plus "Custom circle look" customization — owner-configurable, all
+  // optional with graceful fallbacks.
+  bannerObjectPath: text("banner_object_path"),
+  accentColor: text("accent_color"),
+  welcomeMessage: text("welcome_message"),
   ownerId: integer("owner_id")
     .notNull()
     .references(() => usersTable.id),
@@ -40,6 +45,9 @@ export const circleMembersTable = pgTable("circle_members", {
   role: text("role").notNull().default("member"),
   status: text("status").notNull().default("active"),
   joinedAt: timestamp("joined_at", { withTimezone: true }),
+  // When the member dismissed the one-time custom-look welcome card.
+  // Null means they haven't seen / dismissed it yet.
+  welcomeDismissedAt: timestamp("welcome_dismissed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

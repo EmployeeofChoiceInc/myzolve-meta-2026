@@ -15,6 +15,7 @@ import {
   Row,
   Skeleton,
 } from "@/components/UI";
+import { CircleWelcomeNudge } from "@/components/CircleWelcomeNudge";
 import { Screen } from "@/components/Screen";
 import { useColors } from "@/hooks/useColors";
 import { formatMoney } from "@/lib/circleTypes";
@@ -55,17 +56,20 @@ export default function ServicesScreen() {
         {isLoading ? (
           <Skeleton height={140} />
         ) : !data || data.length === 0 ? (
-          <Empty
-            icon="tool"
-            title="No services yet"
-            subtitle="Offer your skills, time, or things you can lend."
-            action={
-              <Button
-                title="Post a service"
-                onPress={() => router.push(`/circle/${circleId}/new-service`)}
-              />
-            }
-          />
+          <View>
+            <CircleWelcomeNudge circleId={circleId} />
+            <Empty
+              icon="tool"
+              title="No services yet"
+              subtitle="Offer your skills, time, or things you can lend."
+              action={
+                <Button
+                  title="Post a service"
+                  onPress={() => router.push(`/circle/${circleId}/new-service`)}
+                />
+              }
+            />
+          </View>
         ) : (
           <View style={{ gap: 12 }}>
             {data.map((s) => (

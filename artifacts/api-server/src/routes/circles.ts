@@ -10,10 +10,13 @@ import {
   usersTable,
   type Circle,
 } from "@workspace/db";
-import { eq, and, count, sql } from "drizzle-orm";
+import { eq, and, count, sql, isNull } from "drizzle-orm";
 import { createAuditLog } from "../lib/helpers";
 import { isOwnerOrAdmin, canManageLedger } from "../lib/permissions";
 import { assertCanJoinAnotherCircle } from "../lib/circleLimits";
+import { isPlus } from "../lib/revenuecat";
+import { isAllowedAccentColor, MAX_WELCOME_MESSAGE_LEN } from "../lib/circleLook";
+import { validateAndConsumePendingUpload } from "../lib/uploadTokens";
 import {
   supportRequestsTable,
   servicePostsTable,
@@ -39,9 +42,19 @@ const updateCircleSchema = z.object({
   currency: z.string().length(3).optional(),
   privacyMode: z.enum(["private", "hidden", "open", "community"]).optional(),
   ledgerMode: z.enum(["private", "summary", "full", "admin_only"]).optional(),
+  // Plus customization. `null` clears the value; any non-null value
+  // requires Plus on the owner (server-enforced below).
+  bannerObjectPath: z.string().max(1000).nullable().optional(),
+  accentColor: z.string().max(16).nullable().optional(),
+  welcomeMessage: z.string().max(MAX_WELCOME_MESSAGE_LEN).nullable().optional(),
 });
 
-function circleToApi(circle: Circle, memberCount: number, myRole: string | null) {
+function circleToApi(
+  circle: Circle,
+  memberCount: number,
+  myRole: string | null,
+  showWelcomeCard = false,
+) {
   return {
     id: circle.id,
     name: circle.name,
@@ -54,6 +67,10 @@ function circleToApi(circle: Circle, memberCount: number, myRole: string | null)
     ownerId: circle.ownerId,
     memberCount,
     myRole,
+    bannerObjectPath: circle.bannerObjectPath,
+    accentColor: circle.accentColor,
+    welcomeMessage: circle.welcomeMessage,
+    showWelcomeCard,
     createdAt: circle.createdAt,
   };
 }
@@ -368,8 +385,51 @@ router.get("/circles/:circleId", requireAuth, validateParams(circleIdParam), asy
     );
 
   const role = circle.ownerId === userId ? "owner" : membership.role;
-  res.json(circleToApi(circle, Number(memberCount.cnt), role));
+  // Show the one-time welcome card only when:
+  //   1. the circle has a customized welcome message, AND
+  //   2. this member has not dismissed it yet, AND
+  //   3. the owner currently has Plus (so non-paying lapsed customizations
+  //      don't keep popping a card forever).
+  let showWelcomeCard = false;
+  if (circle.welcomeMessage && !membership.welcomeDismissedAt) {
+    const owner = await db
+      .select({ clerkId: usersTable.clerkId })
+      .from(usersTable)
+      .where(eq(usersTable.id, circle.ownerId))
+      .limit(1)
+      .then((r) => r[0]);
+    showWelcomeCard = owner ? await isPlus(owner.clerkId) : false;
+  }
+  res.json(circleToApi(circle, Number(memberCount.cnt), role, showWelcomeCard));
 });
+
+router.post(
+  "/circles/:circleId/welcome/dismiss",
+  requireAuth,
+  validateParams(circleIdParam),
+  async (req, res) => {
+    const userId = req.dbUser!.id;
+    const circleId = parseInt(String(req.params.circleId));
+
+    const result = await db
+      .update(circleMembersTable)
+      .set({ welcomeDismissedAt: new Date() })
+      .where(
+        and(
+          eq(circleMembersTable.circleId, circleId),
+          eq(circleMembersTable.userId, userId),
+          eq(circleMembersTable.status, "active"),
+          isNull(circleMembersTable.welcomeDismissedAt),
+        ),
+      )
+      .returning({ id: circleMembersTable.id });
+
+    // Idempotent: even if no row was updated (already dismissed or not
+    // a member), the client only cares that the card stays gone.
+    void result;
+    res.status(204).end();
+  },
+);
 
 router.patch("/circles/:circleId", requireAuth, validateParams(circleIdParam), validateBody(updateCircleSchema), async (req, res) => {
   const userId = req.dbUser!.id;
@@ -405,8 +465,86 @@ router.patch("/circles/:circleId", requireAuth, validateParams(circleIdParam), v
     return;
   }
 
-  const { name, description, circleType, privacyMode, ledgerMode, currency } =
-    req.body;
+  const {
+    name,
+    description,
+    circleType,
+    privacyMode,
+    ledgerMode,
+    currency,
+    bannerObjectPath,
+    accentColor,
+    welcomeMessage,
+  } = req.body as z.infer<typeof updateCircleSchema>;
+
+  // ── Plus "Custom circle look" gating ────────────────────────────────────
+  // Only owners (not admins) can customize the look, and only when they
+  // currently have Plus. Setting any field to null/empty (i.e. clearing
+  // it) is always allowed so circles never get stuck in a paid look
+  // after the owner cancels.
+  const lookFieldTouched =
+    bannerObjectPath !== undefined ||
+    accentColor !== undefined ||
+    welcomeMessage !== undefined;
+  const lookFieldSet =
+    (bannerObjectPath !== undefined && bannerObjectPath) ||
+    (accentColor !== undefined && accentColor) ||
+    (welcomeMessage !== undefined && welcomeMessage);
+
+  if (lookFieldTouched && circle.ownerId !== userId) {
+    res.status(403).json({
+      error: "Only the circle owner can change the look & feel.",
+    });
+    return;
+  }
+
+  if (lookFieldSet) {
+    const ownerHasPlus = await isPlus(req.dbUser!.clerkId);
+    if (!ownerHasPlus) {
+      res.status(402).json({
+        error: "plus_required",
+        reason: "circle_look",
+        message: "MyZolve Connect Plus is required to customize your circle's look.",
+      });
+      return;
+    }
+  }
+
+  if (accentColor !== undefined && accentColor !== null && accentColor !== "") {
+    if (!isAllowedAccentColor(accentColor)) {
+      res
+        .status(400)
+        .json({ error: "Pick an accent color from the curated palette." });
+      return;
+    }
+  }
+
+  // The banner upload was registered against this user + circle when
+  // we minted the upload URL. Validate-and-consume that pending token
+  // before we persist the path.
+  let bannerToPersist: string | null | undefined = bannerObjectPath;
+  if (bannerObjectPath && bannerObjectPath.length > 0) {
+    const valid = validateAndConsumePendingUpload(
+      bannerObjectPath,
+      userId,
+      circleId,
+    );
+    if (!valid) {
+      res
+        .status(400)
+        .json({ error: "Banner upload session expired. Please re-pick the image." });
+      return;
+    }
+  } else if (bannerObjectPath === "" || bannerObjectPath === null) {
+    bannerToPersist = null;
+  }
+
+  const trimmedWelcome =
+    welcomeMessage === undefined
+      ? undefined
+      : welcomeMessage === null || welcomeMessage.trim() === ""
+        ? null
+        : welcomeMessage.trim();
 
   const [updated] = await db
     .update(circlesTable)
@@ -417,9 +555,27 @@ router.patch("/circles/:circleId", requireAuth, validateParams(circleIdParam), v
       ...(privacyMode !== undefined && { privacyMode }),
       ...(ledgerMode !== undefined && { ledgerMode }),
       ...(currency !== undefined && { currency }),
+      ...(bannerToPersist !== undefined && { bannerObjectPath: bannerToPersist }),
+      ...(accentColor !== undefined && {
+        accentColor: accentColor === "" ? null : accentColor,
+      }),
+      ...(trimmedWelcome !== undefined && { welcomeMessage: trimmedWelcome }),
     })
     .where(eq(circlesTable.id, circleId))
     .returning();
+
+  // When the owner publishes a new welcome message, reset every member's
+  // dismissal so they all get to see the refreshed greeting once.
+  if (
+    trimmedWelcome !== undefined &&
+    trimmedWelcome !== null &&
+    trimmedWelcome !== circle.welcomeMessage
+  ) {
+    await db
+      .update(circleMembersTable)
+      .set({ welcomeDismissedAt: null })
+      .where(eq(circleMembersTable.circleId, circleId));
+  }
 
   const [memberCount] = await db
     .select({ cnt: count() })
@@ -440,6 +596,9 @@ router.patch("/circles/:circleId", requireAuth, validateParams(circleIdParam), v
   if (privacyMode !== undefined) changedFields.privacyMode = privacyMode;
   if (ledgerMode !== undefined) changedFields.ledgerMode = ledgerMode;
   if (currency !== undefined) changedFields.currency = currency;
+  if (bannerToPersist !== undefined) changedFields.bannerObjectPath = bannerToPersist;
+  if (accentColor !== undefined) changedFields.accentColor = accentColor;
+  if (trimmedWelcome !== undefined) changedFields.welcomeMessage = trimmedWelcome;
 
   await createAuditLog({
     actorUserId: userId,

@@ -247,6 +247,27 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /circles/{circleId}/welcome/dismiss:
+    post:
+      operationId: dismissCircleWelcome
+      tags: [circles]
+      summary: Dismiss the one-time custom-look welcome card
+      description: |
+        Persists per-member dismissal of the custom-look welcome card.
+        Idempotent — calling it again is a no-op.
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      responses:
+        "204":
+          description: |
+            Dismissal saved. Always returned for authenticated callers — the
+            endpoint is intentionally idempotent and treats unknown circle
+            ids or non-membership as a silent no-op so it can be called
+            optimistically from the client.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   # ── Members ───────────────────────────────────────────────────────────────
   /circles/{circleId}/members:
     get:
@@ -2090,6 +2111,40 @@ paths:
         "500":
           description: Failed to generate upload URL
 
+  /storage/circle-banner/request-url:
+    post:
+      operationId: requestCircleBannerUploadUrl
+      tags: [storage]
+      summary: Request a presigned URL for a Plus circle banner upload
+      security: [{ clerk: [] }]
+      description: |
+        Returns a presigned upload URL for a circle banner image. The
+        caller must be the circle's owner AND have an active Plus
+        entitlement. Image content type only; max 10 MB.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CircleBannerUploadUrlRequest"
+      responses:
+        "200":
+          description: Presigned upload URL generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CircleBannerUploadUrlResponse"
+        "400":
+          description: Missing or invalid required fields
+        "402":
+          description: Plus entitlement required
+        "403":
+          description: Caller is not the circle owner
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          description: Failed to generate upload URL
+
   /storage/public-objects/{filePath}:
     get:
       operationId: getPublicObject
@@ -2774,6 +2829,18 @@ components:
         myRole:
           type: string
           enum: [owner, admin, host, treasurer, scribe, member, guest]
+        bannerObjectPath:
+          type: ["string", "null"]
+          description: Plus customization. Banner shown behind the circle title.
+        accentColor:
+          type: ["string", "null"]
+          description: Plus customization. Hex accent color (e.g. "#D7754D").
+        welcomeMessage:
+          type: ["string", "null"]
+          description: Plus customization. Greeting shown to new members.
+        showWelcomeCard:
+          type: boolean
+          description: True when the calling member should see the one-time welcome card.
         createdAt:
           type: string
           format: date-time
@@ -2787,6 +2854,7 @@ components:
         - ownerId
         - memberCount
         - myRole
+        - showWelcomeCard
         - createdAt
 
     CreateCircleBody:
@@ -2832,6 +2900,16 @@ components:
           enum: [private, summary, full, admin_only]
         currency:
           type: string
+        # Plus "Custom circle look" fields. Server enforces Plus on the
+        # owner before persisting changes to any of these. Pass null to
+        # clear (banner / welcome message). Empty string also clears.
+        bannerObjectPath:
+          type: ["string", "null"]
+        accentColor:
+          type: ["string", "null"]
+          description: Hex color from the curated palette, or null to reset.
+        welcomeMessage:
+          type: ["string", "null"]
 
     CircleStats:
       type: object
@@ -4540,6 +4618,63 @@ components:
       required:
         - uploadURL
         - objectPath
+
+    CircleBannerUploadUrlRequest:
+      type: object
+      description: |
+        Request shape for minting a Plus circle banner upload URL.
+        `contentType` must start with `image/`; `size` is bounded
+        server-side at 10 MB. `circleId` is the circle whose banner
+        is being replaced — caller must be its owner.
+      properties:
+        name:
+          type: string
+          minLength: 1
+        size:
+          type: integer
+          minimum: 1
+          maximum: 10485760
+        contentType:
+          type: string
+          minLength: 1
+          pattern: ^image/
+        circleId:
+          type: integer
+      required:
+        - name
+        - size
+        - contentType
+        - circleId
+
+    CircleBannerUploadUrlResponse:
+      type: object
+      description: |
+        Returned shape for a successful banner upload URL mint. The
+        client should PUT the file to `uploadURL` and then send
+        `objectPath` to PATCH /circles/{id} as `bannerObjectPath`.
+      properties:
+        uploadURL:
+          type: string
+          format: uri
+        objectPath:
+          type: string
+        metadata:
+          type: object
+          properties:
+            name:
+              type: string
+            size:
+              type: integer
+            contentType:
+              type: string
+          required:
+            - name
+            - size
+            - contentType
+      required:
+        - uploadURL
+        - objectPath
+        - metadata
 
     # ── Co-pilot grants ───────────────────────────────────────────────────────
     CopilotGrant:

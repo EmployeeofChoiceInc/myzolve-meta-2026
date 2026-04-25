@@ -82,6 +82,23 @@ export const ListCirclesResponseItem = zod.object({
     "member",
     "guest",
   ]),
+  bannerObjectPath: zod
+    .string()
+    .nullish()
+    .describe("Plus customization. Banner shown behind the circle title."),
+  accentColor: zod
+    .string()
+    .nullish()
+    .describe('Plus customization. Hex accent color (e.g. \"#D7754D\").'),
+  welcomeMessage: zod
+    .string()
+    .nullish()
+    .describe("Plus customization. Greeting shown to new members."),
+  showWelcomeCard: zod
+    .boolean()
+    .describe(
+      "True when the calling member should see the one-time welcome card.",
+    ),
   createdAt: zod.coerce.date(),
 });
 export const ListCirclesResponse = zod.array(ListCirclesResponseItem);
@@ -147,6 +164,23 @@ export const GetCircleResponse = zod.object({
     "member",
     "guest",
   ]),
+  bannerObjectPath: zod
+    .string()
+    .nullish()
+    .describe("Plus customization. Banner shown behind the circle title."),
+  accentColor: zod
+    .string()
+    .nullish()
+    .describe('Plus customization. Hex accent color (e.g. \"#D7754D\").'),
+  welcomeMessage: zod
+    .string()
+    .nullish()
+    .describe("Plus customization. Greeting shown to new members."),
+  showWelcomeCard: zod
+    .boolean()
+    .describe(
+      "True when the calling member should see the one-time welcome card.",
+    ),
   createdAt: zod.coerce.date(),
 });
 
@@ -173,6 +207,12 @@ export const UpdateCircleBody = zod.object({
   privacyMode: zod.enum(["private", "hidden", "open", "community"]).optional(),
   ledgerMode: zod.enum(["private", "summary", "full", "admin_only"]).optional(),
   currency: zod.string().optional(),
+  bannerObjectPath: zod.string().nullish(),
+  accentColor: zod
+    .string()
+    .nullish()
+    .describe("Hex color from the curated palette, or null to reset."),
+  welcomeMessage: zod.string().nullish(),
 });
 
 export const UpdateCircleResponse = zod.object({
@@ -202,6 +242,23 @@ export const UpdateCircleResponse = zod.object({
     "member",
     "guest",
   ]),
+  bannerObjectPath: zod
+    .string()
+    .nullish()
+    .describe("Plus customization. Banner shown behind the circle title."),
+  accentColor: zod
+    .string()
+    .nullish()
+    .describe('Plus customization. Hex accent color (e.g. \"#D7754D\").'),
+  welcomeMessage: zod
+    .string()
+    .nullish()
+    .describe("Plus customization. Greeting shown to new members."),
+  showWelcomeCard: zod
+    .boolean()
+    .describe(
+      "True when the calling member should see the one-time welcome card.",
+    ),
   createdAt: zod.coerce.date(),
 });
 
@@ -228,6 +285,16 @@ export const GetCircleStatsResponse = zod.object({
   totalSupportReceived: zod.number(),
   activeServices: zod.number(),
   recentActivityCount: zod.number(),
+});
+
+/**
+ * Persists per-member dismissal of the custom-look welcome card.
+Idempotent — calling it again is a no-op.
+
+ * @summary Dismiss the one-time custom-look welcome card
+ */
+export const DismissCircleWelcomeParams = zod.object({
+  circleId: zod.coerce.number(),
 });
 
 /**
@@ -2468,6 +2535,48 @@ export const RequestUploadUrlResponse = zod.object({
     })
     .optional(),
 });
+
+/**
+ * Returns a presigned upload URL for a circle banner image. The
+caller must be the circle's owner AND have an active Plus
+entitlement. Image content type only; max 10 MB.
+
+ * @summary Request a presigned URL for a Plus circle banner upload
+ */
+
+export const requestCircleBannerUploadUrlBodySizeMax = 10485760;
+
+export const requestCircleBannerUploadUrlBodyContentTypeRegExp = new RegExp(
+  "^image",
+);
+
+export const RequestCircleBannerUploadUrlBody = zod
+  .object({
+    name: zod.string().min(1),
+    size: zod.number().min(1).max(requestCircleBannerUploadUrlBodySizeMax),
+    contentType: zod
+      .string()
+      .min(1)
+      .regex(requestCircleBannerUploadUrlBodyContentTypeRegExp),
+    circleId: zod.number(),
+  })
+  .describe(
+    "Request shape for minting a Plus circle banner upload URL.\n`contentType` must start with `image\/`; `size` is bounded\nserver-side at 10 MB. `circleId` is the circle whose banner\nis being replaced — caller must be its owner.\n",
+  );
+
+export const RequestCircleBannerUploadUrlResponse = zod
+  .object({
+    uploadURL: zod.string().url(),
+    objectPath: zod.string(),
+    metadata: zod.object({
+      name: zod.string(),
+      size: zod.number(),
+      contentType: zod.string(),
+    }),
+  })
+  .describe(
+    "Returned shape for a successful banner upload URL mint. The\nclient should PUT the file to `uploadURL` and then send\n`objectPath` to PATCH \/circles\/{id} as `bannerObjectPath`.\n",
+  );
 
 /**
  * @summary Serve a public asset

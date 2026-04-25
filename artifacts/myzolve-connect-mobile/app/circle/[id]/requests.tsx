@@ -15,6 +15,7 @@ import {
   Row,
   Skeleton,
 } from "@/components/UI";
+import { CircleWelcomeNudge } from "@/components/CircleWelcomeNudge";
 import { CopilotAttribution } from "@/components/CopilotSwitcher";
 import { Screen } from "@/components/Screen";
 import { useColors } from "@/hooks/useColors";
@@ -61,17 +62,20 @@ export default function RequestsScreen() {
         {isLoading ? (
           <Skeleton height={140} />
         ) : !data || data.length === 0 ? (
-          <Empty
-            icon="help-circle"
-            title="No requests yet"
-            subtitle="Be the first to share a need."
-            action={
-              <Button
-                title="Create a request"
-                onPress={() => router.push(`/circle/${circleId}/new-request`)}
-              />
-            }
-          />
+          <View>
+            <CircleWelcomeNudge circleId={circleId} />
+            <Empty
+              icon="help-circle"
+              title="No requests yet"
+              subtitle="Be the first to share a need."
+              action={
+                <Button
+                  title="Create a request"
+                  onPress={() => router.push(`/circle/${circleId}/new-request`)}
+                />
+              }
+            />
+          </View>
         ) : (
           <View style={{ gap: 12 }}>
             {data.map((req) => {

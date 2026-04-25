@@ -5,6 +5,8 @@ import { Alert, Pressable, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
+import * as ImagePicker from "expo-image-picker";
+import { useAuth } from "@clerk/expo";
 import {
   getDiscoverCirclesQueryKey,
   getGetCircleQueryKey,
@@ -30,6 +32,11 @@ import { PlusBadge } from "@/components/PlusBadge";
 import { RolePickerSheet } from "@/components/RolePickerSheet";
 import { useColors } from "@/hooks/useColors";
 import { safeBack } from "@/lib/safeBack";
+import {
+  CIRCLE_ACCENT_PALETTE,
+  MAX_WELCOME_MESSAGE_LEN,
+} from "@/constants/circleLook";
+import { useCircleBannerUpload, type LocalPostImage } from "@/lib/postApi";
 import {
   type AssignableRole,
   type CircleRole,
@@ -94,6 +101,30 @@ export default function CircleSettingsScreen() {
   const [privacyMode, setPrivacyMode] = useState<PrivacyMode>("private");
   const [hydrated, setHydrated] = useState(false);
   const [paywallVisible, setPaywallVisible] = useState(false);
+
+  // Plus "Custom circle look" — banner / accent / welcome message.
+  // null in state means "no value", which serializes to null on the
+  // wire to clear server-side. undefined means "not changed".
+  const [accentColor, setAccentColor] = useState<string | null>(null);
+  const [welcomeMessage, setWelcomeMessage] = useState("");
+  // The pending banner object path is only set after a successful
+  // upload — until the user hits Save we keep the prior value.
+  const [pendingBannerPath, setPendingBannerPath] = useState<
+    string | null | undefined
+  >(undefined);
+  const [bannerPreviewUri, setBannerPreviewUri] = useState<string | null>(null);
+  const bannerUpload = useCircleBannerUpload(circleId);
+  const { getToken } = useAuth();
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    getToken()
+      .then((t) => alive && setAuthToken(t ?? null))
+      .catch(() => alive && setAuthToken(null));
+    return () => {
+      alive = false;
+    };
+  }, [getToken]);
   const [pickerFor, setPickerFor] = useState<{
     memberId: number;
     name: string;
@@ -105,9 +136,70 @@ export default function CircleSettingsScreen() {
       setName(circle.name ?? "");
       setDescription(circle.description ?? "");
       setPrivacyMode((circle.privacyMode as PrivacyMode) ?? "private");
+      setAccentColor(circle.accentColor ?? null);
+      setWelcomeMessage(circle.welcomeMessage ?? "");
       setHydrated(true);
     }
   }, [circle, hydrated]);
+
+  async function pickBanner() {
+    if (!ownerHasPlus) {
+      setPaywallVisible(true);
+      return;
+    }
+    if (bannerUpload.isPending || update.isPending) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert(
+        "Photo access needed",
+        "Allow photo library access in Settings to choose a banner.",
+      );
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.85,
+      allowsEditing: true,
+      aspect: [16, 9],
+      exif: false,
+    });
+    if (result.canceled || result.assets.length === 0) return;
+    const asset = result.assets[0];
+    const contentType = asset.mimeType ?? "image/jpeg";
+    if (!contentType.startsWith("image/")) {
+      Alert.alert("Unsupported file", "Please pick an image.");
+      return;
+    }
+    const file: LocalPostImage = {
+      uri: asset.uri,
+      name: asset.fileName ?? `banner.${contentType.split("/")[1] ?? "jpg"}`,
+      size: asset.fileSize ?? 0,
+      contentType,
+    };
+    setBannerPreviewUri(asset.uri);
+    bannerUpload.mutate(file, {
+      onSuccess: (objectPath) => {
+        setPendingBannerPath(objectPath);
+      },
+      onError: (err: unknown) => {
+        setBannerPreviewUri(null);
+        const status =
+          typeof err === "object" && err !== null && "status" in err
+            ? (err as { status?: number }).status
+            : undefined;
+        if (status === 402) {
+          setPaywallVisible(true);
+          return;
+        }
+        Alert.alert("Couldn't upload", "Please try again in a moment.");
+      },
+    });
+  }
+
+  function clearBanner() {
+    setPendingBannerPath(null);
+    setBannerPreviewUri(null);
+  }
 
   const isAdmin =
     circle?.myRole === "owner" || circle?.myRole === "admin";
@@ -150,6 +242,36 @@ export default function CircleSettingsScreen() {
       Alert.alert("Add a name", "Your circle needs a name.");
       return;
     }
+    if (welcomeMessage.length > MAX_WELCOME_MESSAGE_LEN) {
+      Alert.alert(
+        "Welcome message too long",
+        `Please keep it under ${MAX_WELCOME_MESSAGE_LEN} characters.`,
+      );
+      return;
+    }
+    // Build a delta payload for the Plus look fields. Only Plus owners
+    // are allowed to *set* values; everyone (well, the owner) can clear.
+    type LookPatch = {
+      bannerObjectPath?: string | null;
+      accentColor?: string | null;
+      welcomeMessage?: string | null;
+    };
+    const lookPatch: LookPatch = {};
+    if (isOwner) {
+      if (pendingBannerPath !== undefined) {
+        lookPatch.bannerObjectPath = pendingBannerPath;
+      }
+      const currentAccent = circle?.accentColor ?? null;
+      if (accentColor !== currentAccent) {
+        lookPatch.accentColor = accentColor;
+      }
+      const currentWelcome = circle?.welcomeMessage ?? "";
+      const trimmedWelcome = welcomeMessage.trim();
+      if (trimmedWelcome !== currentWelcome) {
+        lookPatch.welcomeMessage = trimmedWelcome === "" ? null : trimmedWelcome;
+      }
+    }
+
     update.mutate(
       {
         circleId,
@@ -157,6 +279,7 @@ export default function CircleSettingsScreen() {
           name: name.trim(),
           description: description.trim(),
           privacyMode,
+          ...lookPatch,
         },
       },
       {
@@ -167,11 +290,37 @@ export default function CircleSettingsScreen() {
           qc.invalidateQueries({ queryKey: getDiscoverCirclesQueryKey() });
           safeBack(router);
         },
-        onError: () =>
-          Alert.alert("Couldn't save", "Please try again in a moment."),
+        onError: (err: unknown) => {
+          const status =
+            typeof err === "object" && err !== null && "status" in err
+              ? (err as { status?: number }).status
+              : undefined;
+          if (status === 402) {
+            setPaywallVisible(true);
+            return;
+          }
+          Alert.alert("Couldn't save", "Please try again in a moment.");
+        },
       }
     );
   }
+
+  // Construct the URL for the persisted banner so we can show what's
+  // currently set even before a new file is picked. Falls back to the
+  // local preview while the upload is in flight.
+  const persistedBannerObjectPath =
+    pendingBannerPath !== undefined ? pendingBannerPath : circle?.bannerObjectPath ?? null;
+  const persistedBannerUri = (() => {
+    if (!persistedBannerObjectPath) return null;
+    const base = process.env.EXPO_PUBLIC_DOMAIN
+      ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+      : "";
+    const stripped = persistedBannerObjectPath.startsWith("/objects/")
+      ? persistedBannerObjectPath.slice("/objects/".length)
+      : persistedBannerObjectPath;
+    return `${base}/api/storage/user-media/${stripped}`;
+  })();
+  const bannerDisplayUri = bannerPreviewUri ?? persistedBannerUri;
 
   return (
     <>
@@ -322,6 +471,235 @@ export default function CircleSettingsScreen() {
                   })}
                 </View>
               </Field>
+
+              {isOwner ? (
+                <View style={{ marginTop: 8, marginBottom: 16 }}>
+                  <Row align="center" gap={8} style={{ marginBottom: 4 }}>
+                    <AppText weight="semibold">Look &amp; feel</AppText>
+                    <PlusBadge size="sm" variant="soft" />
+                  </Row>
+                  <AppText
+                    variant="caption"
+                    color={c.mutedForeground}
+                    style={{ marginBottom: 12, lineHeight: 18 }}
+                  >
+                    With Plus you can give your circle its own banner,
+                    accent color, and welcome note for new members.
+                  </AppText>
+
+                  {!ownerHasPlus ? (
+                    <>
+                      <Pressable
+                        onPress={() => setPaywallVisible(true)}
+                        testID="look-feel-upsell"
+                        style={({ pressed }) => ({
+                          backgroundColor: c.primarySoft,
+                          borderColor: c.primary,
+                          borderWidth: 1,
+                          borderRadius: 14,
+                          padding: 14,
+                          marginBottom: 12,
+                          opacity: pressed ? 0.92 : 1,
+                        })}
+                      >
+                        <Row align="center" justify="space-between">
+                          <View style={{ flex: 1, paddingRight: 12 }}>
+                            <AppText weight="semibold" color={c.primary}>
+                              Customize your circle with Plus
+                            </AppText>
+                            <AppText
+                              variant="caption"
+                              color={c.foreground}
+                              style={{ marginTop: 2 }}
+                            >
+                              Tap to learn more about Plus.
+                            </AppText>
+                          </View>
+                          <Feather name="chevron-right" size={20} color={c.primary} />
+                        </Row>
+                      </Pressable>
+                      {circle?.bannerObjectPath ||
+                      circle?.accentColor ||
+                      circle?.welcomeMessage ? (
+                        <View style={{ marginBottom: 12 }}>
+                          <Button
+                            title="Reset to default look"
+                            variant="outline"
+                            testID="look-feel-reset"
+                            loading={update.isPending}
+                            onPress={() => {
+                              update.mutate(
+                                {
+                                  circleId,
+                                  data: {
+                                    bannerObjectPath: null,
+                                    accentColor: null,
+                                    welcomeMessage: null,
+                                  },
+                                },
+                                {
+                                  onSuccess: () => {
+                                    setBannerPreviewUri(null);
+                                    setPendingBannerPath(undefined);
+                                    setAccentColor(null);
+                                    setWelcomeMessage("");
+                                    qc.invalidateQueries({
+                                      queryKey: getGetCircleQueryKey(circleId),
+                                    });
+                                  },
+                                },
+                              );
+                            }}
+                          />
+                          <AppText
+                            variant="caption"
+                            color={c.mutedForeground}
+                            style={{ marginTop: 6, lineHeight: 18 }}
+                          >
+                            Clears the banner, accent color and welcome
+                            message. You can keep using your circle without
+                            Plus.
+                          </AppText>
+                        </View>
+                      ) : null}
+                    </>
+                  ) : null}
+
+                  <View
+                    style={{ opacity: ownerHasPlus ? 1 : 0.5 }}
+                    pointerEvents={ownerHasPlus ? "auto" : "none"}
+                  >
+                    <Field label="Banner image">
+                      {bannerDisplayUri && authToken ? (
+                        <View
+                          style={{
+                            height: 120,
+                            borderRadius: 14,
+                            overflow: "hidden",
+                            marginBottom: 8,
+                            backgroundColor: c.muted,
+                          }}
+                        >
+                          {(() => {
+                            // eslint-disable-next-line @typescript-eslint/no-require-imports
+                            const { Image } = require("expo-image") as typeof import("expo-image");
+                            // For local previews from the picker we don't
+                            // need an Authorization header — the URI is a
+                            // file:// path. For remote (already-uploaded)
+                            // banners we attach the bearer.
+                            const isLocal = bannerDisplayUri.startsWith("file:") ||
+                              bannerDisplayUri.startsWith("data:") ||
+                              bannerDisplayUri.startsWith("ph://") ||
+                              bannerDisplayUri.startsWith("assets-library:");
+                            return (
+                              <Image
+                                source={
+                                  isLocal
+                                    ? { uri: bannerDisplayUri }
+                                    : {
+                                        uri: bannerDisplayUri,
+                                        headers: {
+                                          Authorization: `Bearer ${authToken}`,
+                                        },
+                                      }
+                                }
+                                style={{ width: "100%", height: "100%" }}
+                                contentFit="cover"
+                                testID="banner-preview"
+                              />
+                            );
+                          })()}
+                        </View>
+                      ) : null}
+                      <Row gap={8}>
+                        <View style={{ flex: 1 }}>
+                          <Button
+                            title={
+                              bannerUpload.isPending
+                                ? "Uploading…"
+                                : bannerDisplayUri
+                                  ? "Change banner"
+                                  : "Pick a banner"
+                            }
+                            onPress={pickBanner}
+                            loading={bannerUpload.isPending}
+                            icon="image"
+                            variant="secondary"
+                            testID="button-pick-banner"
+                          />
+                        </View>
+                        {bannerDisplayUri ? (
+                          <IconButton
+                            icon="trash-2"
+                            onPress={clearBanner}
+                            testID="button-clear-banner"
+                          />
+                        ) : null}
+                      </Row>
+                    </Field>
+
+                    <Field label="Accent color">
+                      <Row gap={10} style={{ flexWrap: "wrap" }}>
+                        {CIRCLE_ACCENT_PALETTE.map((swatch) => {
+                          const active = accentColor === swatch.hex;
+                          return (
+                            <Pressable
+                              key={swatch.hex}
+                              onPress={() =>
+                                setAccentColor(active ? null : swatch.hex)
+                              }
+                              testID={`accent-${swatch.hex}`}
+                              accessibilityLabel={swatch.label}
+                              style={({ pressed }) => ({
+                                width: 40,
+                                height: 40,
+                                borderRadius: 20,
+                                backgroundColor: swatch.hex,
+                                borderWidth: active ? 3 : 1,
+                                borderColor: active ? c.foreground : c.border,
+                                alignItems: "center",
+                                justifyContent: "center",
+                                opacity: pressed ? 0.85 : 1,
+                              })}
+                            >
+                              {active ? (
+                                <Feather name="check" size={18} color="#fff" />
+                              ) : null}
+                            </Pressable>
+                          );
+                        })}
+                      </Row>
+                      <AppText
+                        variant="caption"
+                        color={c.mutedForeground}
+                        style={{ marginTop: 8 }}
+                      >
+                        {accentColor ? "Tap again to use the default." : "Pick a swatch to tint headings, badges, and buttons."}
+                      </AppText>
+                    </Field>
+
+                    <Field label="Welcome message">
+                      <Input
+                        value={welcomeMessage}
+                        onChangeText={(t) =>
+                          setWelcomeMessage(t.slice(0, MAX_WELCOME_MESSAGE_LEN))
+                        }
+                        placeholder="A short hello shown to new members…"
+                        multiline
+                        style={{ minHeight: 90, textAlignVertical: "top" }}
+                        testID="input-welcome-message"
+                      />
+                      <AppText
+                        variant="caption"
+                        color={c.mutedForeground}
+                        style={{ marginTop: 4, textAlign: "right" }}
+                      >
+                        {welcomeMessage.length}/{MAX_WELCOME_MESSAGE_LEN}
+                      </AppText>
+                    </Field>
+                  </View>
+                </View>
+              ) : null}
 
               <Button
                 title="Save changes"

@@ -1,13 +1,17 @@
 import { Feather } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
+import { useAuth } from "@clerk/expo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
+  getGetCircleQueryKey,
+  useDismissCircleWelcome,
   useGetCircle,
   useGetCircleDashboard,
   useGetCircleStats,
 } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { AppText, Card, IconButton, Pill, Row, Skeleton } from "@/components/UI";
 import { Screen } from "@/components/Screen";
@@ -30,6 +34,49 @@ const SECTIONS: {
   { key: "activity", title: "Activity", icon: "activity", subtitle: "Recent happenings" },
 ];
 
+const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+  : "";
+
+function bannerObjectPathToUrl(objectPath: string | null | undefined) {
+  if (!objectPath) return undefined;
+  const stripped = objectPath.startsWith("/objects/")
+    ? objectPath.slice("/objects/".length)
+    : objectPath;
+  return `${API_BASE}/api/storage/user-media/${stripped}`;
+}
+
+function CircleBannerImage({ uri }: { uri: string }) {
+  const { getToken } = useAuth();
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    getToken()
+      .then((t) => {
+        if (alive) setToken(t ?? null);
+      })
+      .catch(() => {
+        if (alive) setToken(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [getToken]);
+
+  if (!token) return null;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { Image } = require("expo-image") as typeof import("expo-image");
+  return (
+    <Image
+      source={{ uri, headers: { Authorization: `Bearer ${token}` } }}
+      style={{ width: "100%", height: "100%" }}
+      contentFit="cover"
+      testID="circle-banner-image"
+    />
+  );
+}
+
 export default function CircleHomeScreen() {
   const c = useColors();
   const insets = useSafeAreaInsets();
@@ -39,6 +86,29 @@ export default function CircleHomeScreen() {
   const { data: circle, isLoading, isError } = useGetCircle(id);
   const { data: stats } = useGetCircleStats(id);
   const { data: dashboard } = useGetCircleDashboard(id);
+
+  const qc = useQueryClient();
+  const dismissWelcome = useDismissCircleWelcome();
+
+  const bannerUrl = bannerObjectPathToUrl(circle?.bannerObjectPath ?? null);
+
+  function handleDismissWelcome() {
+    if (!circle) return;
+    // Optimistic: hide the card immediately by patching the cache.
+    qc.setQueryData(getGetCircleQueryKey(id), {
+      ...circle,
+      showWelcomeCard: false,
+    });
+    dismissWelcome.mutate(
+      { circleId: id },
+      {
+        onError: () => {
+          // Roll back to whatever the server says.
+          qc.invalidateQueries({ queryKey: getGetCircleQueryKey(id) });
+        },
+      },
+    );
+  }
 
   return (
     <>
@@ -62,11 +132,6 @@ export default function CircleHomeScreen() {
         </Row>
 
         {isError ? (
-          // Reached when a non-member opens a circle URL they don't
-          // have access to — most commonly via Discover, an old push
-          // notification, or a stale cached list.  Without this
-          // branch the screen used to sit on a skeleton forever
-          // because `circle` stayed undefined.
           <Card style={{ paddingVertical: 24, alignItems: "center" }}>
             <Feather name="lock" size={28} color={c.mutedForeground} />
             <AppText weight="semibold" style={{ marginTop: 10 }}>
@@ -85,14 +150,102 @@ export default function CircleHomeScreen() {
           <Skeleton height={140} />
         ) : (
           <>
-            <Pill label={CIRCLE_TYPE_LABELS[circle.circleType] ?? circle.circleType} />
-            <AppText variant="h1" style={{ marginTop: 10 }}>
-              {circle.name}
-            </AppText>
-            {circle.description ? (
-              <AppText color={c.mutedForeground} style={{ marginTop: 6 }}>
-                {circle.description}
-              </AppText>
+            {bannerUrl ? (
+              <View
+                testID="circle-banner"
+                style={{
+                  borderRadius: 18,
+                  overflow: "hidden",
+                  minHeight: 180,
+                  justifyContent: "flex-end",
+                  backgroundColor: c.primarySoft,
+                }}
+              >
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                  }}
+                >
+                  <CircleBannerImage uri={bannerUrl} />
+                </View>
+                {/* Dark scrim so the title stays legible over any banner. */}
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: "rgba(0,0,0,0.35)",
+                  }}
+                />
+                <View style={{ padding: 16 }}>
+                  <Pill
+                    label={CIRCLE_TYPE_LABELS[circle.circleType] ?? circle.circleType}
+                    bg="rgba(255,255,255,0.2)"
+                    fg="#fff"
+                  />
+                  <AppText
+                    variant="h1"
+                    style={{ marginTop: 10, color: "#fff" }}
+                  >
+                    {circle.name}
+                  </AppText>
+                  {circle.description ? (
+                    <AppText
+                      color="rgba(255,255,255,0.9)"
+                      style={{ marginTop: 6 }}
+                    >
+                      {circle.description}
+                    </AppText>
+                  ) : null}
+                </View>
+              </View>
+            ) : (
+              <>
+                <Pill label={CIRCLE_TYPE_LABELS[circle.circleType] ?? circle.circleType} />
+                <AppText variant="h1" style={{ marginTop: 10, color: c.primary }}>
+                  {circle.name}
+                </AppText>
+                {circle.description ? (
+                  <AppText color={c.mutedForeground} style={{ marginTop: 6 }}>
+                    {circle.description}
+                  </AppText>
+                ) : null}
+              </>
+            )}
+
+            {circle.showWelcomeCard && circle.welcomeMessage ? (
+              <Card
+                testID="welcome-card"
+                style={{
+                  marginTop: 16,
+                  backgroundColor: c.primarySoft,
+                  borderColor: c.primary,
+                }}
+              >
+                <Row justify="space-between" align="center" style={{ marginBottom: 6 }}>
+                  <Row align="center" gap={8}>
+                    <Feather name="heart" size={16} color={c.primary} />
+                    <AppText weight="semibold" color={c.primary}>
+                      A note from your circle
+                    </AppText>
+                  </Row>
+                  <Pressable
+                    onPress={handleDismissWelcome}
+                    testID="welcome-dismiss"
+                    hitSlop={10}
+                  >
+                    <Feather name="x" size={18} color={c.primary} />
+                  </Pressable>
+                </Row>
+                <AppText style={{ lineHeight: 20 }}>{circle.welcomeMessage}</AppText>
+              </Card>
             ) : null}
 
             {stats && (

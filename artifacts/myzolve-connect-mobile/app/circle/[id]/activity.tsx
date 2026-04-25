@@ -7,6 +7,7 @@ import { formatDistanceToNow } from "date-fns";
 import { useGetCircleActivity } from "@workspace/api-client-react";
 
 import { AppText, Card, Empty, IconButton, Row, Skeleton } from "@/components/UI";
+import { CircleWelcomeNudge } from "@/components/CircleWelcomeNudge";
 import { Screen } from "@/components/Screen";
 import { useColors } from "@/hooks/useColors";
 import { safeBack } from "@/lib/safeBack";
@@ -51,7 +52,10 @@ export default function ActivityScreen() {
         {isLoading ? (
           <Skeleton height={300} />
         ) : !data || data.length === 0 ? (
-          <Empty icon="activity" title="Nothing yet" subtitle="Activity will show here." />
+          <View>
+            <CircleWelcomeNudge circleId={circleId} />
+            <Empty icon="activity" title="Nothing yet" subtitle="Activity will show here." />
+          </View>
         ) : (
           <View style={{ gap: 10 }}>
             {data.map((a) => {

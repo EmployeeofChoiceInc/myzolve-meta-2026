@@ -118,6 +118,23 @@ export interface Circle {
   ownerId: number;
   memberCount: number;
   myRole: CircleMyRole;
+  /**
+   * Plus customization. Banner shown behind the circle title.
+   * @nullable
+   */
+  bannerObjectPath?: string | null;
+  /**
+   * Plus customization. Hex accent color (e.g. "#D7754D").
+   * @nullable
+   */
+  accentColor?: string | null;
+  /**
+   * Plus customization. Greeting shown to new members.
+   * @nullable
+   */
+  welcomeMessage?: string | null;
+  /** True when the calling member should see the one-time welcome card. */
+  showWelcomeCard: boolean;
   createdAt: string;
 }
 
@@ -201,6 +218,15 @@ export interface UpdateCircleBody {
   privacyMode?: UpdateCircleBodyPrivacyMode;
   ledgerMode?: UpdateCircleBodyLedgerMode;
   currency?: string;
+  /** @nullable */
+  bannerObjectPath?: string | null;
+  /**
+   * Hex color from the curated palette, or null to reset.
+   * @nullable
+   */
+  accentColor?: string | null;
+  /** @nullable */
+  welcomeMessage?: string | null;
 }
 
 export interface CircleStats {
@@ -1697,6 +1723,47 @@ export interface UploadUrlResponse {
   uploadURL: string;
   objectPath: string;
   metadata?: UploadUrlRequest;
+}
+
+/**
+ * Request shape for minting a Plus circle banner upload URL.
+`contentType` must start with `image/`; `size` is bounded
+server-side at 10 MB. `circleId` is the circle whose banner
+is being replaced — caller must be its owner.
+
+ */
+export interface CircleBannerUploadUrlRequest {
+  /** @minLength 1 */
+  name: string;
+  /**
+   * @minimum 1
+   * @maximum 10485760
+   */
+  size: number;
+  /**
+   * @minLength 1
+   * @pattern ^image/
+   */
+  contentType: string;
+  circleId: number;
+}
+
+export type CircleBannerUploadUrlResponseMetadata = {
+  name: string;
+  size: number;
+  contentType: string;
+};
+
+/**
+ * Returned shape for a successful banner upload URL mint. The
+client should PUT the file to `uploadURL` and then send
+`objectPath` to PATCH /circles/{id} as `bannerObjectPath`.
+
+ */
+export interface CircleBannerUploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
+  metadata: CircleBannerUploadUrlResponseMetadata;
 }
 
 export type CopilotGrantStatus =

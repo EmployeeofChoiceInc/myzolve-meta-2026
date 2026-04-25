@@ -21,6 +21,7 @@ import {
   Row,
   Skeleton,
 } from "@/components/UI";
+import { CircleWelcomeNudge } from "@/components/CircleWelcomeNudge";
 import { Screen } from "@/components/Screen";
 import { ImageViewer } from "@/components/ImageViewer";
 import { CopilotAttribution, CopilotSwitcher } from "@/components/CopilotSwitcher";
@@ -281,12 +282,15 @@ export default function WallScreen() {
         {isLoading ? (
           <Skeleton height={150} />
         ) : !posts || posts.length === 0 ? (
-          <Empty
-            icon="edit-3"
-            title="The wall is quiet"
-            subtitle="Be the first to share a note."
-            action={<Button title="Write something" onPress={() => setOpen(true)} />}
-          />
+          <View>
+            <CircleWelcomeNudge circleId={circleId} />
+            <Empty
+              icon="edit-3"
+              title="The wall is quiet"
+              subtitle="Be the first to share a note."
+              action={<Button title="Write something" onPress={() => setOpen(true)} />}
+            />
+          </View>
         ) : (
           <View style={{ gap: 12 }}>
             {posts.map((p) => (

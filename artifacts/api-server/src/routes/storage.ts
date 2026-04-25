@@ -9,8 +9,15 @@ import { logger } from "../lib/logger";
 import { registerPendingUpload } from "../lib/uploadTokens";
 import { requireAuth } from "../middlewares/requireAuth";
 import { db } from "@workspace/db";
-import { attachmentsTable, circleMembersTable, usersTable, circlePostsTable } from "@workspace/db";
+import {
+  attachmentsTable,
+  circleMembersTable,
+  usersTable,
+  circlePostsTable,
+  circlesTable,
+} from "@workspace/db";
 import { eq, and, inArray } from "drizzle-orm";
+import { isPlus } from "../lib/revenuecat";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -168,6 +175,91 @@ router.post("/storage/circle-media/request-url", requireAuth, async (req: Reques
 });
 
 /**
+ * POST /storage/circle-banner/request-url
+ *
+ * Request a presigned URL for a Plus "Custom circle look" banner image.
+ * Requires the caller to be the circle owner AND to have an active
+ * Plus entitlement. RevenueCat is the source of truth for Plus state.
+ */
+router.post(
+  "/storage/circle-banner/request-url",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const userId = req.dbUser!.id;
+    const clerkId = req.dbUser!.clerkId;
+    const { name, size, contentType, circleId } = req.body as {
+      name?: string;
+      size?: number;
+      contentType?: string;
+      circleId?: number;
+    };
+
+    if (!name || !size || !contentType || !circleId) {
+      res.status(400).json({
+        error:
+          "Missing required fields: name, size, contentType, circleId",
+      });
+      return;
+    }
+
+    if (!contentType.startsWith("image/")) {
+      res.status(400).json({ error: "Only image files are allowed" });
+      return;
+    }
+
+    if (size > 10 * 1024 * 1024) {
+      res.status(400).json({ error: "Banner image must be under 10 MB" });
+      return;
+    }
+
+    const circle = await db
+      .select({ id: circlesTable.id, ownerId: circlesTable.ownerId })
+      .from(circlesTable)
+      .where(eq(circlesTable.id, circleId))
+      .limit(1)
+      .then((r) => r[0] ?? null);
+
+    if (!circle) {
+      res.status(404).json({ error: "Circle not found" });
+      return;
+    }
+
+    if (circle.ownerId !== userId) {
+      res
+        .status(403)
+        .json({ error: "Only the circle owner can change the banner." });
+      return;
+    }
+
+    const ownerHasPlus = await isPlus(clerkId);
+    if (!ownerHasPlus) {
+      res.status(402).json({
+        error: "plus_required",
+        reason: "circle_look",
+        message:
+          "MyZolve Connect Plus is required to customize your circle's look.",
+      });
+      return;
+    }
+
+    try {
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      const objectPath =
+        objectStorageService.normalizeObjectEntityPath(uploadURL);
+      registerPendingUpload(objectPath, userId, circleId);
+      res.json({
+        uploadURL,
+        objectPath,
+        metadata: { name, size, contentType },
+      });
+    } catch (error) {
+      logger.error({ err: error }, "Error generating circle banner upload URL");
+      res.status(500).json({ error: "Failed to generate upload URL" });
+    }
+  },
+);
+
+/**
  * GET /storage/user-media/*
  *
  * Serve user-owned media objects (avatars and wall post images).
@@ -237,6 +329,33 @@ router.get("/storage/user-media/*path", requireAuth, async (req: Request, res: R
           .where(
             and(
               eq(circleMembersTable.circleId, post.circleId),
+              eq(circleMembersTable.userId, userId),
+              eq(circleMembersTable.status, "active"),
+            ),
+          )
+          .limit(1)
+          .then((r) => r[0] ?? null);
+        authorized = !!membership;
+      }
+    }
+
+    // Plus "Custom circle look" banner: any active member of the
+    // owning circle is allowed to see it.
+    if (!authorized) {
+      const banner = await db
+        .select({ circleId: circlesTable.id })
+        .from(circlesTable)
+        .where(eq(circlesTable.bannerObjectPath, objectPath))
+        .limit(1)
+        .then((r) => r[0] ?? null);
+
+      if (banner) {
+        const membership = await db
+          .select({ id: circleMembersTable.id })
+          .from(circleMembersTable)
+          .where(
+            and(
+              eq(circleMembersTable.circleId, banner.circleId),
               eq(circleMembersTable.userId, userId),
               eq(circleMembersTable.status, "active"),
             ),

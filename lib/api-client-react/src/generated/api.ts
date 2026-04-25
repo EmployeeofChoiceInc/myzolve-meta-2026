@@ -23,6 +23,8 @@ import type {
   BadRequestResponse,
   CareDate,
   Circle,
+  CircleBannerUploadUrlRequest,
+  CircleBannerUploadUrlResponse,
   CircleConnection,
   CircleInvitation,
   CircleMember,
@@ -957,6 +959,93 @@ export function useGetCircleStats<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * Persists per-member dismissal of the custom-look welcome card.
+Idempotent — calling it again is a no-op.
+
+ * @summary Dismiss the one-time custom-look welcome card
+ */
+export const getDismissCircleWelcomeUrl = (circleId: number) => {
+  return `/api/circles/${circleId}/welcome/dismiss`;
+};
+
+export const dismissCircleWelcome = async (
+  circleId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDismissCircleWelcomeUrl(circleId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getDismissCircleWelcomeMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof dismissCircleWelcome>>,
+    TError,
+    { circleId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof dismissCircleWelcome>>,
+  TError,
+  { circleId: number },
+  TContext
+> => {
+  const mutationKey = ["dismissCircleWelcome"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof dismissCircleWelcome>>,
+    { circleId: number }
+  > = (props) => {
+    const { circleId } = props ?? {};
+
+    return dismissCircleWelcome(circleId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DismissCircleWelcomeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof dismissCircleWelcome>>
+>;
+
+export type DismissCircleWelcomeMutationError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Dismiss the one-time custom-look welcome card
+ */
+export const useDismissCircleWelcome = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof dismissCircleWelcome>>,
+    TError,
+    { circleId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof dismissCircleWelcome>>,
+  TError,
+  { circleId: number },
+  TContext
+> => {
+  return useMutation(getDismissCircleWelcomeMutationOptions(options));
+};
 
 /**
  * @summary List members of a circle
@@ -8018,6 +8107,101 @@ export const useRequestUploadUrl = <
   TContext
 > => {
   return useMutation(getRequestUploadUrlMutationOptions(options));
+};
+
+/**
+ * Returns a presigned upload URL for a circle banner image. The
+caller must be the circle's owner AND have an active Plus
+entitlement. Image content type only; max 10 MB.
+
+ * @summary Request a presigned URL for a Plus circle banner upload
+ */
+export const getRequestCircleBannerUploadUrlUrl = () => {
+  return `/api/storage/circle-banner/request-url`;
+};
+
+export const requestCircleBannerUploadUrl = async (
+  circleBannerUploadUrlRequest: CircleBannerUploadUrlRequest,
+  options?: RequestInit,
+): Promise<CircleBannerUploadUrlResponse> => {
+  return customFetch<CircleBannerUploadUrlResponse>(
+    getRequestCircleBannerUploadUrlUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(circleBannerUploadUrlRequest),
+    },
+  );
+};
+
+export const getRequestCircleBannerUploadUrlMutationOptions = <
+  TError = ErrorType<void | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestCircleBannerUploadUrl>>,
+    TError,
+    { data: BodyType<CircleBannerUploadUrlRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestCircleBannerUploadUrl>>,
+  TError,
+  { data: BodyType<CircleBannerUploadUrlRequest> },
+  TContext
+> => {
+  const mutationKey = ["requestCircleBannerUploadUrl"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestCircleBannerUploadUrl>>,
+    { data: BodyType<CircleBannerUploadUrlRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return requestCircleBannerUploadUrl(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestCircleBannerUploadUrlMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestCircleBannerUploadUrl>>
+>;
+export type RequestCircleBannerUploadUrlMutationBody =
+  BodyType<CircleBannerUploadUrlRequest>;
+export type RequestCircleBannerUploadUrlMutationError =
+  ErrorType<void | NotFoundResponse>;
+
+/**
+ * @summary Request a presigned URL for a Plus circle banner upload
+ */
+export const useRequestCircleBannerUploadUrl = <
+  TError = ErrorType<void | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestCircleBannerUploadUrl>>,
+    TError,
+    { data: BodyType<CircleBannerUploadUrlRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof requestCircleBannerUploadUrl>>,
+  TError,
+  { data: BodyType<CircleBannerUploadUrlRequest> },
+  TContext
+> => {
+  return useMutation(getRequestCircleBannerUploadUrlMutationOptions(options));
 };
 
 /**
