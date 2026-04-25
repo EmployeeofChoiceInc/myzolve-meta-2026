@@ -101,3 +101,9 @@ id = "caZr7ax61fdKpwzUrUnnS"
 uri = "file://artifacts/myzolve-connect-ad/public/images/friends.jpg"
 type = "image"
 title = "diverse group of close friends sharing a meal and laughing together warmly, natural candid photography"
+
+[[outputs]]
+id = "7T5hMGVCUC8dBO3Mm1dug"
+uri = "file://artifacts/myzolve-connect-mobile/store/whats-new-1.0.6.md"
+type = "text"
+title = "What's New — MyZolve Connect 1.0.6"

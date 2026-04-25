@@ -2,7 +2,7 @@
   "expo": {
     "name": "MyZolve Connect",
     "slug": "myzolve-connect-mobile",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myzolve-connect-mobile",
@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "buildNumber": "1",
+      "buildNumber": "2",
       "usesAppleSignIn": true,
       "bundleIdentifier": "app.replit.myzolveconnectmobile",
       "infoPlist": {
@@ -26,7 +26,7 @@
       }
     },
     "android": {
-      "versionCode": 8,
+      "versionCode": 9,
       "permissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
