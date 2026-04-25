@@ -2,13 +2,26 @@ import { useAuth, useUser } from "@clerk/expo";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
-import { Alert, Pressable, View } from "react-native";
+import { Alert, Image, Linking, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useGetMe } from "@workspace/api-client-react";
 
 import { AppText, Avatar, Card, Row } from "@/components/UI";
 import { Screen } from "@/components/Screen";
 import { useColors } from "@/hooks/useColors";
+
+const MYZOLVE_URL = "https://myzolve.com";
+
+async function openMyZolve() {
+  try {
+    await Linking.openURL(MYZOLVE_URL);
+  } catch {
+    Alert.alert(
+      "Couldn't open MyZolve",
+      "Please try again, or visit myzolve.com in your browser.",
+    );
+  }
+}
 
 export default function ProfileScreen() {
   const c = useColors();
@@ -23,9 +36,12 @@ export default function ProfileScreen() {
   const emailToShow = isPlaceholderEmail ? null : rawEmail;
 
   const items: {
-    icon: keyof typeof Feather.glyphMap;
     label: string;
     onPress: () => void;
+    icon?: keyof typeof Feather.glyphMap;
+    image?: number;
+    caption?: string;
+    accessibilityLabel?: string;
     danger?: boolean;
   }[] = [
     { icon: "compass", label: "Discover", onPress: () => router.push("/discover") },
@@ -34,6 +50,13 @@ export default function ProfileScreen() {
       icon: "user",
       label: "Edit profile",
       onPress: () => router.push("/profile/edit"),
+    },
+    {
+      label: "Visit MyZolve",
+      image: require("@/assets/images/myzolve-logo.png"),
+      caption: "Opens in browser",
+      accessibilityLabel: "Visit MyZolve, opens in browser",
+      onPress: openMyZolve,
     },
     {
       icon: "log-out",
@@ -101,6 +124,8 @@ export default function ProfileScreen() {
           <Pressable
             key={item.label}
             onPress={item.onPress}
+            accessibilityRole="button"
+            accessibilityLabel={item.accessibilityLabel ?? item.label}
             testID={`profile-row-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
             style={({ pressed }) => ({
               backgroundColor: c.card,
@@ -117,16 +142,29 @@ export default function ProfileScreen() {
                   width: 38,
                   height: 38,
                   borderRadius: 19,
-                  backgroundColor: item.danger ? c.destructiveSoft : c.muted,
+                  backgroundColor: item.image
+                    ? "transparent"
+                    : item.danger
+                    ? c.destructiveSoft
+                    : c.muted,
                   alignItems: "center",
                   justifyContent: "center",
+                  overflow: "hidden",
                 }}
               >
-                <Feather
-                  name={item.icon}
-                  size={18}
-                  color={item.danger ? c.destructive : c.foreground}
-                />
+                {item.image ? (
+                  <Image
+                    source={item.image}
+                    style={{ width: 24, height: 24, borderRadius: 6 }}
+                    resizeMode="contain"
+                  />
+                ) : item.icon ? (
+                  <Feather
+                    name={item.icon}
+                    size={18}
+                    color={item.danger ? c.destructive : c.foreground}
+                  />
+                ) : null}
               </View>
               <AppText
                 weight="medium"
@@ -135,6 +173,15 @@ export default function ProfileScreen() {
               >
                 {item.label}
               </AppText>
+              {item.caption ? (
+                <AppText
+                  variant="caption"
+                  color={c.mutedForeground}
+                  style={{ marginRight: 6 }}
+                >
+                  {item.caption}
+                </AppText>
+              ) : null}
               <Feather name="chevron-right" size={18} color={c.mutedForeground} />
             </Row>
           </Pressable>

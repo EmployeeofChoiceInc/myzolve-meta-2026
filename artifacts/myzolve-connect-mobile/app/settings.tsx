@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Alert, Pressable, Switch, View } from "react-native";
+import { Alert, Image, Linking, Pressable, Switch, View } from "react-native";
 import { useAuth } from "@clerk/expo";
 import {
   getGetNotificationPreferencesQueryKey,
@@ -198,6 +198,38 @@ export default function SettingsScreen() {
             </AppText>
           </Pressable>
         </Card>
+
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel="MyZolve Connect is part of the MyZolve family, opens in browser"
+          testID="link-myzolve-family"
+          onPress={async () => {
+            try {
+              await Linking.openURL("https://myzolve.com");
+            } catch {
+              Alert.alert(
+                "Couldn't open MyZolve",
+                "Please try again, or visit myzolve.com in your browser.",
+              );
+            }
+          }}
+          style={({ pressed }) => ({
+            marginTop: 28,
+            paddingHorizontal: 4,
+            opacity: pressed ? 0.6 : 1,
+          })}
+        >
+          <Row gap={8} justify="center">
+            <Image
+              source={require("@/assets/images/myzolve-logo.png")}
+              style={{ width: 16, height: 16, borderRadius: 4 }}
+              resizeMode="contain"
+            />
+            <AppText variant="caption" color={c.mutedForeground}>
+              MyZolve Connect is part of the MyZolve family
+            </AppText>
+          </Row>
+        </Pressable>
       </Screen>
     </>
   );
