@@ -11,6 +11,7 @@ import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/reac
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -55,9 +56,30 @@ const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
 const apiBase = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
   : "";
-const clerkProxyUrl =
+const computedClerkProxyUrl =
   process.env.EXPO_PUBLIC_CLERK_PROXY_URL ||
   (apiBase ? `${apiBase}/api/__clerk` : undefined);
+
+// On web, Clerk requires the proxy URL to be same-origin as the page.
+// In our Expo dev setup the page is served from the Expo packager
+// origin (`<repl>.expo.janeway.replit.dev`) while the API server
+// (which actually serves `/api/__clerk`) lives on a different
+// subdomain (`<repl>.janeway.replit.dev`). When Clerk sees a
+// cross-origin proxy URL it silently rewrites the script load to the
+// current origin, which 404s on the Expo packager. Detect that case
+// and skip the proxy so Clerk uses the publishable-key-derived
+// frontend API directly (works for dev keys; production keys still
+// route through the proxy on iOS / Android).
+const pageOrigin =
+  Platform.OS === "web" && typeof window !== "undefined"
+    ? window.location.origin
+    : null;
+const clerkProxyUrl =
+  computedClerkProxyUrl &&
+  pageOrigin &&
+  !computedClerkProxyUrl.startsWith(pageOrigin)
+    ? undefined
+    : computedClerkProxyUrl;
 
 if (apiBase) setBaseUrl(apiBase);
 
