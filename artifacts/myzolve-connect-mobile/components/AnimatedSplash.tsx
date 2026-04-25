@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View, type LayoutChangeEvent } from "react-native";
 import Animated, {
   Easing,
   runOnJS,
@@ -23,9 +23,9 @@ const OVERLAY_FADE_MS = 250;
 const REDUCED_FADE_MS = 350;
 const REDUCED_HOLD_MS = 500;
 
-type Props = { onComplete: () => void };
+type Props = { onComplete: () => void; onLayout?: () => void };
 
-export function AnimatedSplash({ onComplete }: Props) {
+export function AnimatedSplash({ onComplete, onLayout }: Props) {
   const heartOpacity = useSharedValue(0);
   const heartScale = useSharedValue(0.94);
   const leavesOpacity = useSharedValue(0);
@@ -42,7 +42,15 @@ export function AnimatedSplash({ onComplete }: Props) {
     onComplete();
   }, [onComplete]);
 
-  useEffect(() => {
+  // Defer animation start until onLayout fires (or a 250ms safety
+  // fallback in case onLayout is delayed in production builds).  This
+  // ensures the animation never plays hidden behind the dismissing
+  // native splash.
+  const animationStartedRef = useRef(false);
+  const startAnimation = useCallback(() => {
+    if (animationStartedRef.current) return;
+    animationStartedRef.current = true;
+
     const finish = () => {
       "worklet";
       runOnJS(finishOnce)();
@@ -95,7 +103,6 @@ export function AnimatedSplash({ onComplete }: Props) {
         }),
       );
     }
-
   }, [
     reduceMotion,
     heartOpacity,
@@ -105,6 +112,38 @@ export function AnimatedSplash({ onComplete }: Props) {
     overlayOpacity,
     finishOnce,
   ]);
+
+  // Safety net: if onLayout never fires (rare, but possible if the
+  // overlay is recycled or laid out off-screen), trigger the same
+  // handoff (notify parent so it hides the native splash, then start
+  // the animation) after a short delay so the user is never stuck on
+  // a blank cream screen.  We notify the parent FIRST so the native
+  // splash dismisses before/with the animation start, matching the
+  // primary handleLayout path.
+  const layoutNotifiedRef = useRef(false);
+  const notifyLayoutOnce = useCallback(() => {
+    if (layoutNotifiedRef.current) return;
+    layoutNotifiedRef.current = true;
+    onLayout?.();
+  }, [onLayout]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      notifyLayoutOnce();
+      startAnimation();
+    }, 250);
+    return () => clearTimeout(t);
+  }, [notifyLayoutOnce, startAnimation]);
+
+  const handleLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      notifyLayoutOnce();
+      startAnimation();
+      // Reference the event so RN doesn't pool/reuse it before consumers read it.
+      void e;
+    },
+    [notifyLayoutOnce, startAnimation],
+  );
 
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: overlayOpacity.value,
@@ -134,6 +173,7 @@ export function AnimatedSplash({ onComplete }: Props) {
     <Animated.View
       pointerEvents="auto"
       style={[StyleSheet.absoluteFill, styles.overlay, overlayStyle]}
+      onLayout={handleLayout}
       accessible
       accessibilityRole="image"
       accessibilityLabel="MyZolve Connect"

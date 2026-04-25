@@ -191,11 +191,53 @@ export default function RootLayout() {
     isColdLaunch = false;
   }, []);
 
+  // Hide the native iOS/Android splash ONLY after the JS-side
+  // AnimatedSplash has been laid out (or, when we're not playing it,
+  // as soon as fonts are ready).  Hiding the native splash before the
+  // animated overlay is on screen creates a flash of the underlying
+  // app and makes the heart→leaves animation invisible — users only
+  // see the native launch image (the app icon) "freeze" and then the
+  // app appears with no animation in between.
+  //
+  // We track whether the native splash has actually been hidden
+  // (separately from "layout seen") so the safety fallback can retry
+  // if hideAsync ever rejects with a real error.
+  const nativeSplashHiddenRef = useRef(false);
+  const hideNativeSplashSafely = useCallback(() => {
+    if (nativeSplashHiddenRef.current) return;
+    SplashScreen.hideAsync()
+      .then(() => {
+        nativeSplashHiddenRef.current = true;
+      })
+      .catch((err) => {
+        // hideAsync throws when already hidden — treat as success.
+        const msg = String((err as Error)?.message ?? err);
+        if (/already hidden|no .*splash/i.test(msg)) {
+          nativeSplashHiddenRef.current = true;
+        }
+        // Otherwise leave the flag false so the safety fallback can retry.
+      });
+  }, []);
+
   useEffect(() => {
-    if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
+    if (!(fontsLoaded || fontError)) return;
+    if (showAnimatedSplash) {
+      // Wait for AnimatedSplash's onLayout to call hideNativeSplashSafely.
+      // Fallback: if the native splash isn't hidden within 3s (well
+      // over the ~1.65s nominal animation), hide anyway so the user
+      // is never stuck on the native splash.
+      const t = setTimeout(() => {
+        if (!nativeSplashHiddenRef.current) hideNativeSplashSafely();
+      }, 3000);
+      return () => clearTimeout(t);
     }
-  }, [fontsLoaded, fontError]);
+    hideNativeSplashSafely();
+    return undefined;
+  }, [fontsLoaded, fontError, showAnimatedSplash, hideNativeSplashSafely]);
+
+  const handleAnimatedSplashLayout = useCallback(() => {
+    hideNativeSplashSafely();
+  }, [hideNativeSplashSafely]);
 
   const handleSplashComplete = useCallback(() => {
     setSplashFinished(true);
@@ -221,7 +263,10 @@ export default function RootLayout() {
                         <StatusBar style="dark" />
                         <RootLayoutNav />
                         {showAnimatedSplash && !splashFinished ? (
-                          <AnimatedSplash onComplete={handleSplashComplete} />
+                          <AnimatedSplash
+                            onComplete={handleSplashComplete}
+                            onLayout={handleAnimatedSplashLayout}
+                          />
                         ) : null}
                       </KeyboardProvider>
                     </GestureHandlerRootView>
