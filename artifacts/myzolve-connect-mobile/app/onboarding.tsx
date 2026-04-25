@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Alert, Pressable, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import {
   getListCirclesQueryKey,
   useCreateCircle,
@@ -12,13 +13,8 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { AppText, Button, Field, Input, Row } from "@/components/UI";
 import { useColors } from "@/hooks/useColors";
-import { CIRCLE_TYPE_LABELS } from "@/lib/circleTypes";
+import { CIRCLE_TYPE_KEYS, useCircleTypeLabel } from "@/lib/circleTypes";
 import { setOnboardingAcknowledged } from "@/lib/onboardingFlag";
-
-const TYPES = Object.entries(CIRCLE_TYPE_LABELS).map(([value, label]) => ({
-  value,
-  label,
-}));
 
 export default function OnboardingScreen() {
   const c = useColors();
@@ -26,6 +22,8 @@ export default function OnboardingScreen() {
   const router = useRouter();
   const qc = useQueryClient();
   const { userId } = useAuth();
+  const { t } = useTranslation();
+  const labelOf = useCircleTypeLabel();
   const create = useCreateCircle();
   const [name, setName] = useState("");
   const [type, setType] = useState("chosen_family");
@@ -39,7 +37,7 @@ export default function OnboardingScreen() {
 
   function submit() {
     if (name.trim().length < 2) {
-      Alert.alert("A name helps", "Give your circle a name to begin.");
+      Alert.alert(t("onboarding.needName"), t("onboarding.needNameBody"));
       return;
     }
     create.mutate(
@@ -58,7 +56,7 @@ export default function OnboardingScreen() {
           router.replace("/(tabs)");
           router.push(`/circle/${newCircle.id}`);
         },
-        onError: () => Alert.alert("Couldn't create", "Please try again."),
+        onError: () => Alert.alert(t("onboarding.couldntCreate"), t("onboarding.couldntCreateBody")),
       }
     );
   }
@@ -75,30 +73,35 @@ export default function OnboardingScreen() {
           flexGrow: 1,
         }}
       >
-        <AppText variant="h1">Welcome.</AppText>
+        <AppText variant="h1" accessibilityRole="header">{t("onboarding.title")}</AppText>
         <AppText color={c.mutedForeground} style={{ marginTop: 6, marginBottom: 32 }}>
-          MyZolve Connect is a private, warm space for the people you trust.
-          Let's start your first circle.
+          {t("onboarding.subtitle")}
         </AppText>
 
-        <Field label="Circle name">
+        <Field label={t("onboarding.circleName")}>
           <Input
             value={name}
             onChangeText={setName}
-            placeholder="e.g. The Village"
+            placeholder={t("onboarding.circleNamePlaceholder")}
             testID="input-name"
             autoFocus
+            accessibilityLabel={t("onboarding.circleName")}
           />
         </Field>
 
-        <Field label="What kind of circle is this?">
+        <Field label={t("onboarding.circleKindLabel")}>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {TYPES.map((t) => {
-              const active = type === t.value;
+            {CIRCLE_TYPE_KEYS.map((key) => {
+              const active = type === key;
+              const label = labelOf(key);
               return (
                 <Pressable
-                  key={t.value}
-                  onPress={() => setType(t.value)}
+                  key={key}
+                  onPress={() => setType(key)}
+                  accessibilityRole="button"
+                  accessibilityLabel={label}
+                  accessibilityState={{ selected: active }}
+                  hitSlop={6}
                   style={{
                     paddingHorizontal: 14,
                     paddingVertical: 10,
@@ -111,7 +114,7 @@ export default function OnboardingScreen() {
                     weight="medium"
                     variant="caption"
                   >
-                    {t.label}
+                    {label}
                   </AppText>
                 </Pressable>
               );
@@ -123,14 +126,14 @@ export default function OnboardingScreen() {
 
         <Row gap={10} style={{ marginTop: 24 }}>
           <Button
-            title="Skip for now"
+            title={t("onboarding.skipForNow")}
             variant="ghost"
             onPress={skip}
             style={{ flex: 1 }}
             testID="button-onboarding-skip"
           />
           <Button
-            title="Create circle"
+            title={t("onboarding.createCircle")}
             onPress={submit}
             loading={create.isPending}
             style={{ flex: 1.4 }}

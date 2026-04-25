@@ -3,6 +3,7 @@ import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { hasAcknowledgedOnboarding } from "@/lib/onboardingFlag";
 import { hasSeenYearRecap } from "@/lib/yearRecapFlag";
 import { useSubscription } from "@/lib/revenuecat";
@@ -29,20 +30,22 @@ import {
 } from "@/components/UI";
 import { Screen } from "@/components/Screen";
 import { useColors } from "@/hooks/useColors";
+import { useIntlLocale } from "@/hooks/useDateLocale";
 import {
-  CIRCLE_TYPE_LABELS,
   URGENCY_COLORS,
-  URGENCY_LABELS,
-  formatMoney,
+  useCircleTypeLabel,
+  useFormatMoney,
+  useUrgencyLabel,
 } from "@/lib/circleTypes";
 
 export default function HomeScreen() {
   const { user } = useUser();
   const { isLoaded: authLoaded, isSignedIn, userId } = useAuth();
-  // Tri-state flag: undefined = not checked yet, true/false = checked.
-  // We must NOT make an auto-redirect decision until we've read the
-  // persisted "user already acknowledged onboarding" flag, otherwise we
-  // bounce the user back to /onboarding even after they tapped Skip.
+  const { t } = useTranslation();
+  const formatMoney = useFormatMoney();
+  const circleLabel = useCircleTypeLabel();
+  const urgencyLabel = useUrgencyLabel();
+  const locale = useIntlLocale();
   const [onboardingAck, setOnboardingAck] = useState<boolean | undefined>(
     undefined,
   );
@@ -59,12 +62,6 @@ export default function HomeScreen() {
       cancelled = true;
     };
   }, [userId]);
-  // Only fire authenticated queries once Clerk reports the session is
-  // active.  On initial sign-in there's a brief window where the screen
-  // mounts before Clerk's session signal propagates to useAuth(); without
-  // this gate, the query fires with no token, hangs (or 401s) and the
-  // user is stuck on the loading skeleton forever — exactly what Apple's
-  // App Review flagged.
   const authReady = !!authLoaded && !!isSignedIn;
   const c = useColors();
   const insets = useSafeAreaInsets();
@@ -98,13 +95,6 @@ export default function HomeScreen() {
   });
 
   useEffect(() => {
-    // Only auto-route to /onboarding the FIRST time a brand-new account
-    // lands here with zero circles.  Once they've either created a
-    // circle or tapped "Skip for now" on the onboarding screen, the
-    // flag is set and we leave them on Home with an empty-state CTA.
-    // Without this gate, Skip → Home → auto-redirect → Onboarding
-    // loops forever — exactly what the user reported and what App
-    // Review would (correctly) reject.
     if (
       !isLoading &&
       circles &&
@@ -115,17 +105,12 @@ export default function HomeScreen() {
     }
   }, [isLoading, circles, router, onboardingAck]);
 
-  // Year recap auto-present: in January, the very first time a Plus
-  // member with at least one circle opens Home for the year, push them
-  // straight into their Year of Care recap.  We use AsyncStorage so it
-  // only fires once per (user, year), and gate on `isPlus` so free
-  // members don't get redirected into a Plus-gated screen.
   const { isPlus } = useSubscription();
   useEffect(() => {
     if (!isPlus || !userId) return;
     if (!circles || circles.length === 0) return;
     const now = new Date();
-    if (now.getMonth() !== 0) return; // January only.
+    if (now.getMonth() !== 0) return;
     const recapYear = now.getFullYear() - 1;
     let cancelled = false;
     hasSeenYearRecap(userId, recapYear).then((seen) => {
@@ -139,7 +124,9 @@ export default function HomeScreen() {
     };
   }, [isPlus, userId, circles, router]);
 
-  const greeting = user?.firstName ? `Hi, ${user.firstName}.` : "Welcome home.";
+  const greeting = user?.firstName
+    ? t("home.greetingNamed", { name: user.firstName })
+    : t("home.greetingDefault");
   const dashboard = dashboardQuery.data;
   const openRequests = (requestsQuery.data ?? [])
     .filter((r) => !["completed", "archived", "canceled"].includes(r.status))
@@ -152,21 +139,21 @@ export default function HomeScreen() {
       refreshing={isRefetching}
       onRefresh={refetch}
     >
-      <AppText variant="h1">{greeting}</AppText>
+      <AppText variant="h1" accessibilityRole="header">{greeting}</AppText>
       <AppText color={c.mutedForeground} style={{ marginTop: 4, marginBottom: 24 }}>
-        Latest from your trusted circles.
+        {t("home.subtitle")}
       </AppText>
 
       {firstCircle && (
         <Row gap={12} style={{ marginBottom: 24 }}>
           <Button
-            title="Ask for support"
+            title={t("home.askForSupport")}
             icon="plus"
             onPress={() => router.push(`/circle/${firstCircle.id}/new-request`)}
             style={{ flex: 1 }}
           />
           <Button
-            title="Offer help"
+            title={t("home.offerHelp")}
             icon="heart"
             variant="outline"
             onPress={() => router.push(`/circle/${firstCircle.id}/new-service`)}
@@ -178,6 +165,7 @@ export default function HomeScreen() {
       {upcomingDates.length > 0 && (
         <UpcomingDatesCard
           dates={upcomingDates}
+          locale={locale}
           onOpenCalendar={(circleId) =>
             router.push(`/circle/${circleId}/calendar`)
           }
@@ -187,11 +175,11 @@ export default function HomeScreen() {
         />
       )}
 
-      <AppText variant="title" style={{ marginBottom: 12 }}>
-        Your circles
+      <AppText variant="title" accessibilityRole="header" style={{ marginBottom: 12 }}>
+        {t("home.yourCircles")}
       </AppText>
       {isLoading ? (
-        <View style={{ gap: 12 }}>
+        <View style={{ gap: 12 }} accessibilityLabel={t("common.loading")}>
           {[0, 1].map((i) => (
             <View
               key={i}
@@ -218,17 +206,23 @@ export default function HomeScreen() {
             gap: 8,
           }}
         >
-          <Feather name="wifi-off" size={28} color={c.mutedForeground} />
-          <AppText weight="semibold">Couldn't reach the server</AppText>
+          <Feather
+            name="wifi-off"
+            size={28}
+            color={c.mutedForeground}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          />
+          <AppText weight="semibold">{t("common.offlineTitle")}</AppText>
           <AppText
             color={c.mutedForeground}
             variant="caption"
             style={{ textAlign: "center", maxWidth: 280 }}
           >
-            {(error as Error | undefined)?.message ?? "Please check your connection and try again."}
+            {(error as Error | undefined)?.message ?? t("common.offlineBody")}
           </AppText>
           <Button
-            title="Try again"
+            title={t("common.tryAgain")}
             variant="outline"
             size="sm"
             onPress={() => refetch()}
@@ -242,24 +236,32 @@ export default function HomeScreen() {
               key={circle.id}
               onPress={() => router.push(`/circle/${circle.id}`)}
               testID={`circle-card-${circle.id}`}
+              accessibilityLabel={circle.name}
+              accessibilityHint={t("common.memberCount", { count: circle.memberCount })}
             >
               <Row justify="space-between" align="flex-start">
                 <View style={{ flex: 1, marginRight: 12 }}>
-                  <Pill label={CIRCLE_TYPE_LABELS[circle.circleType] ?? circle.circleType} />
+                  <Pill label={circleLabel(circle.circleType)} />
                   <AppText variant="title" style={{ marginTop: 8 }}>
                     {circle.name}
                   </AppText>
                   <AppText color={c.mutedForeground} variant="caption" style={{ marginTop: 4 }}>
-                    {circle.memberCount} member{circle.memberCount !== 1 ? "s" : ""}
+                    {t("common.memberCount", { count: circle.memberCount })}
                   </AppText>
                 </View>
-                <Feather name="chevron-right" size={20} color={c.mutedForeground} />
+                <Feather
+                  name="chevron-right"
+                  size={20}
+                  color={c.mutedForeground}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                />
               </Row>
             </PressableCard>
           ))}
           {circles.length > 4 && (
             <Button
-              title={`See all ${circles.length} circles`}
+              title={t("home.seeAllCircles", { count: circles.length })}
               variant="ghost"
               onPress={() => router.push("/(tabs)/circles")}
             />
@@ -269,11 +271,11 @@ export default function HomeScreen() {
         <View style={{ gap: 12 }}>
           <Empty
             icon="users"
-            title="No circles yet"
-            subtitle="Create one to share support with the people you trust."
+            title={t("home.noCirclesTitle")}
+            subtitle={t("home.noCirclesSubtitle")}
           />
           <Button
-            title="Create your first circle"
+            title={t("home.createFirstCircle")}
             icon="plus"
             onPress={() => router.push("/onboarding")}
             testID="button-home-create-first-circle"
@@ -285,9 +287,9 @@ export default function HomeScreen() {
         <>
           <View style={{ height: 32 }} />
           <Row justify="space-between" style={{ marginBottom: 12 }}>
-            <AppText variant="title">Open requests</AppText>
+            <AppText variant="title" accessibilityRole="header">{t("home.openRequests")}</AppText>
             <Button
-              title="See all"
+              title={t("home.seeAll")}
               variant="ghost"
               size="sm"
               onPress={() => router.push(`/circle/${firstCircle.id}/requests`)}
@@ -301,7 +303,7 @@ export default function HomeScreen() {
                   {dashboard.openRequestsCount}
                 </AppText>
                 <AppText variant="caption" color={c.mutedForeground} style={{ marginTop: 2 }}>
-                  Open
+                  {t("home.openRequestsLabel")}
                 </AppText>
               </Card>
               <Card style={{ flex: 1, alignItems: "center", paddingVertical: 14 }}>
@@ -309,7 +311,7 @@ export default function HomeScreen() {
                   {dashboard.activeServices}
                 </AppText>
                 <AppText variant="caption" color={c.mutedForeground} style={{ marginTop: 2 }}>
-                  Services
+                  {t("home.servicesLabel")}
                 </AppText>
               </Card>
               <Card style={{ flex: 1, alignItems: "center", paddingVertical: 14 }}>
@@ -320,7 +322,7 @@ export default function HomeScreen() {
                   {dashboard.urgentRequestsCount}
                 </AppText>
                 <AppText variant="caption" color={c.mutedForeground} style={{ marginTop: 2 }}>
-                  Urgent
+                  {t("home.urgentLabel")}
                 </AppText>
               </Card>
             </Row>
@@ -329,8 +331,8 @@ export default function HomeScreen() {
           {openRequests.length === 0 ? (
             <Empty
               icon="check-circle"
-              title="All quiet here"
-              subtitle="No open requests right now."
+              title={t("home.allQuietTitle")}
+              subtitle={t("home.allQuietSubtitle")}
             />
           ) : (
             <View style={{ gap: 12 }}>
@@ -344,6 +346,8 @@ export default function HomeScreen() {
                   <PressableCard
                     key={req.id}
                     onPress={() => router.push(`/request/${req.id}`)}
+                    accessibilityLabel={req.title}
+                    accessibilityHint={`${urgencyLabel(req.urgencyLevel)} · ${formatMoney(req.amountFunded, req.currency)} / ${formatMoney(req.amountRequested, req.currency)}`}
                   >
                     <Row justify="space-between" align="flex-start" style={{ marginBottom: 10 }}>
                       <View style={{ flex: 1, marginRight: 8 }}>
@@ -353,7 +357,7 @@ export default function HomeScreen() {
                         </AppText>
                       </View>
                       <Pill
-                        label={URGENCY_LABELS[req.urgencyLevel] ?? req.urgencyLevel}
+                        label={urgencyLabel(req.urgencyLevel)}
                         bg={urg.bg}
                         fg={urg.fg}
                       />
@@ -361,10 +365,10 @@ export default function HomeScreen() {
                     <Progress value={pct} />
                     <Row justify="space-between" style={{ marginTop: 8 }}>
                       <AppText variant="caption" color={c.mutedForeground}>
-                        {formatMoney(req.amountFunded, req.currency)} supported
+                        {t("home.supported", { amount: formatMoney(req.amountFunded, req.currency) })}
                       </AppText>
                       <AppText variant="caption" color={c.mutedForeground}>
-                        Goal {formatMoney(req.amountRequested, req.currency)}
+                        {t("home.goal", { amount: formatMoney(req.amountRequested, req.currency) })}
                       </AppText>
                     </Row>
                   </PressableCard>
@@ -376,24 +380,32 @@ export default function HomeScreen() {
           {dashboard && dashboard.pendingRepayments.length > 0 && (
             <>
               <View style={{ height: 32 }} />
-              <AppText variant="title" style={{ marginBottom: 12 }}>
-                Gentle reminders
+              <AppText variant="title" accessibilityRole="header" style={{ marginBottom: 12 }}>
+                {t("home.gentleReminders")}
               </AppText>
               <View style={{ gap: 10 }}>
                 {dashboard.pendingRepayments.slice(0, 3).map((r) => (
                   <PressableCard
                     key={r.requestId}
                     onPress={() => router.push(`/request/${r.requestId}`)}
+                    accessibilityLabel={r.requestTitle}
+                    accessibilityHint={t("home.amountToReturn", { amount: formatMoney(r.amountOwed, r.currency) })}
                     style={{ backgroundColor: c.secondarySoft, borderColor: c.secondarySoft }}
                   >
                     <Row justify="space-between">
                       <View style={{ flex: 1 }}>
                         <AppText weight="semibold">{r.requestTitle}</AppText>
                         <AppText variant="caption" color={c.mutedForeground} style={{ marginTop: 2 }}>
-                          {formatMoney(r.amountOwed, r.currency)} to return
+                          {t("home.amountToReturn", { amount: formatMoney(r.amountOwed, r.currency) })}
                         </AppText>
                       </View>
-                      <Feather name="arrow-right" size={18} color={c.mutedForeground} />
+                      <Feather
+                        name="arrow-right"
+                        size={18}
+                        color={c.mutedForeground}
+                        accessibilityElementsHidden
+                        importantForAccessibility="no-hide-descendants"
+                      />
                     </Row>
                   </PressableCard>
                 ))}
@@ -406,28 +418,31 @@ export default function HomeScreen() {
   );
 }
 
-function formatRelative(iso: string): string {
+function formatRelative(iso: string, locale: string, t: (key: string) => string): string {
   const [y, m, d] = iso.split("-").map((s) => parseInt(s, 10));
   const target = new Date(y, (m ?? 1) - 1, d ?? 1);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   target.setHours(0, 0, 0, 0);
   const days = Math.round((target.getTime() - today.getTime()) / 86_400_000);
-  if (days === 0) return "Today";
-  if (days === 1) return "Tomorrow";
-  return target.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
+  if (days === 0) return t("common.today");
+  if (days === 1) return t("common.tomorrow");
+  return target.toLocaleDateString(locale, { weekday: "long", month: "short", day: "numeric" });
 }
 
 function UpcomingDatesCard({
   dates,
+  locale,
   onOpenCalendar,
   onSendNote,
 }: {
   dates: CareDate[];
+  locale: string;
   onOpenCalendar: (circleId: number) => void;
   onSendNote: (targetUserId: number) => void;
 }) {
   const c = useColors();
+  const { t } = useTranslation();
   return (
     <Card
       style={{
@@ -438,14 +453,23 @@ function UpcomingDatesCard({
       }}
     >
       <Row gap={8} align="center">
-        <Feather name="calendar" size={16} color={c.secondary} />
-        <AppText weight="semibold">This week in your circles</AppText>
+        <Feather
+          name="calendar"
+          size={16}
+          color={c.secondary}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
+        <AppText weight="semibold">{t("home.thisWeekInCircles")}</AppText>
       </Row>
       <View style={{ gap: 8 }}>
         {dates.map((d) => (
           <Pressable
             key={d.id}
             onPress={() => onOpenCalendar(d.circleId)}
+            accessibilityRole="button"
+            accessibilityLabel={d.name}
+            accessibilityHint={formatRelative(d.nextOccurrence, locale, t)}
             style={({ pressed }) => ({
               padding: 10,
               borderRadius: 12,
@@ -457,21 +481,27 @@ function UpcomingDatesCard({
               <View style={{ flex: 1, marginRight: 8 }}>
                 <AppText weight="semibold">{d.name}</AppText>
                 <AppText variant="caption" color={c.mutedForeground} style={{ marginTop: 2 }}>
-                  {formatRelative(d.nextOccurrence)}
-                  {d.targetUserName ? ` · for ${d.targetUserName}` : ""}
+                  {formatRelative(d.nextOccurrence, locale, t)}
+                  {d.targetUserName ? ` · ${t("home.forUser", { name: d.targetUserName })}` : ""}
                   {d.circleName ? ` · ${d.circleName}` : ""}
                 </AppText>
               </View>
               {d.targetUserId ? (
                 <Button
-                  title="Send a note"
+                  title={t("home.sendNote")}
                   size="sm"
                   variant="outline"
                   icon="message-circle"
                   onPress={() => onSendNote(d.targetUserId!)}
                 />
               ) : (
-                <Feather name="chevron-right" size={18} color={c.mutedForeground} />
+                <Feather
+                  name="chevron-right"
+                  size={18}
+                  color={c.mutedForeground}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                />
               )}
             </Row>
           </Pressable>

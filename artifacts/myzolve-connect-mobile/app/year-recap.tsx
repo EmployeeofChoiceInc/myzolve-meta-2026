@@ -4,6 +4,7 @@ import { Pressable, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useAuth } from "@clerk/expo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import {
   getGetCircleLedgerProQueryKey,
   getGetCircleLedgerProYearsQueryKey,
@@ -24,20 +25,18 @@ import { useSubscription } from "@/lib/revenuecat";
 import { safeBack } from "@/lib/safeBack";
 import { markYearRecapSeen } from "@/lib/yearRecapFlag";
 
-// Plus-only year recap; free members see an upsell prompt instead.
 export default function YearRecapScreen() {
   const c = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { userId } = useAuth();
   const { isPlus } = useSubscription();
+  const { t } = useTranslation();
 
   const params = useLocalSearchParams<{ circleId?: string; year?: string }>();
   const queryCircleId = params.circleId ? Number(params.circleId) : null;
   const queryYear = params.year ? Number(params.year) : null;
 
-  // Default to the previous calendar year — the recap is a look back at
-  // the year that just ended, not the one in progress.
   const defaultYear = useMemo(() => {
     if (queryYear) return queryYear;
     const now = new Date();
@@ -76,8 +75,6 @@ export default function YearRecapScreen() {
     },
   );
 
-  // Mark this year as "seen" the moment the screen renders for a Plus
-  // member so the Jan auto-present logic doesn't fire again this year.
   useEffect(() => {
     if (isPlus) {
       markYearRecapSeen(userId, effectiveYear);
@@ -109,19 +106,23 @@ export default function YearRecapScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: "Year of Care" }} />
+      <Stack.Screen options={{ title: t("navigation.yearOfCare") }} />
       <Screen contentStyle={{ paddingTop: insets.top + 12 }}>
         <Row align="center" justify="space-between" style={{ marginBottom: 16 }}>
-          <IconButton icon="arrow-left" onPress={() => safeBack(router)} />
+          <IconButton
+            icon="arrow-left"
+            accessibilityLabel={t("a11y.backButton")}
+            onPress={() => safeBack(router)}
+          />
           <PlusBadge size="sm" variant="soft" />
         </Row>
 
-        <AppText variant="h1">Year of Care</AppText>
+        <AppText variant="h1" accessibilityRole="header">{t("yearRecap.title")}</AppText>
         <AppText
           color={c.mutedForeground}
           style={{ marginTop: 4, marginBottom: 20 }}
         >
-          A warm look back at the support that flowed through your circle.
+          {t("yearRecap.subtitle")}
         </AppText>
 
         {!isPlus ? (
@@ -129,8 +130,8 @@ export default function YearRecapScreen() {
         ) : !circleId ? (
           <Empty
             icon="users"
-            title="No circle yet"
-            subtitle="Create or join a circle to see your year recap."
+            title={t("yearRecap.noCircle")}
+            subtitle={t("yearRecap.noCircleSubtitle")}
           />
         ) : proQuery.isLoading || yearsQuery.isLoading ? (
           <Skeleton height={400} />
@@ -145,8 +146,8 @@ export default function YearRecapScreen() {
         ) : (
           <Empty
             icon="alert-circle"
-            title="Couldn't build your recap"
-            subtitle="Pull down to retry."
+            title={t("yearRecap.couldntBuild")}
+            subtitle={t("yearRecap.pullToRetry")}
           />
         )}
       </Screen>
@@ -156,10 +157,13 @@ export default function YearRecapScreen() {
 
 function PlusGate({ onUpgrade }: { onUpgrade: () => void }) {
   const c = useColors();
+  const { t } = useTranslation();
   return (
     <Card style={{ backgroundColor: c.primarySoft, borderColor: c.primary }}>
       <Row gap={12} align="flex-start">
         <View
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
           style={{
             width: 40,
             height: 40,
@@ -172,17 +176,19 @@ function PlusGate({ onUpgrade }: { onUpgrade: () => void }) {
           <Feather name="gift" size={18} color={c.primary} />
         </View>
         <View style={{ flex: 1 }}>
-          <AppText weight="semibold">Year recap is a Plus moment</AppText>
+          <AppText weight="semibold">{t("yearRecap.plusGateTitle")}</AppText>
           <AppText
             variant="caption"
             color={c.mutedForeground}
             style={{ marginTop: 4, lineHeight: 18 }}
           >
-            Look back on the support, the gifts, and the quiet acts of care that
-            shaped your year — with a downloadable PDF you can keep or share.
+            {t("yearRecap.plusGateBody")}
           </AppText>
           <Pressable
             onPress={onUpgrade}
+            accessibilityRole="button"
+            accessibilityLabel={t("yearRecap.seePlus")}
+            hitSlop={8}
             style={({ pressed }) => ({
               marginTop: 12,
               alignSelf: "flex-start",
@@ -194,7 +200,7 @@ function PlusGate({ onUpgrade }: { onUpgrade: () => void }) {
             })}
           >
             <AppText weight="semibold" color={c.primaryForeground}>
-              See Plus
+              {t("yearRecap.seePlus")}
             </AppText>
           </Pressable>
         </View>

@@ -3,12 +3,14 @@ import { Feather } from "@expo/vector-icons";
 import { Redirect, Tabs } from "expo-router";
 import React from "react";
 import { Platform } from "react-native";
+import { useTranslation } from "react-i18next";
 
 import { useColors } from "@/hooks/useColors";
 import { fonts } from "@/constants/colors";
 
 export default function TabsLayout() {
   const c = useColors();
+  const { t } = useTranslation();
   const { isLoaded, isSignedIn } = useAuth();
 
   if (!isLoaded) return null;
@@ -34,36 +36,41 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: t("tabs.home"),
           tabBarIcon: ({ color, size }) => <Feather name="home" size={size} color={color} />,
+          tabBarAccessibilityLabel: t("tabs.home"),
         }}
       />
       <Tabs.Screen
         name="circles"
         options={{
-          title: "Circles",
+          title: t("tabs.circles"),
           tabBarIcon: ({ color, size }) => <Feather name="users" size={size} color={color} />,
+          tabBarAccessibilityLabel: t("tabs.circles"),
         }}
       />
       <Tabs.Screen
         name="messages"
         options={{
-          title: "Messages",
+          title: t("tabs.messages"),
           tabBarIcon: ({ color, size }) => <Feather name="message-circle" size={size} color={color} />,
+          tabBarAccessibilityLabel: t("tabs.messages"),
         }}
       />
       <Tabs.Screen
         name="notifications"
         options={{
-          title: "Alerts",
+          title: t("tabs.alerts"),
           tabBarIcon: ({ color, size }) => <Feather name="bell" size={size} color={color} />,
+          tabBarAccessibilityLabel: t("tabs.alerts"),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: t("tabs.profile"),
           tabBarIcon: ({ color, size }) => <Feather name="user" size={size} color={color} />,
+          tabBarAccessibilityLabel: t("tabs.profile"),
         }}
       />
     </Tabs>

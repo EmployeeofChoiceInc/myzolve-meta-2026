@@ -1,3 +1,22 @@
+import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
+
+import { useIntlLocale } from "@/hooks/useDateLocale";
+
+export const CIRCLE_TYPE_KEYS = [
+  "family",
+  "chosen_family",
+  "friends",
+  "caregiving_circle",
+  "neighborhood_circle",
+  "other",
+] as const;
+
+/**
+ * Plain English labels — kept for legacy callers (notifications, push
+ * payloads, server-rendered things) that aren't inside a React tree
+ * and so can't use the `useCircleTypeLabel` hook.
+ */
 export const CIRCLE_TYPE_LABELS: Record<string, string> = {
   family: "Family",
   chosen_family: "Chosen Family",
@@ -7,6 +26,18 @@ export const CIRCLE_TYPE_LABELS: Record<string, string> = {
   other: "Other",
 };
 
+/** Hook returning a translator for circle-type keys. */
+export function useCircleTypeLabel(): (key?: string | null) => string {
+  const { t } = useTranslation();
+  return useCallback(
+    (key?: string | null) => {
+      if (!key) return "";
+      return t(`circleTypes.${key}`, { defaultValue: CIRCLE_TYPE_LABELS[key] ?? key });
+    },
+    [t],
+  );
+}
+
 export const URGENCY_LABELS: Record<string, string> = {
   low: "Low",
   normal: "Normal",
@@ -14,6 +45,17 @@ export const URGENCY_LABELS: Record<string, string> = {
   urgent: "Urgent",
   emergency: "Emergency",
 };
+
+export function useUrgencyLabel(): (key?: string | null) => string {
+  const { t } = useTranslation();
+  return useCallback(
+    (key?: string | null) => {
+      if (!key) return "";
+      return t(`urgency.${key}`, { defaultValue: URGENCY_LABELS[key] ?? key });
+    },
+    [t],
+  );
+}
 
 export const URGENCY_COLORS: Record<string, { bg: string; fg: string }> = {
   low: { bg: "#E3EDE2", fg: "#3F6749" },
@@ -45,6 +87,19 @@ export const REQUEST_STATUS_LABELS: Record<string, string> = {
   canceled: "Canceled",
 };
 
+export function useRequestStatusLabel(): (key?: string | null) => string {
+  const { t } = useTranslation();
+  return useCallback(
+    (key?: string | null) => {
+      if (!key) return "";
+      return t(`requestStatus.${key}`, {
+        defaultValue: REQUEST_STATUS_LABELS[key] ?? key,
+      });
+    },
+    [t],
+  );
+}
+
 export const SERVICE_STATUS_LABELS: Record<string, string> = {
   open: "Open",
   matched: "Matched",
@@ -52,6 +107,24 @@ export const SERVICE_STATUS_LABELS: Record<string, string> = {
   closed: "Closed",
 };
 
+export function useServiceStatusLabel(): (key?: string | null) => string {
+  const { t } = useTranslation();
+  return useCallback(
+    (key?: string | null) => {
+      if (!key) return "";
+      return t(`serviceStatus.${key}`, {
+        defaultValue: SERVICE_STATUS_LABELS[key] ?? key,
+      });
+    },
+    [t],
+  );
+}
+
+/**
+ * Locale-unaware shim used by code paths that don't have a React render
+ * context (e.g. push-notification body building). Prefer
+ * `useFormatMoney` inside React components for locale-aware output.
+ */
 export function formatMoney(value?: number | null, currency = "USD"): string {
   const amount = value ?? 0;
   try {
@@ -63,6 +136,29 @@ export function formatMoney(value?: number | null, currency = "USD"): string {
   } catch {
     return `$${amount}`;
   }
+}
+
+/** React hook returning a locale-aware money formatter. */
+export function useFormatMoney(): (
+  value?: number | null,
+  currency?: string,
+) => string {
+  const locale = useIntlLocale();
+  return useCallback(
+    (value, currency = "USD") => {
+      const amount = value ?? 0;
+      try {
+        return new Intl.NumberFormat(locale, {
+          style: "currency",
+          currency,
+          maximumFractionDigits: 0,
+        }).format(amount);
+      } catch {
+        return `$${amount}`;
+      }
+    },
+    [locale],
+  );
 }
 
 export function initialsOf(name?: string | null): string {

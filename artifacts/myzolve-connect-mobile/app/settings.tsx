@@ -3,6 +3,7 @@ import { Stack, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import { Alert, Image, Linking, Modal, Pressable, Switch, View } from "react-native";
 import { useAuth } from "@clerk/expo";
+import { useTranslation } from "react-i18next";
 import {
   getGetNotificationPreferencesQueryKey,
   getListCopilotGrantsQueryKey,
@@ -22,37 +23,20 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 
 import { AppText, Avatar, Button, Card, Row, Skeleton } from "@/components/UI";
+import { I18nProvider, useLanguagePreference } from "@/components/I18nProvider";
 import { PaywallSheet } from "@/components/PaywallSheet";
 import { PlusBadge } from "@/components/PlusBadge";
 import { Screen } from "@/components/Screen";
 import { useColors } from "@/hooks/useColors";
 import { useSubscription } from "@/lib/revenuecat";
-
-const LABELS: Record<string, string> = {
-  new_request: "New requests",
-  support_received: "Support received",
-  repayment_due: "Repayment reminders",
-  repayment_received: "Repayments received",
-  service_match: "Service matches",
-  new_comment: "New comments",
-  reaction_received: "Reactions",
-  gratitude_received: "Gratitude notes",
-  member_joined: "New members",
-  circle_update: "Circle updates",
-  dispute_opened: "Disputes opened",
-  dispute_resolved: "Disputes resolved",
-  care_calendar_reminder: "Care calendar reminders",
-  copilot_invite_received: "Co-pilot invitations",
-  copilot_post_made: "Posts made on your behalf",
-  wrapup_weekly: "Weekly wrap-up",
-  wrapup_monthly: "Monthly wrap-up",
-};
+import type { LanguagePreference } from "@/lib/i18n";
 
 export default function SettingsScreen() {
   const c = useColors();
   const qc = useQueryClient();
   const router = useRouter();
   const { signOut } = useAuth();
+  const { t } = useTranslation();
   const { data, isLoading } = useGetNotificationPreferences();
   const update = useUpdateNotificationPreferences();
   const deleteMe = useDeleteMe();
@@ -84,12 +68,12 @@ export default function SettingsScreen() {
 
   function confirmDelete() {
     Alert.alert(
-      "Delete your account?",
-      "This permanently deletes your MyZolve Connect account. You'll be signed out everywhere, your messages and notifications will be removed, and your name and profile photo will be wiped from circles you belong to. This cannot be undone.",
+      t("settings.confirmDeleteTitle"),
+      t("settings.confirmDeleteBody"),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Delete account",
+          text: t("settings.confirmDeleteAction"),
           style: "destructive",
           onPress: finalConfirmDelete,
         },
@@ -99,12 +83,12 @@ export default function SettingsScreen() {
 
   function finalConfirmDelete() {
     Alert.alert(
-      "Are you absolutely sure?",
-      "There is no way to recover your account or its data after this.",
+      t("settings.absolutelySureTitle"),
+      t("settings.absolutelySureBody"),
       [
-        { text: "Keep my account", style: "cancel" },
+        { text: t("settings.keepMyAccount"), style: "cancel" },
         {
-          text: "Yes, delete forever",
+          text: t("settings.deleteForever"),
           style: "destructive",
           onPress: doDelete,
         },
@@ -127,9 +111,8 @@ export default function SettingsScreen() {
     } catch (err: unknown) {
       const e = err as { message?: string };
       Alert.alert(
-        "Couldn't delete account",
-        e?.message ??
-          "Something went wrong. Please try again, or contact support if it keeps failing.",
+        t("settings.couldntDeleteTitle"),
+        e?.message ?? t("settings.couldntDeleteBody"),
       );
     } finally {
       setDeleting(false);
@@ -138,12 +121,15 @@ export default function SettingsScreen() {
 
   function confirmRevoke(grant: CopilotGrant) {
     Alert.alert(
-      "Revoke co-pilot access?",
-      `${grant.helperName ?? "This person"} will no longer be able to post on your behalf in ${grant.circleName ?? "this circle"}.`,
+      t("settings.revokeAccess"),
+      t("settings.revokeAccessBody", {
+        name: grant.helperName ?? t("settings.thisPerson"),
+        circle: grant.circleName ?? t("settings.thisCircle"),
+      }),
       [
-        { text: "Keep helping", style: "cancel" },
+        { text: t("settings.keepHelping"), style: "cancel" },
         {
-          text: "Revoke",
+          text: t("settings.revoke"),
           style: "destructive",
           onPress: () =>
             revoke.mutate(
@@ -161,7 +147,7 @@ export default function SettingsScreen() {
       {
         onSuccess: copilotInvalidate,
         onError: () =>
-          Alert.alert("Couldn't accept", "Please try again in a moment."),
+          Alert.alert(t("settings.couldntAccept"), t("settings.tryAgainShort")),
       },
     );
   }
@@ -172,7 +158,7 @@ export default function SettingsScreen() {
       {
         onSuccess: copilotInvalidate,
         onError: () =>
-          Alert.alert("Couldn't decline", "Please try again in a moment."),
+          Alert.alert(t("settings.couldntDecline"), t("settings.tryAgainShort")),
       },
     );
   }
@@ -187,21 +173,18 @@ export default function SettingsScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: "Settings" }} />
+      <Stack.Screen options={{ title: t("settings.title") }} />
       <Screen>
-        <AppText variant="h1">Settings</AppText>
+        <AppText variant="h1" accessibilityRole="header">{t("settings.title")}</AppText>
         <AppText color={c.mutedForeground} style={{ marginTop: 4, marginBottom: 24 }}>
-          Decide what you'd like to hear about.
+          {t("settings.subtitle")}
         </AppText>
 
         {/* PLUS SECTION */}
-        {/*
-          Always render the row so users can find the manage screen even when
-          the SDK failed to initialize. When unavailable we still navigate to
-          /plus, which surfaces the init error and a retry path.
-        */}
         <Pressable
           testID="settings-plus-row"
+          accessibilityRole="button"
+          accessibilityLabel={t("settings.plusTitle")}
           onPress={() => {
             if (isPlus) {
               router.push("/plus");
@@ -219,6 +202,8 @@ export default function SettingsScreen() {
           <Card>
             <Row gap={12} align="center">
               <View
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
                 style={{
                   width: 40,
                   height: 40,
@@ -232,7 +217,7 @@ export default function SettingsScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Row gap={8} align="center">
-                  <AppText weight="semibold">MyZolve Connect Plus</AppText>
+                  <AppText weight="semibold">{t("settings.plusTitle")}</AppText>
                   {isPlus ? <PlusBadge size="sm" variant="solid" /> : null}
                 </Row>
                 <AppText
@@ -241,31 +226,47 @@ export default function SettingsScreen() {
                   style={{ marginTop: 2 }}
                 >
                   {isPlus
-                    ? "Manage your subscription"
+                    ? t("settings.manageSubscription")
                     : !isAvailable
-                      ? initError ?? "Subscriptions are temporarily unavailable"
-                      : "Bigger circles, richer moments, and more"}
+                      ? initError ?? t("settings.subsUnavailable")
+                      : t("settings.plusPitch")}
                 </AppText>
               </View>
               <Feather
                 name="chevron-right"
                 size={20}
                 color={c.mutedForeground}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
               />
             </Row>
           </Card>
         </Pressable>
 
-        {/* CO-PILOT SECTION */}
-        <AppText variant="title" style={{ marginBottom: 6 }}>
-          Co-pilot helpers
+        {/* LANGUAGE SECTION */}
+        <AppText variant="title" accessibilityRole="header" style={{ marginBottom: 6 }}>
+          {t("settings.languageSection")}
         </AppText>
         <AppText
           variant="caption"
           color={c.mutedForeground}
           style={{ marginBottom: 12 }}
         >
-          Let a trusted person post requests, comments, and gratitude on your behalf — every post is clearly attributed.
+          {t("settings.languageHelp")}
+        </AppText>
+        <LanguagePicker />
+        <View style={{ height: 24 }} />
+
+        {/* CO-PILOT SECTION */}
+        <AppText variant="title" accessibilityRole="header" style={{ marginBottom: 6 }}>
+          {t("settings.copilotSection")}
+        </AppText>
+        <AppText
+          variant="caption"
+          color={c.mutedForeground}
+          style={{ marginBottom: 12 }}
+        >
+          {t("settings.copilotHelp")}
         </AppText>
 
         {pendingForMe.length > 0 ? (
@@ -274,23 +275,23 @@ export default function SettingsScreen() {
               <Card key={g.id}>
                 <Row gap={12} align="center" style={{ marginBottom: 12 }}>
                   <Avatar
-                    name={g.grantorName ?? "Member"}
+                    name={g.grantorName ?? t("settings.member")}
                     objectPath={g.grantorAvatarObjectPath}
                     size={40}
                   />
                   <View style={{ flex: 1 }}>
                     <AppText weight="semibold">
-                      {g.grantorName ?? "A circle member"}
+                      {g.grantorName ?? t("settings.aCircleMember")}
                     </AppText>
                     <AppText variant="caption" color={c.mutedForeground}>
-                      Asked you to help in {g.circleName ?? "their circle"}
+                      {t("settings.asked2helpIn", { circle: g.circleName ?? t("settings.theirCircle") })}
                     </AppText>
                   </View>
                 </Row>
                 <Row gap={8}>
                   <View style={{ flex: 1 }}>
                     <Button
-                      title="Help out"
+                      title={t("settings.helpOut")}
                       icon="check"
                       size="sm"
                       onPress={() => handleAccept(g)}
@@ -300,7 +301,7 @@ export default function SettingsScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Button
-                      title="Decline"
+                      title={t("settings.decline")}
                       icon="x"
                       variant="outline"
                       size="sm"
@@ -316,14 +317,14 @@ export default function SettingsScreen() {
         ) : null}
 
         <AppText weight="semibold" style={{ marginBottom: 8 }}>
-          People who help me
+          {t("settings.peopleWhoHelpMe")}
         </AppText>
         {copilotLoading ? (
           <Skeleton height={70} />
         ) : sentByMe.length === 0 ? (
           <Card style={{ marginBottom: 12 }}>
             <AppText variant="caption" color={c.mutedForeground}>
-              No co-pilots yet. Invite someone you trust to post for you.
+              {t("settings.noCopilotsYet")}
             </AppText>
           </Card>
         ) : (
@@ -332,28 +333,32 @@ export default function SettingsScreen() {
               <Card key={g.id}>
                 <Row gap={12} align="center">
                   <Avatar
-                    name={g.helperName ?? "Helper"}
+                    name={g.helperName ?? t("settings.helper")}
                     objectPath={g.helperAvatarObjectPath}
                     size={36}
                   />
                   <View style={{ flex: 1 }}>
                     <AppText weight="semibold">
-                      {g.helperName ?? "Helper"}
+                      {g.helperName ?? t("settings.helper")}
                     </AppText>
                     <AppText variant="caption" color={c.mutedForeground}>
-                      {g.circleName ?? "Circle"} ·{" "}
-                      {g.status === "pending" ? "Invitation sent" : "Active"}
+                      {g.circleName ?? t("settings.circle")} ·{" "}
+                      {g.status === "pending" ? t("settings.invitationSent") : t("settings.active")}
                     </AppText>
                   </View>
                   <Pressable
                     onPress={() => confirmRevoke(g)}
                     testID={`copilot-revoke-${g.id}`}
-                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel={t("settings.revoke")}
+                    hitSlop={12}
                   >
                     <Feather
                       name="x-circle"
                       size={20}
                       color={c.mutedForeground}
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
                     />
                   </Pressable>
                 </Row>
@@ -362,7 +367,7 @@ export default function SettingsScreen() {
           </View>
         )}
         <Button
-          title="Invite a co-pilot"
+          title={t("settings.inviteCopilot")}
           icon="user-plus"
           variant="outline"
           size="sm"
@@ -372,14 +377,14 @@ export default function SettingsScreen() {
         />
 
         <AppText weight="semibold" style={{ marginBottom: 8 }}>
-          People I help
+          {t("settings.peopleIHelp")}
         </AppText>
         {copilotLoading ? (
           <Skeleton height={70} />
         ) : activeForMe.length === 0 ? (
           <Card style={{ marginBottom: 24 }}>
             <AppText variant="caption" color={c.mutedForeground}>
-              No active helping arrangements yet.
+              {t("settings.noActiveHelping")}
             </AppText>
           </Card>
         ) : (
@@ -388,27 +393,29 @@ export default function SettingsScreen() {
               <Card key={g.id}>
                 <Row gap={12} align="center">
                   <Avatar
-                    name={g.grantorName ?? "Member"}
+                    name={g.grantorName ?? t("settings.member")}
                     objectPath={g.grantorAvatarObjectPath}
                     size={36}
                   />
                   <View style={{ flex: 1 }}>
                     <AppText weight="semibold">
-                      {g.grantorName ?? "Member"}
+                      {g.grantorName ?? t("settings.member")}
                     </AppText>
                     <AppText variant="caption" color={c.mutedForeground}>
-                      {g.circleName ?? "Circle"}
+                      {g.circleName ?? t("settings.circle")}
                     </AppText>
                   </View>
                   <Pressable
                     onPress={() =>
                       Alert.alert(
-                        "Stop helping?",
-                        `You'll no longer be able to post on behalf of ${g.grantorName ?? "this member"}.`,
+                        t("settings.stopHelping"),
+                        t("settings.stopHelpingBody", {
+                          name: g.grantorName ?? t("settings.stopHelpingThisMember"),
+                        }),
                         [
-                          { text: "Keep helping", style: "cancel" },
+                          { text: t("settings.keepHelping"), style: "cancel" },
                           {
-                            text: "Stop",
+                            text: t("settings.stop"),
                             style: "destructive",
                             onPress: () =>
                               revoke.mutate(
@@ -420,12 +427,16 @@ export default function SettingsScreen() {
                       )
                     }
                     testID={`copilot-helper-stop-${g.id}`}
-                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel={t("settings.stop")}
+                    hitSlop={12}
                   >
                     <Feather
                       name="x-circle"
                       size={20}
                       color={c.mutedForeground}
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
                     />
                   </Pressable>
                 </Row>
@@ -434,69 +445,81 @@ export default function SettingsScreen() {
           </View>
         )}
 
-        <AppText variant="title" style={{ marginBottom: 12 }}>
-          Notifications
+        <AppText variant="title" accessibilityRole="header" style={{ marginBottom: 12 }}>
+          {t("settings.notifications")}
         </AppText>
 
         {isLoading ? (
           <Skeleton height={300} />
         ) : (
           <Card style={{ padding: 0 }}>
-            {(data ?? []).map((pref, idx) => (
-              <Row
-                key={pref.notificationType}
-                justify="space-between"
-                style={{
-                  padding: 16,
-                  borderBottomWidth: idx === (data?.length ?? 0) - 1 ? 0 : 1,
-                  borderBottomColor: c.border,
-                }}
-              >
-                <View style={{ flex: 1, marginRight: 12 }}>
-                  <AppText weight="medium">
-                    {LABELS[pref.notificationType] ?? pref.notificationType}
-                  </AppText>
-                </View>
-                <Switch
-                  value={pref.enabled}
-                  onValueChange={(v) => toggle(pref.notificationType, v)}
-                  trackColor={{ true: c.primary, false: c.muted }}
-                />
-              </Row>
-            ))}
+            {(data ?? []).map((pref, idx) => {
+              const label = t(`notificationLabels.${pref.notificationType}`, {
+                defaultValue: pref.notificationType,
+              });
+              return (
+                <Row
+                  key={pref.notificationType}
+                  justify="space-between"
+                  style={{
+                    padding: 16,
+                    borderBottomWidth: idx === (data?.length ?? 0) - 1 ? 0 : 1,
+                    borderBottomColor: c.border,
+                  }}
+                >
+                  <View style={{ flex: 1, marginRight: 12 }}>
+                    <AppText weight="medium">{label}</AppText>
+                  </View>
+                  <Switch
+                    value={pref.enabled}
+                    onValueChange={(v) => toggle(pref.notificationType, v)}
+                    accessibilityLabel={label}
+                    trackColor={{ true: c.primary, false: c.muted }}
+                  />
+                </Row>
+              );
+            })}
           </Card>
         )}
 
         <View style={{ height: 24 }} />
         <Card>
           <Row gap={10}>
-            <Feather name="info" size={18} color={c.mutedForeground} />
+            <Feather
+              name="info"
+              size={18}
+              color={c.mutedForeground}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            />
             <AppText variant="caption" color={c.mutedForeground} style={{ flex: 1 }}>
-              MyZolve Connect is private to your circles. We never show your activity publicly.
+              {t("settings.privacyNote")}
             </AppText>
           </Row>
         </Card>
 
         <View style={{ height: 32 }} />
-        <AppText variant="title" style={{ marginBottom: 12, color: c.destructive ?? "#b91c1c" }}>
-          Danger zone
+        <AppText variant="title" accessibilityRole="header" style={{ marginBottom: 12, color: c.destructive ?? "#b91c1c" }}>
+          {t("settings.dangerZone")}
         </AppText>
         <Card>
           <AppText weight="medium" style={{ marginBottom: 6 }}>
-            Delete your account
+            {t("settings.deleteAccount")}
           </AppText>
           <AppText
             variant="caption"
             color={c.mutedForeground}
             style={{ marginBottom: 14 }}
           >
-            Permanently delete your account and remove your personal information
-            from MyZolve Connect. This cannot be undone.
+            {t("settings.deleteAccountBody")}
           </AppText>
           <Pressable
             testID="button-delete-account"
             onPress={confirmDelete}
             disabled={deleting}
+            accessibilityRole="button"
+            accessibilityLabel={t("settings.deleteMyAccount")}
+            accessibilityState={{ disabled: deleting, busy: deleting }}
             style={({ pressed }) => ({
               flexDirection: "row",
               alignItems: "center",
@@ -507,28 +530,34 @@ export default function SettingsScreen() {
               opacity: pressed || deleting ? 0.7 : 1,
             })}
           >
-            <Feather name="trash-2" size={18} color="#ffffff" />
+            <Feather
+              name="trash-2"
+              size={18}
+              color="#ffffff"
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            />
             <AppText
               color="#ffffff"
               weight="semibold"
               style={{ marginLeft: 10 }}
             >
-              {deleting ? "Deleting…" : "Delete my account"}
+              {deleting ? t("settings.deleting") : t("settings.deleteMyAccount")}
             </AppText>
           </Pressable>
         </Card>
 
         <Pressable
           accessibilityRole="link"
-          accessibilityLabel="MyZolve Connect is part of the MyZolve family, opens in browser"
+          accessibilityLabel={t("settings.myzolveFamilyA11y")}
           testID="link-myzolve-family"
           onPress={async () => {
             try {
               await Linking.openURL("https://myzolve.com");
             } catch {
               Alert.alert(
-                "Couldn't open MyZolve",
-                "Please try again, or visit myzolve.com in your browser.",
+                t("settings.couldntOpenMyzolve"),
+                t("settings.couldntOpenMyzolveBody"),
               );
             }
           }}
@@ -543,9 +572,11 @@ export default function SettingsScreen() {
               source={require("@/assets/images/myzolve-logo.png")}
               style={{ width: 16, height: 16, borderRadius: 4 }}
               resizeMode="contain"
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
             />
             <AppText variant="caption" color={c.mutedForeground}>
-              MyZolve Connect is part of the MyZolve family
+              {t("settings.myzolveFamily")}
             </AppText>
           </Row>
         </Pressable>
@@ -566,6 +597,58 @@ export default function SettingsScreen() {
   );
 }
 
+function LanguagePicker() {
+  const c = useColors();
+  const { t } = useTranslation();
+  const { pref, setPref } = useLanguagePreference();
+
+  const options: { value: LanguagePreference; label: string }[] = [
+    { value: "system", label: t("settings.language_system") },
+    { value: "en", label: t("settings.language_en") },
+    { value: "es", label: t("settings.language_es") },
+  ];
+
+  return (
+    <Card style={{ padding: 0 }}>
+      {options.map((opt, idx) => {
+        const active = pref === opt.value;
+        return (
+          <Pressable
+            key={opt.value}
+            testID={`language-option-${opt.value}`}
+            onPress={() => setPref(opt.value)}
+            accessibilityRole="radio"
+            accessibilityLabel={opt.label}
+            accessibilityState={{ selected: active, checked: active }}
+            style={({ pressed }) => ({
+              padding: 16,
+              borderBottomWidth: idx === options.length - 1 ? 0 : 1,
+              borderBottomColor: c.border,
+              opacity: pressed ? 0.85 : 1,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+            })}
+          >
+            <AppText weight={active ? "semibold" : "regular"}>
+              {opt.label}
+            </AppText>
+            {active ? (
+              <Feather
+                name="check"
+                size={18}
+                color={c.primary}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              />
+            ) : null}
+          </Pressable>
+        );
+      })}
+    </Card>
+  );
+}
+
 function InviteCopilotModal({
   visible,
   onClose,
@@ -578,6 +661,7 @@ function InviteCopilotModal({
   existing: CopilotGrant[];
 }) {
   const c = useColors();
+  const { t } = useTranslation();
   const { data: me } = useGetMe();
   const { data: circles } = useListCircles();
   const [circleId, setCircleId] = useState<number | null>(null);
@@ -613,12 +697,12 @@ function InviteCopilotModal({
           onInvited();
           onClose();
           Alert.alert(
-            "Invitation sent",
-            "We let them know you'd like their help.",
+            t("settings.invitationSent"),
+            t("settings.invitationSentBody"),
           );
         },
         onError: () =>
-          Alert.alert("Couldn't invite", "Please try again in a moment."),
+          Alert.alert(t("settings.couldntInvite"), t("settings.tryAgainShort")),
       },
     );
   }
@@ -641,24 +725,28 @@ function InviteCopilotModal({
             borderBottomColor: c.border,
           }}
         >
-          <Pressable onPress={onClose}>
-            <AppText color={c.mutedForeground}>Cancel</AppText>
+          <Pressable
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel={t("common.cancel")}
+            hitSlop={10}
+          >
+            <AppText color={c.mutedForeground}>{t("common.cancel")}</AppText>
           </Pressable>
-          <AppText weight="semibold">Invite a co-pilot</AppText>
+          <AppText weight="semibold" accessibilityRole="header">{t("settings.inviteCopilot")}</AppText>
           <View style={{ width: 50 }} />
         </Row>
 
         <View style={{ padding: 20, gap: 14, flex: 1 }}>
           <AppText variant="caption" color={c.mutedForeground}>
-            Pick which circle, then choose a trusted member to post on your
-            behalf.
+            {t("settings.pickCircleHelp")}
           </AppText>
 
-          <AppText weight="semibold">Circle</AppText>
+          <AppText weight="semibold">{t("settings.circle")}</AppText>
           {!circles || circles.length === 0 ? (
             <Card>
               <AppText variant="caption" color={c.mutedForeground}>
-                Join a circle first to invite a co-pilot.
+                {t("settings.joinCircleFirst")}
               </AppText>
             </Card>
           ) : (
@@ -669,7 +757,11 @@ function InviteCopilotModal({
                   <Pressable
                     key={cir.id}
                     onPress={() => setCircleId(cir.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={cir.name}
+                    accessibilityState={{ selected: active }}
                     testID={`copilot-pick-circle-${cir.id}`}
+                    hitSlop={4}
                     style={{
                       paddingHorizontal: 14,
                       paddingVertical: 8,
@@ -691,14 +783,14 @@ function InviteCopilotModal({
           )}
 
           <AppText weight="semibold" style={{ marginTop: 6 }}>
-            Member
+            {t("settings.member")}
           </AppText>
           {membersLoading ? (
             <Skeleton height={120} />
           ) : eligible.length === 0 ? (
             <Card>
               <AppText variant="caption" color={c.mutedForeground}>
-                No eligible members in this circle yet.
+                {t("settings.noEligibleMembers")}
               </AppText>
             </Card>
           ) : (
@@ -709,6 +801,8 @@ function InviteCopilotModal({
                   testID={`copilot-invite-member-${m.userId}`}
                   onPress={() => m.userId && handleInvite(m.userId)}
                   disabled={invite.isPending}
+                  accessibilityRole="button"
+                  accessibilityLabel={m.displayName}
                   style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
                 >
                   <Card>
@@ -732,6 +826,8 @@ function InviteCopilotModal({
                         name="user-plus"
                         size={18}
                         color={c.primary}
+                        accessibilityElementsHidden
+                        importantForAccessibility="no-hide-descendants"
                       />
                     </Row>
                   </Card>
@@ -744,3 +840,6 @@ function InviteCopilotModal({
     </Modal>
   );
 }
+
+// Re-export so tests don't accidentally import from a deep path.
+export { I18nProvider };

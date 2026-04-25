@@ -61,17 +61,26 @@ export function PressableCard({
   style,
   children,
   testID,
+  accessibilityLabel,
+  accessibilityHint,
+  accessibilityRole = "button",
 }: {
   onPress?: () => void;
   style?: ViewProps["style"];
   children?: React.ReactNode;
   testID?: string;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
+  accessibilityRole?: "button" | "link" | "summary";
 }) {
   const c = useColors();
   return (
     <Pressable
       testID={testID}
       onPress={onPress}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
       style={({ pressed }) => [
         {
           backgroundColor: c.card,
@@ -126,8 +135,13 @@ export function AppText({
       : variant === "label"
       ? "medium"
       : "regular");
+  // Allow Dynamic Type but cap so massive XXXL settings don't break
+  // tightly-spaced layouts (cards, tab bar, pill labels). 1.6× covers
+  // up to iOS XXL while keeping rows from collapsing.
+  const cap = variant === "caption" || variant === "label" ? 1.5 : 1.6;
   return (
     <Text
+      maxFontSizeMultiplier={cap}
       {...rest}
       style={[
         {
@@ -153,6 +167,10 @@ type ButtonProps = {
   style?: ViewProps["style"];
   size?: "md" | "sm" | "lg";
   testID?: string;
+  /** Override the default screen-reader label (defaults to `title`). */
+  accessibilityLabel?: string;
+  /** Optional supplementary hint for screen readers. */
+  accessibilityHint?: string;
 };
 
 export function Button({
@@ -165,6 +183,8 @@ export function Button({
   style,
   size = "md",
   testID,
+  accessibilityLabel,
+  accessibilityHint,
 }: ButtonProps) {
   const c = useColors();
   const palette = {
@@ -175,8 +195,12 @@ export function Button({
     destructive: { bg: c.destructive, fg: "#fff", border: c.destructive },
   }[variant];
 
+  // Apple HIG / Material Design require 44pt minimum tappable target.
+  // Bump "sm" through hitSlop instead of changing visual height so designs
+  // stay tight while screen readers + finger users still hit reliably.
   const heights = { sm: 38, md: 48, lg: 56 };
   const fontSize = size === "sm" ? 13 : size === "lg" ? 17 : 15;
+  const hitSlop = size === "sm" ? 6 : 0;
 
   const handlePress = () => {
     if (disabled || loading) return;
@@ -191,6 +215,11 @@ export function Button({
       testID={testID}
       onPress={handlePress}
       disabled={disabled || loading}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? title}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{ disabled: !!(disabled || loading), busy: !!loading }}
+      hitSlop={hitSlop}
       style={({ pressed }) => [
         {
           backgroundColor: palette.bg,
@@ -212,9 +241,17 @@ export function Button({
       ) : (
         <>
           {icon ? (
-            <Feather name={icon} size={16} color={palette.fg} style={{ marginRight: 8 }} />
+            <Feather
+              name={icon}
+              size={16}
+              color={palette.fg}
+              style={{ marginRight: 8 }}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            />
           ) : null}
           <Text
+            maxFontSizeMultiplier={1.6}
             style={{
               color: palette.fg,
               fontFamily: fonts.semibold,
@@ -236,6 +273,8 @@ export function IconButton({
   size = 40,
   bg,
   testID,
+  accessibilityLabel,
+  accessibilityHint,
 }: {
   icon: keyof typeof Feather.glyphMap;
   onPress?: () => void;
@@ -243,12 +282,22 @@ export function IconButton({
   size?: number;
   bg?: string;
   testID?: string;
+  /** Required for accessibility — describe what the button does. */
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }) {
   const c = useColors();
+  // Pad hit slop so any visual size below 44pt still meets the
+  // platform's recommended 44x44 tappable target.
+  const hitSlop = size < 44 ? Math.ceil((44 - size) / 2) : 0;
   return (
     <Pressable
       testID={testID}
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? icon}
+      accessibilityHint={accessibilityHint}
+      hitSlop={hitSlop}
       style={({ pressed }) => ({
         width: size,
         height: size,
@@ -259,7 +308,13 @@ export function IconButton({
         opacity: pressed ? 0.7 : 1,
       })}
     >
-      <Feather name={icon} size={size * 0.5} color={color ?? c.foreground} />
+      <Feather
+        name={icon}
+        size={size * 0.5}
+        color={color ?? c.foreground}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      />
     </Pressable>
   );
 }
@@ -316,6 +371,8 @@ export function Avatar({
 
   return (
     <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
       style={{
         width: size,
         height: size,

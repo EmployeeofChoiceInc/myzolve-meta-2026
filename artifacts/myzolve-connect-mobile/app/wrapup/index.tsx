@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect } from "react";
 import { Pressable, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetLatestWrapupQueryKey,
@@ -36,14 +37,6 @@ const MOMENT_ICON: Record<WrapupMoment["kind"], keyof typeof Feather.glyphMap> =
   reaction_received: "heart",
 };
 
-const MOMENT_LABEL: Record<WrapupMoment["kind"], string> = {
-  request_fulfilled: "A request was answered",
-  gratitude_received: "A thank-you came your way",
-  gratitude_sent: "You sent a thank-you",
-  top_comment: "A note you wrote landed",
-  reaction_received: "Someone reacted to you",
-};
-
 function parseKind(raw: unknown): Kind {
   if (raw === "monthly" || (Array.isArray(raw) && raw[0] === "monthly")) {
     return "monthly";
@@ -57,6 +50,7 @@ export default function WrapupScreen() {
   const router = useRouter();
   const c = useColors();
   const qc = useQueryClient();
+  const { t } = useTranslation();
 
   const latestQuery = useGetLatestWrapup({ kind });
   const pastQuery = useListWrapups({ kind, limit: 6 });
@@ -65,7 +59,6 @@ export default function WrapupScreen() {
   const wrapup = latestQuery.data ?? null;
   const past = (pastQuery.data ?? []).filter((w) => w.id !== wrapup?.id);
 
-  // Mark the latest wrap-up as read once it is on screen.
   useEffect(() => {
     if (!wrapup || wrapup.readAt) return;
     markRead.mutate(
@@ -90,24 +83,26 @@ export default function WrapupScreen() {
   return (
     <>
       <Stack.Screen
-        options={{ title: kind === "monthly" ? "Your month" : "Your week" }}
+        options={{
+          title: kind === "monthly" ? t("navigation.yourMonth") : t("navigation.yourWeek"),
+        }}
       />
       <Screen refreshing={refreshing} onRefresh={refetch}>
         <Row gap={8} style={{ marginBottom: 16 }}>
           <KindToggle
-            label="This week"
+            label={t("wrapup.thisWeek")}
             active={kind === "weekly"}
             onPress={() => router.replace("/wrapup")}
           />
           <KindToggle
-            label="This month"
+            label={t("wrapup.thisMonth")}
             active={kind === "monthly"}
             onPress={() => router.replace("/wrapup?kind=monthly")}
           />
         </Row>
 
         {latestQuery.isLoading ? (
-          <View style={{ gap: 12 }}>
+          <View style={{ gap: 12 }} accessibilityLabel={t("common.loading")}>
             <Skeleton height={120} />
             <Skeleton height={80} />
             <Skeleton height={80} />
@@ -121,8 +116,8 @@ export default function WrapupScreen() {
         {past.length > 0 && (
           <>
             <View style={{ height: 24 }} />
-            <AppText variant="title" style={{ marginBottom: 10 }}>
-              Past wrap-ups
+            <AppText variant="title" accessibilityRole="header" style={{ marginBottom: 10 }}>
+              {t("wrapup.pastWrapups")}
             </AppText>
             <View style={{ gap: 8 }}>
               {past.map((w) => (
@@ -135,14 +130,19 @@ export default function WrapupScreen() {
         <View style={{ height: 32 }} />
         <Card>
           <Row gap={10}>
-            <Feather name="info" size={18} color={c.mutedForeground} />
+            <Feather
+              name="info"
+              size={18}
+              color={c.mutedForeground}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            />
             <AppText
               variant="caption"
               color={c.mutedForeground}
               style={{ flex: 1 }}
             >
-              We collect this quietly in the background — only you can see it.
-              You can turn weekly or monthly wrap-ups off anytime in Settings.
+              {t("wrapup.privacyNote")}
             </AppText>
           </Row>
         </Card>
@@ -164,6 +164,9 @@ function KindToggle({
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={label}
       style={({ pressed }) => ({
         flex: 1,
         paddingVertical: 10,
@@ -185,18 +188,25 @@ function KindToggle({
 
 function EmptyWrapupCard({ kind }: { kind: Kind }) {
   const c = useColors();
+  const { t } = useTranslation();
   return (
     <Card style={{ alignItems: "center", paddingVertical: 28, gap: 8 }}>
-      <Feather name="coffee" size={28} color={c.mutedForeground} />
-      <AppText weight="semibold">No wrap-up yet</AppText>
+      <Feather
+        name="coffee"
+        size={28}
+        color={c.mutedForeground}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      />
+      <AppText weight="semibold">{t("wrapup.noWrapupYet")}</AppText>
       <AppText
         color={c.mutedForeground}
         variant="caption"
         style={{ textAlign: "center", maxWidth: 260 }}
       >
         {kind === "weekly"
-          ? "Your first weekly wrap-up will arrive on Sunday morning."
-          : "Your first monthly wrap-up will arrive on the 1st of the month."}
+          ? t("wrapup.weeklyComing")
+          : t("wrapup.monthlyComing")}
       </AppText>
     </Card>
   );
@@ -204,6 +214,7 @@ function EmptyWrapupCard({ kind }: { kind: Kind }) {
 
 function WrapupBody({ wrapup }: { wrapup: Wrapup }) {
   const c = useColors();
+  const { t } = useTranslation();
   const content = wrapup.content as WrapupContent;
 
   return (
@@ -220,30 +231,36 @@ function WrapupBody({ wrapup }: { wrapup: Wrapup }) {
           color={c.primary}
           weight="semibold"
           style={{ letterSpacing: 0.5 }}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
         >
           {content.periodLabel.toUpperCase()}
         </AppText>
-        <AppText variant="h1" style={{ marginTop: 4 }}>
+        <AppText variant="h1" accessibilityRole="header" style={{ marginTop: 4 }}>
           {content.greeting}
         </AppText>
         <AppText color={c.mutedForeground} style={{ marginTop: 4 }}>
-          A short look back at the care you shared.
+          {t("wrapup.shortLookBack")}
         </AppText>
         <Row gap={20} style={{ marginTop: 14 }}>
-          <View>
+          <View
+            accessibilityLabel={`${warmCount(content.supportGiven, t)} ${t("wrapup.given")}`}
+          >
             <AppText variant="h2" color={c.primary}>
-              {warmCount(content.supportGiven)}
+              {warmCount(content.supportGiven, t)}
             </AppText>
             <AppText variant="caption" color={c.mutedForeground}>
-              {acts(content.supportGiven, "given")}
+              {acts(content.supportGiven, "given", t)}
             </AppText>
           </View>
-          <View>
+          <View
+            accessibilityLabel={`${warmCount(content.supportReceived, t)} ${t("wrapup.received")}`}
+          >
             <AppText variant="h2" color={c.secondary}>
-              {warmCount(content.supportReceived)}
+              {warmCount(content.supportReceived, t)}
             </AppText>
             <AppText variant="caption" color={c.mutedForeground}>
-              {acts(content.supportReceived, "received")}
+              {acts(content.supportReceived, "received", t)}
             </AppText>
           </View>
         </Row>
@@ -252,8 +269,8 @@ function WrapupBody({ wrapup }: { wrapup: Wrapup }) {
       {content.topMoments.length > 0 && (
         <>
           <View style={{ height: 20 }} />
-          <AppText variant="title" style={{ marginBottom: 10 }}>
-            Top moments
+          <AppText variant="title" accessibilityRole="header" style={{ marginBottom: 10 }}>
+            {t("wrapup.topMoments")}
           </AppText>
           <View style={{ gap: 10 }}>
             {content.topMoments.map((m, i) => (
@@ -266,8 +283,8 @@ function WrapupBody({ wrapup }: { wrapup: Wrapup }) {
       {content.exchangedWith.length > 0 && (
         <>
           <View style={{ height: 20 }} />
-          <AppText variant="title" style={{ marginBottom: 10 }}>
-            People you exchanged care with
+          <AppText variant="title" accessibilityRole="header" style={{ marginBottom: 10 }}>
+            {t("wrapup.exchangedWith")}
           </AppText>
           <Card>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 16 }}>
@@ -303,15 +320,23 @@ function WrapupBody({ wrapup }: { wrapup: Wrapup }) {
         }}
       >
         <Row gap={10} align="flex-start">
-          <Feather name="feather" size={18} color={c.secondary} />
+          <Feather
+            name="feather"
+            size={18}
+            color={c.secondary}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          />
           <View style={{ flex: 1 }}>
             <AppText
               variant="caption"
               color={c.secondary}
               weight="semibold"
               style={{ letterSpacing: 0.5 }}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
             >
-              FOR THE WEEK AHEAD
+              {t("wrapup.forTheWeekAhead")}
             </AppText>
             <AppText style={{ marginTop: 4 }}>{content.prompt}</AppText>
           </View>
@@ -323,11 +348,15 @@ function WrapupBody({ wrapup }: { wrapup: Wrapup }) {
 
 function MomentCard({ moment }: { moment: WrapupMoment }) {
   const c = useColors();
+  const { t } = useTranslation();
   const icon = MOMENT_ICON[moment.kind] ?? "star";
+  const momentLabel = t(`wrapup.moments.${moment.kind}`, { defaultValue: t("wrapup.moments.default") });
   return (
     <Card>
       <Row gap={12} align="flex-start">
         <View
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
           style={{
             width: 36,
             height: 36,
@@ -346,7 +375,7 @@ function MomentCard({ moment }: { moment: WrapupMoment }) {
             weight="medium"
             style={{ marginBottom: 2 }}
           >
-            {MOMENT_LABEL[moment.kind] ?? "A moment"}
+            {momentLabel}
             {moment.circleName ? ` · ${moment.circleName}` : ""}
           </AppText>
           <AppText weight="semibold">{moment.headline}</AppText>
@@ -367,9 +396,14 @@ function MomentCard({ moment }: { moment: WrapupMoment }) {
 
 function PastWrapupRow({ wrapup }: { wrapup: Wrapup }) {
   const c = useColors();
+  const { t } = useTranslation();
   const content = wrapup.content as WrapupContent;
   return (
-    <PressableCard onPress={() => undefined}>
+    <PressableCard
+      onPress={() => undefined}
+      accessibilityLabel={content.periodLabel}
+      accessibilityHint={`${warmCount(content.supportGiven, t)} ${t("wrapup.given")} · ${warmCount(content.supportReceived, t)} ${t("wrapup.received")}`}
+    >
       <Row justify="space-between" align="center">
         <View style={{ flex: 1 }}>
           <AppText weight="semibold">{content.periodLabel}</AppText>
@@ -378,32 +412,35 @@ function PastWrapupRow({ wrapup }: { wrapup: Wrapup }) {
             color={c.mutedForeground}
             style={{ marginTop: 2 }}
           >
-            {warmCount(content.supportGiven)}{" "}
-            {acts(content.supportGiven, "given")} ·{" "}
-            {warmCount(content.supportReceived)}{" "}
-            {acts(content.supportReceived, "received")}
+            {warmCount(content.supportGiven, t)}{" "}
+            {acts(content.supportGiven, "given", t)} ·{" "}
+            {warmCount(content.supportReceived, t)}{" "}
+            {acts(content.supportReceived, "received", t)}
           </AppText>
         </View>
         <Feather
           name={wrapup.readAt ? "check" : "circle"}
           size={18}
           color={c.mutedForeground}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
         />
       </Row>
     </PressableCard>
   );
 }
 
-function warmCount(n: number): string {
-  // Per the design brief, soft phrasing instead of "+8" or "score".
-  if (n === 0) return "A quiet week";
-  if (n === 1) return "1 act of care";
-  return `${n} acts of care`;
+type TFn = (key: string, opts?: Record<string, unknown>) => string;
+
+function warmCount(n: number, t: TFn): string {
+  if (n === 0) return t("wrapup.quietWeek", { defaultValue: "A quiet week" });
+  if (n === 1) return t("wrapup.oneAct", { defaultValue: "1 act of care" });
+  return t("wrapup.manyActs", { count: n, defaultValue: `${n} acts of care` });
 }
 
-function acts(n: number, suffix: "given" | "received"): string {
-  if (n === 0) return suffix === "given" ? "this time" : "this time";
-  return suffix;
+function acts(n: number, suffix: "given" | "received", t: TFn): string {
+  if (n === 0) return t("wrapup.thisTime", { defaultValue: "this time" });
+  return t(`wrapup.${suffix}`, { defaultValue: suffix });
 }
 
 function firstName(name: string): string {

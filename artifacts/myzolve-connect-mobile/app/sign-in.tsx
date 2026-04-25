@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import { Alert, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import { useTranslation } from "react-i18next";
 
 import { AppText, Button, Field, Input } from "@/components/UI";
 import { OAuthButtons } from "@/components/OAuthButtons";
@@ -48,6 +49,7 @@ export default function SignInScreen() {
   const router = useRouter();
   const c = useColors();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -70,10 +72,6 @@ export default function SignInScreen() {
   }
 
   async function prepareIfNeeded(chosen: SecondFactorStrategy, supported: SupportedSecondFactor[]) {
-    // TOTP and backup_code don't need a send round-trip; email_code and
-    // phone_code do (Clerk has to send the code first). The Clerk Expo v3
-    // SDK exposes these on `signIn.mfa.*` (replaces the older
-    // prepareSecondFactor / attemptSecondFactor API).
     if (chosen !== "email_code" && chosen !== "phone_code") return;
     const mfa = (
       signIn as unknown as {
@@ -95,31 +93,14 @@ export default function SignInScreen() {
   async function finalizeAndGo() {
     await signIn.finalize({
       navigate: async ({ session }) => {
-        if (session?.currentTask) {
-          // Pending session task (e.g. accept org invite). Stay put;
-          // app will route on next render.
-          return;
-        }
-        // CRITICAL: force Clerk to mint a fresh session JWT *before* we
-        // navigate to /(tabs). Without this, the Home tab mounts and
-        // fires `GET /api/circles` ~300ms after Clerk's session.touch
-        // call returns — at which point Clerk's token cache may still
-        // hold the stale anonymous-session JWT. The server returns 401,
-        // React Query caches the failure, and the user is stuck on a
-        // skeleton until they kill+relaunch the app (which is exactly
-        // what Apple App Review keeps flagging under Guideline 2.1(a)).
-        //
-        // `skipCache: true` forces a round-trip to Clerk's API to mint
-        // a fresh JWT for the new session, so the very first
-        // authenticated request after navigation has a valid token.
+        if (session?.currentTask) return;
         try {
           await Promise.race([
             getToken({ skipCache: true }),
             new Promise((resolve) => setTimeout(resolve, 4_000)),
           ]);
         } catch {
-          // Best-effort: if Clerk can't mint a token, the customFetch
-          // 401-retry safety net in lib/api-client-react will recover.
+          // Best-effort: customFetch retry recovers on first 401.
         }
         router.replace("/(tabs)");
       },
@@ -128,7 +109,7 @@ export default function SignInScreen() {
 
   async function onSubmit() {
     if (!email || !password) {
-      Alert.alert("Missing info", "Please enter your email and password.");
+      Alert.alert(t("auth.missingInfo"), t("auth.missingInfoBody"));
       return;
     }
     setLoading(true);
@@ -139,19 +120,14 @@ export default function SignInScreen() {
       });
 
       if (error) {
-        // Common case for users who signed up with Google / Apple on web —
-        // their account has no password, so the password strategy is "not
-        // valid" for the account. Steer them toward the OAuth buttons.
         const code = (error as { errors?: { code?: string }[] })?.errors?.[0]?.code;
-        const msg = describeError(error, "Please check your credentials.");
+        const msg = describeError(error, t("auth.couldntSignInBody"));
         const looksLikeNoPassword =
           code === "strategy_for_user_invalid" ||
           /verification strategy is not valid/i.test(msg);
         Alert.alert(
-          "Couldn't sign in",
-          looksLikeNoPassword
-            ? "This account doesn't have a password set. Try \"Continue with Google\" or \"Continue with Apple\" below, or reset your password on the web."
-            : msg
+          t("auth.couldntSignIn"),
+          looksLikeNoPassword ? t("auth.noPasswordHint") : msg,
         );
         return;
       }
@@ -159,9 +135,6 @@ export default function SignInScreen() {
       if (signIn.status === "complete") {
         await finalizeAndGo();
       } else if (signIn.status === "needs_second_factor") {
-        // Inspect supported strategies. Most accounts here only have
-        // email_code enrolled (the user never set up TOTP), so we need to
-        // ask Clerk to send a code before showing the input.
         const supported =
           (signIn as unknown as { supportedSecondFactors?: SupportedSecondFactor[] })
             .supportedSecondFactors ?? [];
@@ -175,22 +148,22 @@ export default function SignInScreen() {
           await prepareIfNeeded(chosen, supported);
         } catch (prepareErr) {
           Alert.alert(
-            "Couldn't send code",
-            describeError(prepareErr, "We couldn't send the verification code. Please try again.")
+            t("auth.couldntSendCode"),
+            describeError(prepareErr, t("auth.couldntSendCodeBody")),
           );
           return;
         }
         setNeeds2fa(true);
       } else {
         Alert.alert(
-          "Couldn't sign in",
-          `Sign-in incomplete (status: ${signIn.status ?? "unknown"}). Please try again.`
+          t("auth.couldntSignIn"),
+          t("auth.couldntSignInBody"),
         );
       }
     } catch (err: unknown) {
       Alert.alert(
-        "Couldn't sign in",
-        describeError(err, "Please check your credentials.")
+        t("auth.couldntSignIn"),
+        describeError(err, t("auth.couldntSignInBody")),
       );
     } finally {
       setLoading(false);
@@ -206,15 +179,15 @@ export default function SignInScreen() {
           .supportedSecondFactors ?? [];
       await prepareIfNeeded(strategy, supported);
       Alert.alert(
-        "Code sent",
+        t("auth.codeSent"),
         strategy === "email_code"
-          ? "We've sent another code to your email."
-          : "We've sent another code to your phone."
+          ? t("auth.codeSentEmail")
+          : t("auth.codeSentPhone"),
       );
     } catch (err) {
       Alert.alert(
-        "Couldn't send code",
-        describeError(err, "We couldn't send another code. Please try again in a moment.")
+        t("auth.couldntSendCode"),
+        describeError(err, t("auth.couldntSendCodeBody")),
       );
     } finally {
       setResending(false);
@@ -225,10 +198,10 @@ export default function SignInScreen() {
     const trimmed = code.trim();
     if (!trimmed) {
       const promptByStrategy: Record<SecondFactorStrategy, { title: string; body: string }> = {
-        totp: { title: "Enter code", body: "Please enter the 6-digit code from your authenticator app." },
-        email_code: { title: "Enter code", body: "Please enter the code we sent to your email." },
-        phone_code: { title: "Enter code", body: "Please enter the code we sent to your phone." },
-        backup_code: { title: "Enter backup code", body: "Please enter one of your backup codes." },
+        totp: { title: t("auth.enterCode"), body: t("auth.promptTotp") },
+        email_code: { title: t("auth.enterCode"), body: t("auth.promptEmail") },
+        phone_code: { title: t("auth.enterCode"), body: t("auth.promptPhone") },
+        backup_code: { title: t("auth.enterCodeBackup"), body: t("auth.promptBackup") },
       };
       const { title, body } = promptByStrategy[strategy];
       Alert.alert(title, body);
@@ -236,8 +209,6 @@ export default function SignInScreen() {
     }
     setLoading(true);
     try {
-      // Clerk Expo v3 exposes second-factor verification under signIn.mfa.*
-      // with one method per strategy.
       const mfa = (
         signIn as unknown as {
           mfa: {
@@ -260,8 +231,8 @@ export default function SignInScreen() {
 
       if (error) {
         Alert.alert(
-          "Couldn't verify",
-          describeError(error, "That code didn't work. Please try again.")
+          t("auth.couldntVerify"),
+          describeError(error, t("auth.wrongCode")),
         );
         return;
       }
@@ -269,28 +240,52 @@ export default function SignInScreen() {
       if (signIn.status === "complete") {
         await finalizeAndGo();
       } else {
-        Alert.alert(
-          "Couldn't sign in",
-          `Sign-in incomplete (status: ${signIn.status ?? "unknown"}). Please try again.`
-        );
+        Alert.alert(t("auth.couldntSignIn"), t("auth.couldntSignInBody"));
       }
     } catch (err: unknown) {
       Alert.alert(
-        "Couldn't verify",
-        describeError(err, "That code didn't work. Please try again.")
+        t("auth.couldntVerify"),
+        describeError(err, t("auth.wrongCode")),
       );
     } finally {
       setLoading(false);
     }
   }
 
+  const heading = needs2fa
+    ? strategy === "email_code"
+      ? t("auth.checkYourEmail")
+      : strategy === "phone_code"
+        ? t("auth.checkYourPhone")
+        : t("auth.twoFactorRequired")
+    : t("auth.welcomeBack");
+
+  const subheading = needs2fa
+    ? strategy === "backup_code"
+      ? t("auth.backupCodeBody")
+      : strategy === "email_code"
+        ? t("auth.emailCodeBody", { destination: destination ?? t("auth.yourEmail") })
+        : strategy === "phone_code"
+          ? t("auth.phoneCodeBody", { destination: destination ?? t("auth.yourPhone") })
+          : t("auth.totpBody")
+    : t("auth.subtitleSignIn");
+
   return (
     <View style={{ flex: 1, backgroundColor: c.background, paddingTop: insets.top }}>
       <Pressable
         onPress={() => router.back()}
+        accessibilityRole="button"
+        accessibilityLabel={t("auth.closeButton")}
+        hitSlop={10}
         style={{ padding: 16, alignSelf: "flex-end" }}
       >
-        <Feather name="x" size={24} color={c.foreground} />
+        <Feather
+          name="x"
+          size={24}
+          color={c.foreground}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
       </Pressable>
       <KeyboardAwareScrollView
         contentContainerStyle={{ padding: 24, paddingTop: 8 }}
@@ -298,6 +293,8 @@ export default function SignInScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
           style={{
             width: 56,
             height: 56,
@@ -310,25 +307,9 @@ export default function SignInScreen() {
         >
           <Feather name="heart" size={26} color={c.primary} />
         </View>
-        <AppText variant="h1">
-          {needs2fa
-            ? strategy === "email_code"
-              ? "Check your email"
-              : strategy === "phone_code"
-                ? "Check your phone"
-                : "Two-factor required"
-            : "Welcome back"}
-        </AppText>
+        <AppText variant="h1" accessibilityRole="header">{heading}</AppText>
         <AppText variant="body" color={c.mutedForeground} style={{ marginTop: 6, marginBottom: 28 }}>
-          {needs2fa
-            ? strategy === "backup_code"
-              ? "Enter one of the backup codes you saved when you turned on 2FA."
-              : strategy === "email_code"
-                ? `We sent a verification code to ${destination ?? "your email"}. Enter it below to finish signing in.`
-                : strategy === "phone_code"
-                  ? `We sent a verification code to ${destination ?? "your phone"}. Enter it below to finish signing in.`
-                  : "Open your authenticator app and enter the 6-digit code."
-            : "Sign in to your trusted circles."}
+          {subheading}
         </AppText>
 
         {needs2fa ? (
@@ -336,12 +317,12 @@ export default function SignInScreen() {
             <Field
               label={
                 strategy === "backup_code"
-                  ? "Backup code"
+                  ? t("auth.labelBackupCode")
                   : strategy === "email_code"
-                    ? "Email code"
+                    ? t("auth.labelEmailCode")
                     : strategy === "phone_code"
-                      ? "SMS code"
-                      : "Authenticator code"
+                      ? t("auth.labelSmsCode")
+                      : t("auth.labelAuthCode")
               }
             >
               <Input
@@ -350,13 +331,13 @@ export default function SignInScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType={strategy === "backup_code" ? "default" : "number-pad"}
-                placeholder={strategy === "backup_code" ? "e.g. abcd-1234" : "123456"}
+                placeholder={strategy === "backup_code" ? t("auth.placeholderBackup") : "123456"}
                 testID="input-2fa-code"
               />
             </Field>
 
             <Button
-              title="Verify"
+              title={t("auth.verify")}
               onPress={onSubmit2fa}
               loading={loading}
               testID="button-2fa-verify"
@@ -366,11 +347,15 @@ export default function SignInScreen() {
               <Pressable
                 onPress={onResendCode}
                 disabled={resending}
+                accessibilityRole="button"
+                accessibilityLabel={t("auth.resendCode")}
+                accessibilityState={{ disabled: resending }}
+                hitSlop={8}
                 style={{ marginTop: 16, alignItems: "center", opacity: resending ? 0.5 : 1 }}
                 testID="button-2fa-resend"
               >
                 <AppText color={c.primary} weight="semibold">
-                  {resending ? "Sending…" : "Resend code"}
+                  {resending ? t("auth.sending") : t("auth.resendCode")}
                 </AppText>
               </Pressable>
             ) : supportsBackupCode ? (
@@ -379,26 +364,31 @@ export default function SignInScreen() {
                   setStrategy(strategy === "totp" ? "backup_code" : "totp");
                   setCode("");
                 }}
+                accessibilityRole="button"
+                hitSlop={8}
                 style={{ marginTop: 16, alignItems: "center" }}
                 testID="button-2fa-toggle"
               >
                 <AppText color={c.primary} weight="semibold">
-                  {strategy === "totp" ? "Use a backup code instead" : "Use authenticator code instead"}
+                  {strategy === "totp" ? t("auth.useBackupInstead") : t("auth.useAuthInstead")}
                 </AppText>
               </Pressable>
             ) : null}
 
             <Pressable
               onPress={reset2fa}
+              accessibilityRole="button"
+              accessibilityLabel={t("auth.useDifferentAccount")}
+              hitSlop={8}
               style={{ marginTop: 12, alignItems: "center" }}
               testID="button-2fa-cancel"
             >
-              <AppText color={c.mutedForeground}>Use a different account</AppText>
+              <AppText color={c.mutedForeground}>{t("auth.useDifferentAccount")}</AppText>
             </Pressable>
           </>
         ) : (
           <>
-            <Field label="Email">
+            <Field label={t("auth.email")}>
               <Input
                 value={email}
                 onChangeText={setEmail}
@@ -407,26 +397,28 @@ export default function SignInScreen() {
                 keyboardType="email-address"
                 placeholder="you@example.com"
                 testID="input-email"
+                accessibilityLabel={t("auth.email")}
               />
             </Field>
-            <Field label="Password">
+            <Field label={t("auth.password")}>
               <Input
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
                 placeholder="••••••••"
                 testID="input-password"
+                accessibilityLabel={t("auth.password")}
               />
             </Field>
 
-            <Button title="Sign in" onPress={onSubmit} loading={loading} testID="button-signin" />
+            <Button title={t("auth.signIn")} onPress={onSubmit} loading={loading} testID="button-signin" />
 
             <OAuthButtons />
 
             <View style={{ flexDirection: "row", justifyContent: "center", marginTop: 24 }}>
-              <AppText color={c.mutedForeground}>New here? </AppText>
-              <Link href="/sign-up" replace>
-                <AppText color={c.primary} weight="semibold">Create an account</AppText>
+              <AppText color={c.mutedForeground}>{t("auth.newHere")}</AppText>
+              <Link href="/sign-up" replace accessibilityRole="link">
+                <AppText color={c.primary} weight="semibold">{t("auth.createAccountLink")}</AppText>
               </Link>
             </View>
           </>

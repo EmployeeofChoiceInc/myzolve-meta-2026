@@ -19,7 +19,9 @@ import { setBaseUrl, setAuthTokenGetter } from "@workspace/api-client-react";
 
 import { AnimatedSplash } from "@/components/AnimatedSplash";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { I18nProvider } from "@/components/I18nProvider";
 import { useColors } from "@/hooks/useColors";
+import { useTranslation } from "react-i18next";
 import { CopilotProvider } from "@/lib/copilot";
 import {
   configureNotificationHandler,
@@ -130,10 +132,11 @@ function AuthBridge({ children }: { children: React.ReactNode }) {
 
 function RootLayoutNav() {
   const c = useColors();
+  const { t } = useTranslation();
   return (
     <Stack
       screenOptions={{
-        headerBackTitle: "Back",
+        headerBackTitle: t("common.back"),
         headerStyle: { backgroundColor: c.background },
         headerTintColor: c.foreground,
         headerTitleStyle: { fontFamily: "PlusJakartaSans_600SemiBold" },
@@ -145,10 +148,10 @@ function RootLayoutNav() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="sign-in" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="sign-up" options={{ headerShown: false, presentation: "modal" }} />
-      <Stack.Screen name="onboarding" options={{ title: "Welcome" }} />
-      <Stack.Screen name="discover" options={{ title: "Discover" }} />
-      <Stack.Screen name="settings" options={{ title: "Settings" }} />
-      <Stack.Screen name="plus" options={{ title: "MyZolve Connect Plus" }} />
+      <Stack.Screen name="onboarding" options={{ title: t("navigation.welcome") }} />
+      <Stack.Screen name="discover" options={{ title: t("navigation.discover") }} />
+      <Stack.Screen name="settings" options={{ title: t("navigation.settings") }} />
+      <Stack.Screen name="plus" options={{ title: t("navigation.plus") }} />
       {/*
         circle/[id] has its own _layout.tsx (a nested Stack), so from
         this outer Stack's perspective the entire folder is a single
@@ -161,13 +164,13 @@ function RootLayoutNav() {
         draw its own custom header (which they all already do).
       */}
       <Stack.Screen name="circle/[id]" options={{ headerShown: false }} />
-      <Stack.Screen name="request/[id]" options={{ title: "Request" }} />
-      <Stack.Screen name="service/[id]" options={{ title: "Service" }} />
-      <Stack.Screen name="profile/[userId]" options={{ title: "Profile" }} />
+      <Stack.Screen name="request/[id]" options={{ title: t("navigation.request") }} />
+      <Stack.Screen name="service/[id]" options={{ title: t("navigation.service") }} />
+      <Stack.Screen name="profile/[userId]" options={{ title: t("tabs.profile") }} />
       <Stack.Screen name="messages/[userId]" options={{ title: "" }} />
-      <Stack.Screen name="invite/[token]" options={{ title: "Join circle" }} />
-      <Stack.Screen name="wrapup/index" options={{ title: "Your week" }} />
-      <Stack.Screen name="year-recap" options={{ title: "Year of Care" }} />
+      <Stack.Screen name="invite/[token]" options={{ title: t("navigation.joinCircle") }} />
+      <Stack.Screen name="wrapup/index" options={{ title: t("navigation.yourWeek") }} />
+      <Stack.Screen name="year-recap" options={{ title: t("navigation.yearOfCare") }} />
     </Stack>
   );
 }
@@ -203,29 +206,31 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ErrorBoundary>
-        <ClerkProvider
-          publishableKey={publishableKey}
-          proxyUrl={clerkProxyUrl}
-          tokenCache={tokenCache}
-        >
-          <QueryClientProvider client={queryClient}>
-            <AuthBridge>
-              <SubscriptionProvider>
-                <CopilotProvider>
-                  <GestureHandlerRootView style={{ flex: 1 }}>
-                    <KeyboardProvider>
-                      <StatusBar style="dark" />
-                      <RootLayoutNav />
-                      {showAnimatedSplash && !splashFinished ? (
-                        <AnimatedSplash onComplete={handleSplashComplete} />
-                      ) : null}
-                    </KeyboardProvider>
-                  </GestureHandlerRootView>
-                </CopilotProvider>
-              </SubscriptionProvider>
-            </AuthBridge>
-          </QueryClientProvider>
-        </ClerkProvider>
+        <I18nProvider>
+          <ClerkProvider
+            publishableKey={publishableKey}
+            proxyUrl={clerkProxyUrl}
+            tokenCache={tokenCache}
+          >
+            <QueryClientProvider client={queryClient}>
+              <AuthBridge>
+                <SubscriptionProvider>
+                  <CopilotProvider>
+                    <GestureHandlerRootView style={{ flex: 1 }}>
+                      <KeyboardProvider>
+                        <StatusBar style="dark" />
+                        <RootLayoutNav />
+                        {showAnimatedSplash && !splashFinished ? (
+                          <AnimatedSplash onComplete={handleSplashComplete} />
+                        ) : null}
+                      </KeyboardProvider>
+                    </GestureHandlerRootView>
+                  </CopilotProvider>
+                </SubscriptionProvider>
+              </AuthBridge>
+            </QueryClientProvider>
+          </ClerkProvider>
+        </I18nProvider>
       </ErrorBoundary>
     </SafeAreaProvider>
   );

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Alert, Linking, View } from "react-native";
 import { Stack } from "expo-router";
 import { Feather } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import {
   getGetMyPlusStatusQueryKey,
   getListCirclesQueryKey,
@@ -16,15 +17,16 @@ import { Screen } from "@/components/Screen";
 import { PlusBadge } from "@/components/PlusBadge";
 import { PaywallSheet } from "@/components/PaywallSheet";
 import { useColors } from "@/hooks/useColors";
+import { useIntlLocale } from "@/hooks/useDateLocale";
 import {
   REVENUECAT_ENTITLEMENT_IDENTIFIER,
   useSubscription,
 } from "@/lib/revenuecat";
 
-function formatDate(iso: string | null | undefined): string {
+function formatDate(iso: string | null | undefined, locale: string): string {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleDateString(undefined, {
+    return new Date(iso).toLocaleDateString(locale, {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -37,6 +39,8 @@ function formatDate(iso: string | null | undefined): string {
 export default function PlusScreen() {
   const c = useColors();
   const qc = useQueryClient();
+  const { t } = useTranslation();
+  const locale = useIntlLocale();
   const {
     isPlus: localIsPlus,
     isReady,
@@ -66,18 +70,24 @@ export default function PlusScreen() {
 
   const entitlement =
     customerInfo?.entitlements.active?.[REVENUECAT_ENTITLEMENT_IDENTIFIER];
-  const renewalLabel = entitlement?.willRenew
-    ? `Renews on ${formatDate(entitlement.expirationDate)}`
-    : entitlement?.expirationDate
-      ? `Ends on ${formatDate(entitlement.expirationDate)}`
-      : null;
-
   const isAnnual = entitlement?.productIdentifier?.includes("annual");
-  const planLabel = isAnnual ? "Annual plan" : "Monthly plan";
+  const planLabel = isAnnual ? t("plus.yourPlan") + " · " + t("plus.familyPlan") : t("plus.yourPlan");
+  const resolvedPlanLabel = isAnnual ? t("plus.familyPlan") : t("plus.soloPlan");
+  const renewalLabel = entitlement?.willRenew
+    ? t("plus.renewsOn", {
+        date: formatDate(entitlement.expirationDate, locale),
+        defaultValue: `Renews on ${formatDate(entitlement.expirationDate, locale)}`,
+      })
+    : entitlement?.expirationDate
+      ? t("plus.endsOn", {
+          date: formatDate(entitlement.expirationDate, locale),
+          defaultValue: `Ends on ${formatDate(entitlement.expirationDate, locale)}`,
+        })
+      : null;
   const priceLabel = isAnnual
     ? annualPackage?.product.priceString
     : monthlyPackage?.product.priceString;
-  const priceSuffix = isAnnual ? "/year" : "/month";
+  const priceSuffix = isAnnual ? t("plus.perYear", { defaultValue: "/year" }) : t("plus.perMonth", { defaultValue: "/month" });
 
   const planKind = plusStatus?.planKind ?? "solo";
   const isFamilyPlan = hasDirectPlus && planKind === "family";
@@ -99,8 +109,8 @@ export default function PlusScreen() {
       qc.invalidateQueries({ queryKey: getGetMyPlusStatusQueryKey() });
     } catch (err) {
       const msg =
-        err instanceof Error ? err.message : "We couldn't save that change.";
-      Alert.alert("Couldn't update your plan", msg);
+        err instanceof Error ? err.message : t("common.errorBody");
+      Alert.alert(t("plus.couldntUpdate", { defaultValue: "Couldn't update your plan" }), msg);
     }
   }
 
@@ -112,8 +122,8 @@ export default function PlusScreen() {
       qc.invalidateQueries({ queryKey: getGetMyPlusStatusQueryKey() });
     } catch (err) {
       const msg =
-        err instanceof Error ? err.message : "We couldn't save that change.";
-      Alert.alert("Couldn't update your plan", msg);
+        err instanceof Error ? err.message : t("common.errorBody");
+      Alert.alert(t("plus.couldntUpdate", { defaultValue: "Couldn't update your plan" }), msg);
     }
   }
 
@@ -131,8 +141,8 @@ export default function PlusScreen() {
       await Linking.openURL(fallback);
     } catch {
       Alert.alert(
-        "Couldn't open subscription settings",
-        "Open the App Store app, tap your profile, then Subscriptions.",
+        t("plus.couldntOpenSubs", { defaultValue: "Couldn't open subscription settings" }),
+        t("plus.couldntOpenSubsBody", { defaultValue: "Open the App Store app, tap your profile, then Subscriptions." }),
       );
     }
   }
@@ -141,19 +151,19 @@ export default function PlusScreen() {
     const { success } = await restore();
     if (!success) {
       Alert.alert(
-        "No purchases to restore",
-        "We couldn't find an active Plus subscription on this Apple ID.",
+        t("plus.noPurchases", { defaultValue: "No purchases to restore" }),
+        t("plus.noPurchasesBody", { defaultValue: "We couldn't find an active Plus subscription on this Apple ID." }),
       );
     }
   }
 
   return (
     <>
-      <Stack.Screen options={{ title: "MyZolve Connect Plus" }} />
+      <Stack.Screen options={{ title: t("navigation.plus") }} />
       <Screen>
         <Row gap={10} align="center">
           <PlusBadge size="md" variant="solid" />
-          <AppText variant="h2">MyZolve Connect Plus</AppText>
+          <AppText variant="h2" accessibilityRole="header">{t("plus.title")}</AppText>
         </Row>
 
         {!isAvailable && initError ? (
@@ -167,19 +177,26 @@ export default function PlusScreen() {
         {hasDerivedPlus ? (
           <Card style={{ marginTop: 16 }} testID="plus-gifter-card">
             <Row gap={10} align="center">
-              <Feather name="gift" size={18} color={c.primary} />
+              <Feather
+                name="gift"
+                size={18}
+                color={c.primary}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              />
               <View style={{ flex: 1 }}>
                 <AppText weight="semibold">
-                  Your Plus is gifted by{" "}
-                  {plusStatus?.gifterName ?? "a family circle"}
+                  {t("plus.gifterTitle", {
+                    name: plusStatus?.gifterName ?? t("plus.aFamilyCircle", { defaultValue: "a family circle" }),
+                    defaultValue: `Your Plus is gifted by ${plusStatus?.gifterName ?? "a family circle"}`,
+                  })}
                 </AppText>
                 <AppText
                   variant="caption"
                   color={c.mutedForeground}
                   style={{ marginTop: 2, lineHeight: 18 }}
                 >
-                  You have Plus through their family plan. It stays active as
-                  long as their subscription does.
+                  {t("plus.gifterBody", { defaultValue: "You have Plus through their family plan. It stays active as long as their subscription does." })}
                 </AppText>
                 {plusStatus?.graceUntil ? (
                   <AppText
@@ -187,9 +204,10 @@ export default function PlusScreen() {
                     color={c.destructive ?? "#b91c1c"}
                     style={{ marginTop: 6, lineHeight: 18 }}
                   >
-                    Heads up: their subscription has lapsed. Your gifted Plus
-                    will end on {formatDate(plusStatus.graceUntil)} unless they
-                    renew.
+                    {t("plus.graceWarning", {
+                      date: formatDate(plusStatus.graceUntil, locale),
+                      defaultValue: `Heads up: their subscription has lapsed. Your gifted Plus will end on ${formatDate(plusStatus.graceUntil, locale)} unless they renew.`,
+                    })}
                   </AppText>
                 ) : null}
               </View>
@@ -202,7 +220,7 @@ export default function PlusScreen() {
             <Card style={{ marginTop: 16 }}>
               <Row justify="space-between" align="center">
                 <View style={{ flex: 1 }}>
-                  <AppText weight="semibold">{planLabel}</AppText>
+                  <AppText weight="semibold">{resolvedPlanLabel}</AppText>
                   {renewalLabel ? (
                     <AppText
                       variant="caption"
@@ -228,7 +246,7 @@ export default function PlusScreen() {
               <Row justify="space-between" align="center">
                 <View style={{ flex: 1 }}>
                   <AppText weight="semibold">
-                    {isFamilyPlan ? "Family plan" : "Just-me plan"}
+                    {isFamilyPlan ? t("plus.familyPlan") : t("plus.soloPlan")}
                   </AppText>
                   <AppText
                     variant="caption"
@@ -236,13 +254,16 @@ export default function PlusScreen() {
                     style={{ marginTop: 2, lineHeight: 18 }}
                   >
                     {isFamilyPlan
-                      ? `Up to ${memberCap} people in your family circle get Plus while your subscription is active.`
-                      : "Switch to a family plan to share Plus with up to 6 people in one of your circles."}
+                      ? t("plus.familyPlanBody", {
+                          cap: memberCap,
+                          defaultValue: `Up to ${memberCap} people in your family circle get Plus while your subscription is active.`,
+                        })
+                      : t("plus.switchFamilyHint", { defaultValue: "Switch to a family plan to share Plus with up to 6 people in one of your circles." })}
                   </AppText>
                 </View>
                 {!isFamilyPlan ? (
                   <Button
-                    title="Use as family"
+                    title={t("plus.useAsFamily", { defaultValue: "Use as family" })}
                     variant="outline"
                     onPress={switchToFamilyPlan}
                     loading={updatePlan.isPending}
@@ -254,7 +275,7 @@ export default function PlusScreen() {
               {isFamilyPlan ? (
                 <View style={{ marginTop: 14 }}>
                   <AppText weight="semibold" style={{ marginBottom: 6 }}>
-                    Family circle
+                    {t("plus.familyCircle")}
                   </AppText>
                   {ownedCircles.length === 0 ? (
                     <AppText
@@ -262,9 +283,7 @@ export default function PlusScreen() {
                       color={c.mutedForeground}
                       style={{ lineHeight: 18 }}
                     >
-                      You're not the owner of any circle yet. Create a circle
-                      first, then come back here to designate it as your family
-                      circle.
+                      {t("plus.noOwnedCircles")}
                     </AppText>
                   ) : (
                     <View style={{ gap: 8 }}>
@@ -292,13 +311,11 @@ export default function PlusScreen() {
                     color={c.mutedForeground}
                     style={{ marginTop: 10, lineHeight: 16 }}
                   >
-                    Plus is gifted to the first {memberCap} active members
-                    (oldest joiners first). Members beyond that won't get Plus
-                    automatically.
+                    {t("plus.familyCap", { cap: memberCap })}
                   </AppText>
                   {plusStatus?.familyCircleId ? (
                     <Button
-                      title="Switch to just-me plan"
+                      title={t("plus.switchToSolo")}
                       variant="ghost"
                       onPress={() => setFamilyCircle(null)}
                       loading={updatePlan.isPending}
@@ -312,14 +329,14 @@ export default function PlusScreen() {
 
             <View style={{ marginTop: 16, gap: 10 }}>
               <Button
-                title="Manage subscription"
+                title={t("plus.manageSubscription")}
                 icon="external-link"
                 variant="outline"
                 onPress={openManageSubscription}
                 testID="plus-manage"
               />
               <Button
-                title="Restore purchases"
+                title={t("plus.restorePurchases")}
                 icon="refresh-cw"
                 variant="ghost"
                 loading={isRestoring}
@@ -330,14 +347,19 @@ export default function PlusScreen() {
 
             <Card style={{ marginTop: 24 }}>
               <Row gap={10}>
-                <Feather name="heart" size={18} color={c.primary} />
+                <Feather
+                  name="heart"
+                  size={18}
+                  color={c.primary}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                />
                 <AppText
                   variant="caption"
                   color={c.mutedForeground}
                   style={{ flex: 1 }}
                 >
-                  Thanks for being a Plus member. Your support keeps Connect
-                  warm and ad-free for the people who keep showing up.
+                  {t("plus.thanksForSupporting")}
                 </AppText>
               </Row>
             </Card>
@@ -346,28 +368,27 @@ export default function PlusScreen() {
           <>
             <Card style={{ marginTop: 16 }}>
               <AppText weight="semibold" style={{ marginBottom: 6 }}>
-                You're on the free plan
+                {t("plus.freePlan")}
               </AppText>
               <AppText
                 variant="caption"
                 color={c.mutedForeground}
                 style={{ lineHeight: 18 }}
               >
-                Plus unlocks bigger circles, richer moments, and tools made for
-                the people who keep showing up.
+                {t("plus.freePlanBody")}
               </AppText>
             </Card>
 
             <View style={{ marginTop: 16, gap: 10 }}>
               <Button
-                title="See what's included"
+                title={t("plus.seeWhatsIncluded")}
                 icon="star"
                 onPress={() => setPaywallOpen(true)}
                 testID="plus-open-paywall"
                 disabled={!isAvailable || !isReady}
               />
               <Button
-                title="Restore purchases"
+                title={t("plus.restorePurchases")}
                 icon="refresh-cw"
                 variant="ghost"
                 loading={isRestoring}
@@ -379,7 +400,7 @@ export default function PlusScreen() {
         ) : (
           <View style={{ marginTop: 16, gap: 10 }}>
             <Button
-              title="Get my own Plus"
+              title={t("plus.getMyOwn")}
               icon="star"
               variant="outline"
               onPress={() => setPaywallOpen(true)}
@@ -416,6 +437,7 @@ function FamilyCircleRow({
   disabled: boolean;
 }) {
   const c = useColors();
+  const { t } = useTranslation();
   return (
     <Row
       justify="space-between"
@@ -436,12 +458,13 @@ function FamilyCircleRow({
           color={overCap ? c.destructive ?? "#b91c1c" : c.mutedForeground}
           style={{ marginTop: 2 }}
         >
-          {memberCount} {memberCount === 1 ? "member" : "members"}
-          {overCap ? ` · only first ${memberCap} get Plus` : ""}
+          {overCap
+            ? t("plus.memberCap", { count: memberCount, cap: memberCap })
+            : t("common.memberCount", { count: memberCount })}
         </AppText>
       </View>
       <Button
-        title={selected ? "Selected" : "Choose"}
+        title={selected ? t("plus.selected") : t("plus.choose")}
         variant={selected ? "ghost" : "outline"}
         onPress={onPress}
         disabled={disabled || selected}

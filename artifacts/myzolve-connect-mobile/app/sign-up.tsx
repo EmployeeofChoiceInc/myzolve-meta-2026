@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import { Alert, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import { useTranslation } from "react-i18next";
 
 import { AppText, Button, Field, Input } from "@/components/UI";
 import { OAuthButtons } from "@/components/OAuthButtons";
@@ -31,6 +32,7 @@ export default function SignUpScreen() {
   const router = useRouter();
   const c = useColors();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
@@ -39,7 +41,7 @@ export default function SignUpScreen() {
 
   async function onCreate() {
     if (!email || !password) {
-      Alert.alert("Missing info", "Please enter an email and password.");
+      Alert.alert(t("auth.missingInfo"), t("auth.missingInfoSignUp"));
       return;
     }
     setLoading(true);
@@ -49,13 +51,19 @@ export default function SignUpScreen() {
         password,
       });
       if (error) {
-        Alert.alert("Couldn't sign up", describeError(error, "Please try again."));
+        Alert.alert(
+          t("auth.couldntSignUp"),
+          describeError(error, t("auth.couldntSignUpBody")),
+        );
         return;
       }
       await signUp.verifications.sendEmailCode();
       setStage("verify");
     } catch (err: unknown) {
-      Alert.alert("Couldn't sign up", describeError(err, "Please try again."));
+      Alert.alert(
+        t("auth.couldntSignUp"),
+        describeError(err, t("auth.couldntSignUpBody")),
+      );
     } finally {
       setLoading(false);
     }
@@ -73,10 +81,10 @@ export default function SignUpScreen() {
           },
         });
       } else {
-        Alert.alert("Verification incomplete", "Please try again.");
+        Alert.alert(t("auth.verificationIncomplete"), t("auth.verifyAgain"));
       }
     } catch (err: unknown) {
-      Alert.alert("Couldn't verify", describeError(err, "Wrong code."));
+      Alert.alert(t("auth.couldntVerify"), describeError(err, t("auth.wrongCode")));
     } finally {
       setLoading(false);
     }
@@ -86,9 +94,18 @@ export default function SignUpScreen() {
     <View style={{ flex: 1, backgroundColor: c.background, paddingTop: insets.top }}>
       <Pressable
         onPress={() => router.back()}
+        accessibilityRole="button"
+        accessibilityLabel={t("auth.closeButton")}
+        hitSlop={10}
         style={{ padding: 16, alignSelf: "flex-end" }}
       >
-        <Feather name="x" size={24} color={c.foreground} />
+        <Feather
+          name="x"
+          size={24}
+          color={c.foreground}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
       </Pressable>
       <KeyboardAwareScrollView
         contentContainerStyle={{ padding: 24, paddingTop: 8 }}
@@ -96,6 +113,8 @@ export default function SignUpScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
           style={{
             width: 56,
             height: 56,
@@ -108,16 +127,18 @@ export default function SignUpScreen() {
         >
           <Feather name="users" size={26} color={c.primary} />
         </View>
-        <AppText variant="h1">{stage === "form" ? "Join your circle" : "Confirm your email"}</AppText>
+        <AppText variant="h1" accessibilityRole="header">
+          {stage === "form" ? t("auth.joinCircle") : t("auth.confirmEmail")}
+        </AppText>
         <AppText variant="body" color={c.mutedForeground} style={{ marginTop: 6, marginBottom: 28 }}>
           {stage === "form"
-            ? "A warm space for the people you trust most."
-            : `We sent a code to ${email}.`}
+            ? t("auth.subtitleSignUp")
+            : t("auth.weSentCodeTo", { email })}
         </AppText>
 
         {stage === "form" ? (
           <>
-            <Field label="Email">
+            <Field label={t("auth.email")}>
               <Input
                 value={email}
                 onChangeText={setEmail}
@@ -126,18 +147,20 @@ export default function SignUpScreen() {
                 keyboardType="email-address"
                 placeholder="you@example.com"
                 testID="input-email"
+                accessibilityLabel={t("auth.email")}
               />
             </Field>
-            <Field label="Password">
+            <Field label={t("auth.password")}>
               <Input
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
-                placeholder="At least 8 characters"
+                placeholder={t("auth.passwordMinHint")}
                 testID="input-password"
+                accessibilityLabel={t("auth.password")}
               />
             </Field>
-            <Button title="Create account" onPress={onCreate} loading={loading} testID="button-signup" />
+            <Button title={t("auth.createAccount")} onPress={onCreate} loading={loading} testID="button-signup" />
             {/* Required for sign-up; Clerk's bot protection is on by default */}
             <View nativeID="clerk-captcha" />
 
@@ -145,23 +168,24 @@ export default function SignUpScreen() {
           </>
         ) : (
           <>
-            <Field label="Verification code">
+            <Field label={t("auth.verificationCode")}>
               <Input
                 value={code}
                 onChangeText={setCode}
                 keyboardType="number-pad"
                 placeholder="123456"
                 testID="input-code"
+                accessibilityLabel={t("auth.verificationCode")}
               />
             </Field>
-            <Button title="Verify and continue" onPress={onVerify} loading={loading} testID="button-verify" />
+            <Button title={t("auth.verifyAndContinue")} onPress={onVerify} loading={loading} testID="button-verify" />
           </>
         )}
 
         <View style={{ flexDirection: "row", justifyContent: "center", marginTop: 24 }}>
-          <AppText color={c.mutedForeground}>Already have an account? </AppText>
-          <Link href="/sign-in" replace>
-            <AppText color={c.primary} weight="semibold">Sign in</AppText>
+          <AppText color={c.mutedForeground}>{t("auth.alreadyHaveAccount")}</AppText>
+          <Link href="/sign-in" replace accessibilityRole="link">
+            <AppText color={c.primary} weight="semibold">{t("auth.signInLink")}</AppText>
           </Link>
         </View>
       </KeyboardAwareScrollView>
