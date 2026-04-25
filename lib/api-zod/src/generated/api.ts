@@ -27,6 +27,17 @@ export const GetMeResponse = zod.object({
   email: zod.string(),
   timezone: zod.string().nullish(),
   avatarObjectPath: zod.string().nullish(),
+  planKind: zod
+    .enum(["solo", "family"])
+    .describe(
+      'Plus plan kind. \"solo\" gives the entitlement only to this user;\n\"family\" extends derived Plus to up to 6 members of `familyCircleId`.\n',
+    ),
+  familyCircleId: zod
+    .number()
+    .nullish()
+    .describe(
+      'When `planKind` is \"family\", the circle whose first 6 active\nmembers receive derived Plus while the subscription is active.\n',
+    ),
   createdAt: zod.coerce.date(),
 });
 
@@ -49,8 +60,168 @@ export const UpdateMeResponse = zod.object({
   email: zod.string(),
   timezone: zod.string().nullish(),
   avatarObjectPath: zod.string().nullish(),
+  planKind: zod
+    .enum(["solo", "family"])
+    .describe(
+      'Plus plan kind. \"solo\" gives the entitlement only to this user;\n\"family\" extends derived Plus to up to 6 members of `familyCircleId`.\n',
+    ),
+  familyCircleId: zod
+    .number()
+    .nullish()
+    .describe(
+      'When `planKind` is \"family\", the circle whose first 6 active\nmembers receive derived Plus while the subscription is active.\n',
+    ),
   createdAt: zod.coerce.date(),
 });
+
+/**
+ * Returns whether the caller has Plus, including derived Plus from a
+family-plan subscriber's family circle. Mobile clients combine this
+with the local RevenueCat SDK so derived recipients see Plus in the UI.
+
+ * @summary Get the caller's effective Plus status
+ */
+export const GetMyPlusStatusResponse = zod
+  .object({
+    isPlus: zod
+      .boolean()
+      .describe(
+        "True if the caller currently has Plus access (direct or derived).",
+      ),
+    source: zod
+      .enum(["direct", "family", "none"])
+      .describe(
+        'Where Plus is coming from. \"direct\" means the caller has their\nown purchased entitlement. \"family\" means access is derived from\nbeing a member of a family-plan subscriber\'s family circle.\n\"none\" means no Plus access.\n',
+      ),
+    planKind: zod
+      .enum(["solo", "family"])
+      .describe(
+        "The caller's own plan kind (only meaningful with a direct entitlement).",
+      ),
+    familyCircleId: zod
+      .number()
+      .nullish()
+      .describe(
+        "The caller's designated family circle, when on a family plan.",
+      ),
+    familyCircleMemberCount: zod
+      .number()
+      .nullish()
+      .describe(
+        "Active member count of the designated family circle (caller's own subscription).",
+      ),
+    familyCircleMemberCap: zod
+      .number()
+      .describe("Hard cap on family-plan recipients (currently 6)."),
+    gifterUserId: zod
+      .number()
+      .nullish()
+      .describe(
+        'When `source` is \"family\", the user id of the subscriber gifting Plus.',
+      ),
+    gifterName: zod
+      .string()
+      .nullish()
+      .describe(
+        'When `source` is \"family\", the display name of the subscriber gifting Plus.',
+      ),
+    gifterCircleId: zod
+      .number()
+      .nullish()
+      .describe(
+        'When `source` is \"family\", the family circle through which the gift flows.',
+      ),
+    graceUntil: zod.coerce
+      .date()
+      .nullish()
+      .describe(
+        "When derived Plus is held open by the 7-day grace window after\nthe subscriber's entitlement lapsed, the cutoff at which derived\naccess ends. Null otherwise.\n",
+      ),
+  })
+  .describe(
+    "The caller's effective Plus state, including derived access via a\nfamily-plan subscriber's family circle.\n",
+  );
+
+/**
+ * Requires the caller to have a direct (purchased) Plus entitlement.
+`planKind` switches between "solo" and "family". For family plans,
+`familyCircleId` designates which circle's first six members receive
+derived Plus while the subscription is active. Pass `familyCircleId`
+as null to clear the designation. The caller must own the chosen
+circle.
+
+ * @summary Set the caller's plan kind and (optionally) family circle
+ */
+export const UpdateMyPlusPlanBody = zod.object({
+  planKind: zod.enum(["solo", "family"]),
+  familyCircleId: zod
+    .number()
+    .nullish()
+    .describe(
+      'Optional. With `planKind` \"family\", null means the user has\nchosen the family plan but hasn\'t designated a family circle\nyet — derived Plus stays off until they do. With `planKind`\n\"solo\", null clears any existing designation. Omit entirely\nto leave the existing designation untouched.\n',
+    ),
+});
+
+export const UpdateMyPlusPlanResponse = zod
+  .object({
+    isPlus: zod
+      .boolean()
+      .describe(
+        "True if the caller currently has Plus access (direct or derived).",
+      ),
+    source: zod
+      .enum(["direct", "family", "none"])
+      .describe(
+        'Where Plus is coming from. \"direct\" means the caller has their\nown purchased entitlement. \"family\" means access is derived from\nbeing a member of a family-plan subscriber\'s family circle.\n\"none\" means no Plus access.\n',
+      ),
+    planKind: zod
+      .enum(["solo", "family"])
+      .describe(
+        "The caller's own plan kind (only meaningful with a direct entitlement).",
+      ),
+    familyCircleId: zod
+      .number()
+      .nullish()
+      .describe(
+        "The caller's designated family circle, when on a family plan.",
+      ),
+    familyCircleMemberCount: zod
+      .number()
+      .nullish()
+      .describe(
+        "Active member count of the designated family circle (caller's own subscription).",
+      ),
+    familyCircleMemberCap: zod
+      .number()
+      .describe("Hard cap on family-plan recipients (currently 6)."),
+    gifterUserId: zod
+      .number()
+      .nullish()
+      .describe(
+        'When `source` is \"family\", the user id of the subscriber gifting Plus.',
+      ),
+    gifterName: zod
+      .string()
+      .nullish()
+      .describe(
+        'When `source` is \"family\", the display name of the subscriber gifting Plus.',
+      ),
+    gifterCircleId: zod
+      .number()
+      .nullish()
+      .describe(
+        'When `source` is \"family\", the family circle through which the gift flows.',
+      ),
+    graceUntil: zod.coerce
+      .date()
+      .nullish()
+      .describe(
+        "When derived Plus is held open by the 7-day grace window after\nthe subscriber's entitlement lapsed, the cutoff at which derived\naccess ends. Null otherwise.\n",
+      ),
+  })
+  .describe(
+    "The caller's effective Plus state, including derived access via a\nfamily-plan subscriber's family circle.\n",
+  );
 
 /**
  * @summary List circles the current user belongs to

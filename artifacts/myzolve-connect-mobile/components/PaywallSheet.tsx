@@ -9,6 +9,12 @@ import {
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
+import {
+  getGetMeQueryKey,
+  getGetMyPlusStatusQueryKey,
+  useUpdateMyPlusPlan,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { AppText, Button } from "@/components/UI";
 import { PlusBadge } from "@/components/PlusBadge";
@@ -44,12 +50,17 @@ const VALUE_PROPS: { icon: keyof typeof Feather.glyphMap; title: string; body: s
   },
 ];
 
+type PlanKind = "solo" | "family";
+const FAMILY_MEMBER_CAP = 6;
+
 export function PaywallSheet({
   visible,
   onClose,
   onSubscribed,
 }: PaywallSheetProps) {
   const c = useColors();
+  const qc = useQueryClient();
+  const updatePlan = useUpdateMyPlusPlan();
   const {
     isReady,
     isAvailable,
@@ -64,6 +75,7 @@ export function PaywallSheet({
   } = useSubscription();
 
   const [selected, setSelected] = useState<"monthly" | "annual">("annual");
+  const [planKind, setPlanKind] = useState<PlanKind>("solo");
 
   const annualSavings = useMemo(() => {
     const m = monthlyPackage?.product.price;
@@ -92,6 +104,19 @@ export function PaywallSheet({
     setPendingNotice(null);
     const { success, cancelled, pending } = await purchase(pkg);
     if (success) {
+      // Persist the chosen plan kind. We don't pass familyCircleId yet —
+      // designating the family circle happens in Settings → Plus, where
+      // the user can browse their owned circles. The server defaults
+      // family-plan subscribers to no circle until they pick one.
+      try {
+        await updatePlan.mutateAsync({
+          data: { planKind, familyCircleId: null },
+        });
+      } catch {
+        // Non-fatal — the user can change plan kind from the Plus screen.
+      }
+      qc.invalidateQueries({ queryKey: getGetMeQueryKey() });
+      qc.invalidateQueries({ queryKey: getGetMyPlusStatusQueryKey() });
       onSubscribed?.();
       onClose();
     } else if (pending) {
@@ -202,7 +227,42 @@ export function PaywallSheet({
             ))}
           </View>
 
-          <View style={{ marginTop: 28, gap: 12 }}>
+          <View style={{ marginTop: 28 }}>
+            <AppText weight="semibold" style={{ marginBottom: 8 }}>
+              Who is this for?
+            </AppText>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <PlanKindChip
+                title="Just me"
+                subtitle="Plus for you"
+                icon="user"
+                selected={planKind === "solo"}
+                onPress={() => setPlanKind("solo")}
+                testID="paywall-plankind-solo"
+              />
+              <PlanKindChip
+                title="My family"
+                subtitle={`Up to ${FAMILY_MEMBER_CAP} people in one circle`}
+                icon="users"
+                selected={planKind === "family"}
+                onPress={() => setPlanKind("family")}
+                testID="paywall-plankind-family"
+              />
+            </View>
+            {planKind === "family" ? (
+              <AppText
+                variant="caption"
+                color={c.mutedForeground}
+                style={{ marginTop: 8, lineHeight: 16 }}
+              >
+                After you subscribe, pick which of your circles is your
+                family circle in Settings → Plus. Up to {FAMILY_MEMBER_CAP}{" "}
+                members get Plus while your subscription is active.
+              </AppText>
+            ) : null}
+          </View>
+
+          <View style={{ marginTop: 18, gap: 12 }}>
             {annualPackage ? (
               <PlanCard
                 selected={selected === "annual"}
@@ -310,6 +370,52 @@ export function PaywallSheet({
         </ScrollView>
       </View>
     </Modal>
+  );
+}
+
+function PlanKindChip({
+  title,
+  subtitle,
+  icon,
+  selected,
+  onPress,
+  testID,
+}: {
+  title: string;
+  subtitle: string;
+  icon: keyof typeof Feather.glyphMap;
+  selected: boolean;
+  onPress: () => void;
+  testID?: string;
+}) {
+  const c = useColors();
+  return (
+    <Pressable
+      onPress={onPress}
+      testID={testID}
+      style={({ pressed }) => ({
+        flex: 1,
+        backgroundColor: selected ? c.primarySoft : c.card,
+        borderColor: selected ? c.primary : c.border,
+        borderWidth: selected ? 2 : 1,
+        borderRadius: 16,
+        padding: 12,
+        opacity: pressed ? 0.92 : 1,
+      })}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
+        <Feather
+          name={icon}
+          size={16}
+          color={selected ? c.primary : c.mutedForeground}
+          style={{ marginRight: 8 }}
+        />
+        <AppText weight="semibold">{title}</AppText>
+      </View>
+      <AppText variant="caption" color={c.mutedForeground} style={{ lineHeight: 16 }}>
+        {subtitle}
+      </AppText>
+    </Pressable>
   );
 }
 

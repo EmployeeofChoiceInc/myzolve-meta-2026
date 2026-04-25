@@ -10,10 +10,16 @@ import {
   circlesTable,
   circleMembersTable,
 } from "@workspace/db";
-import { and, asc, eq, ne } from "drizzle-orm";
+import { and, asc, count, eq, ne } from "drizzle-orm";
 import { validateAndConsumePendingUpload } from "../lib/uploadTokens";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { logger } from "../lib/logger";
+import {
+  bustIsPlusCache,
+  FAMILY_PLAN_MEMBER_CAP,
+  getPlusStatus,
+  isPlusDirect,
+} from "../lib/revenuecat";
 
 const router = Router();
 
@@ -39,6 +45,8 @@ function userToApi(user: typeof usersTable.$inferSelect) {
     bio: user.bio,
     location: user.location,
     avatarObjectPath: user.avatarObjectPath ?? null,
+    planKind: user.planKind === "family" ? "family" : "solo",
+    familyCircleId: user.familyCircleId ?? null,
     createdAt: user.createdAt,
   };
 }
@@ -182,5 +190,146 @@ router.delete("/me", requireAuth, async (req, res) => {
 
   res.status(204).end();
 });
+
+router.get("/me/plus-status", requireAuth, async (req, res) => {
+  const user = req.dbUser!;
+  const status = await getPlusStatus({
+    id: user.id,
+    clerkId: user.clerkId,
+    planKind: user.planKind,
+    familyCircleId: user.familyCircleId ?? null,
+  });
+  res.json(status);
+});
+
+// We deliberately allow `planKind: "family"` without a `familyCircleId`. That
+// represents the user picking the family plan at the paywall and intending to
+// designate a family circle later in Settings → Plus. Derived Plus simply
+// stays off until a circle is chosen.
+const updatePlusPlanSchema = z.object({
+  planKind: z.enum(["solo", "family"]),
+  familyCircleId: z.number().int().positive().nullable().optional(),
+});
+
+router.patch(
+  "/me/plus-plan",
+  requireAuth,
+  validateBody(updatePlusPlanSchema),
+  async (req, res) => {
+    const user = req.dbUser!;
+    // Designating a family circle, or even just declaring intent to switch to
+    // a family plan, is only available to users who actually paid for Plus.
+    // We deliberately use the *direct* check — derived recipients can't
+    // re-gift Plus to yet another circle.
+    //
+    // PaywallSheet calls this endpoint immediately after a successful
+    // purchase, so the in-memory entitlement cache may still hold a stale
+    // "no plus" reading from before the purchase. Bust it first so the
+    // freshly-completed transaction is honored.
+    bustIsPlusCache(user.clerkId);
+    const direct = await isPlusDirect(user.clerkId);
+    if (!direct) {
+      res.status(402).json({
+        error: "plus_required",
+        reason: "plan_change",
+        message:
+          "Subscribe to MyZolve Connect Plus before switching to a family plan.",
+      });
+      return;
+    }
+
+    const body = req.body as {
+      planKind: "solo" | "family";
+      familyCircleId?: number | null;
+    };
+
+    // Resolve the next familyCircleId per body semantics:
+    //   - planKind=family + circleId given: validate ownership, set it.
+    //   - planKind=family + circleId null: clear designation (pending).
+    //   - planKind=family + key omitted: leave existing designation alone.
+    //   - planKind=solo + circleId null: clear designation.
+    //   - planKind=solo + key omitted: leave existing designation alone.
+    let nextFamilyCircleId: number | null;
+    if (body.planKind === "family" && typeof body.familyCircleId === "number") {
+      // The caller must own the chosen circle. We rely on `circles.ownerId`
+      // here (transferred ownership flows through this column too).
+      const circle = await db
+        .select({
+          id: circlesTable.id,
+          ownerId: circlesTable.ownerId,
+        })
+        .from(circlesTable)
+        .where(eq(circlesTable.id, body.familyCircleId))
+        .limit(1)
+        .then((r) => r[0]);
+      if (!circle) {
+        res.status(400).json({
+          error: "invalid_family_circle",
+          message: "That circle no longer exists.",
+        });
+        return;
+      }
+      if (circle.ownerId !== user.id) {
+        res.status(400).json({
+          error: "invalid_family_circle",
+          message: "You can only designate a circle you own as the family circle.",
+        });
+        return;
+      }
+      nextFamilyCircleId = circle.id;
+    } else if (body.familyCircleId === null) {
+      nextFamilyCircleId = null;
+    } else {
+      nextFamilyCircleId = user.familyCircleId ?? null;
+    }
+
+    await db
+      .update(usersTable)
+      .set({
+        planKind: body.planKind,
+        familyCircleId: nextFamilyCircleId,
+      })
+      .where(eq(usersTable.id, user.id));
+
+    // Bust the entitlement cache for the owner so their derived state and
+    // member counts surface immediately. We can't easily bust derived
+    // recipients here without an N-query lookup; the 60s TTL bounds drift.
+    bustIsPlusCache(user.clerkId);
+
+    let memberCount: number | null = null;
+    if (body.planKind === "family" && nextFamilyCircleId != null) {
+      const [row] = await db
+        .select({ cnt: count() })
+        .from(circleMembersTable)
+        .where(
+          and(
+            eq(circleMembersTable.circleId, nextFamilyCircleId),
+            eq(circleMembersTable.status, "active"),
+          ),
+        );
+      memberCount = Number(row?.cnt ?? 0);
+    }
+
+    const status = await getPlusStatus({
+      id: user.id,
+      clerkId: user.clerkId,
+      planKind: body.planKind,
+      familyCircleId: nextFamilyCircleId,
+    });
+
+    logger.info(
+      {
+        userId: user.id,
+        planKind: body.planKind,
+        familyCircleId: nextFamilyCircleId,
+        memberCount,
+        cap: FAMILY_PLAN_MEMBER_CAP,
+      },
+      "Plus plan updated",
+    );
+
+    res.json(status);
+  },
+);
 
 export default router;

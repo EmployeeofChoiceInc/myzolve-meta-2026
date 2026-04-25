@@ -37,6 +37,19 @@ export interface PaywallError {
   message: string;
 }
 
+/**
+ * Plus plan kind. "solo" gives the entitlement only to this user;
+"family" extends derived Plus to up to 6 members of `familyCircleId`.
+
+ */
+export type UserProfilePlanKind =
+  (typeof UserProfilePlanKind)[keyof typeof UserProfilePlanKind];
+
+export const UserProfilePlanKind = {
+  solo: "solo",
+  family: "family",
+} as const;
+
 export interface UserProfile {
   id: number;
   clerkId: string;
@@ -50,6 +63,17 @@ export interface UserProfile {
   timezone?: string | null;
   /** @nullable */
   avatarObjectPath?: string | null;
+  /** Plus plan kind. "solo" gives the entitlement only to this user;
+"family" extends derived Plus to up to 6 members of `familyCircleId`.
+ */
+  planKind: UserProfilePlanKind;
+  /**
+   * When `planKind` is "family", the circle whose first 6 active
+members receive derived Plus while the subscription is active.
+
+   * @nullable
+   */
+  familyCircleId?: number | null;
   createdAt: string;
 }
 
@@ -58,6 +82,108 @@ export interface UpdateMeBody {
   firstName?: string;
   lastName?: string;
   timezone?: string;
+}
+
+/**
+ * Where Plus is coming from. "direct" means the caller has their
+own purchased entitlement. "family" means access is derived from
+being a member of a family-plan subscriber's family circle.
+"none" means no Plus access.
+
+ */
+export type PlusStatusSource =
+  (typeof PlusStatusSource)[keyof typeof PlusStatusSource];
+
+export const PlusStatusSource = {
+  direct: "direct",
+  family: "family",
+  none: "none",
+} as const;
+
+/**
+ * The caller's own plan kind (only meaningful with a direct entitlement).
+ */
+export type PlusStatusPlanKind =
+  (typeof PlusStatusPlanKind)[keyof typeof PlusStatusPlanKind];
+
+export const PlusStatusPlanKind = {
+  solo: "solo",
+  family: "family",
+} as const;
+
+/**
+ * The caller's effective Plus state, including derived access via a
+family-plan subscriber's family circle.
+
+ */
+export interface PlusStatus {
+  /** True if the caller currently has Plus access (direct or derived). */
+  isPlus: boolean;
+  /** Where Plus is coming from. "direct" means the caller has their
+own purchased entitlement. "family" means access is derived from
+being a member of a family-plan subscriber's family circle.
+"none" means no Plus access.
+ */
+  source: PlusStatusSource;
+  /** The caller's own plan kind (only meaningful with a direct entitlement). */
+  planKind: PlusStatusPlanKind;
+  /**
+   * The caller's designated family circle, when on a family plan.
+   * @nullable
+   */
+  familyCircleId?: number | null;
+  /**
+   * Active member count of the designated family circle (caller's own subscription).
+   * @nullable
+   */
+  familyCircleMemberCount?: number | null;
+  /** Hard cap on family-plan recipients (currently 6). */
+  familyCircleMemberCap: number;
+  /**
+   * When `source` is "family", the user id of the subscriber gifting Plus.
+   * @nullable
+   */
+  gifterUserId?: number | null;
+  /**
+   * When `source` is "family", the display name of the subscriber gifting Plus.
+   * @nullable
+   */
+  gifterName?: string | null;
+  /**
+   * When `source` is "family", the family circle through which the gift flows.
+   * @nullable
+   */
+  gifterCircleId?: number | null;
+  /**
+   * When derived Plus is held open by the 7-day grace window after
+the subscriber's entitlement lapsed, the cutoff at which derived
+access ends. Null otherwise.
+
+   * @nullable
+   */
+  graceUntil?: string | null;
+}
+
+export type UpdatePlusPlanBodyPlanKind =
+  (typeof UpdatePlusPlanBodyPlanKind)[keyof typeof UpdatePlusPlanBodyPlanKind];
+
+export const UpdatePlusPlanBodyPlanKind = {
+  solo: "solo",
+  family: "family",
+} as const;
+
+export interface UpdatePlusPlanBody {
+  planKind: UpdatePlusPlanBodyPlanKind;
+  /**
+   * Optional. With `planKind` "family", null means the user has
+chosen the family plan but hasn't designated a family circle
+yet — derived Plus stays off until they do. With `planKind`
+"solo", null clears any existing designation. Omit entirely
+to leave the existing designation untouched.
+
+   * @nullable
+   */
+  familyCircleId?: number | null;
 }
 
 export type CircleCircleType =

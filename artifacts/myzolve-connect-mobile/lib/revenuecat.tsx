@@ -18,6 +18,10 @@ import Purchases, {
   type PurchasesOfferings,
   type PurchasesPackage,
 } from "react-native-purchases";
+import {
+  getGetMyPlusStatusQueryKey,
+  useGetMyPlusStatus,
+} from "@workspace/api-client-react";
 
 const REVENUECAT_TEST_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY;
 const REVENUECAT_IOS_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
@@ -301,8 +305,20 @@ export function useSubscription(): SubscriptionContextValue {
 /**
  * Client-side gating only. For any gated mutation, use the server-side
  * `isPlus(userId)` helper instead — RevenueCat is the source of truth.
+ *
+ * Unions the local RevenueCat entitlement with the server-reported
+ * /me/plus-status payload so that *derived* recipients of a family-plan
+ * subscription see Plus in the UI even though they never purchased anything
+ * locally.
  */
 export function useIsPlus(): boolean {
   const { isPlus } = useSubscription();
-  return isPlus;
+  const { data } = useGetMyPlusStatus({
+    query: {
+      staleTime: 60_000,
+      refetchOnWindowFocus: false,
+      queryKey: getGetMyPlusStatusQueryKey(),
+    },
+  });
+  return Boolean(isPlus || data?.isPlus);
 }

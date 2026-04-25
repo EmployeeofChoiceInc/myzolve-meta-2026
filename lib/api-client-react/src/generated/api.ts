@@ -90,6 +90,7 @@ import type {
   PaymentRequiredResponse,
   PendingCircleVerification,
   PlaceholderMember,
+  PlusStatus,
   ReactionSummary,
   ReactionToggleResult,
   RegisterDeviceTokenBody,
@@ -114,6 +115,7 @@ import type {
   UpdateMeBody,
   UpdateNotificationPreferencesBody,
   UpdatePlaceholderBody,
+  UpdatePlusPlanBody,
   UpdateServicePostBody,
   UpdateSupportRequestBody,
   UploadUrlRequest,
@@ -441,6 +443,184 @@ export const useDeleteMe = <
   TContext
 > => {
   return useMutation(getDeleteMeMutationOptions(options));
+};
+
+/**
+ * Returns whether the caller has Plus, including derived Plus from a
+family-plan subscriber's family circle. Mobile clients combine this
+with the local RevenueCat SDK so derived recipients see Plus in the UI.
+
+ * @summary Get the caller's effective Plus status
+ */
+export const getGetMyPlusStatusUrl = () => {
+  return `/api/me/plus-status`;
+};
+
+export const getMyPlusStatus = async (
+  options?: RequestInit,
+): Promise<PlusStatus> => {
+  return customFetch<PlusStatus>(getGetMyPlusStatusUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMyPlusStatusQueryKey = () => {
+  return [`/api/me/plus-status`] as const;
+};
+
+export const getGetMyPlusStatusQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMyPlusStatus>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMyPlusStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMyPlusStatusQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyPlusStatus>>> = ({
+    signal,
+  }) => getMyPlusStatus({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMyPlusStatus>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMyPlusStatusQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMyPlusStatus>>
+>;
+export type GetMyPlusStatusQueryError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Get the caller's effective Plus status
+ */
+
+export function useGetMyPlusStatus<
+  TData = Awaited<ReturnType<typeof getMyPlusStatus>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMyPlusStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMyPlusStatusQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Requires the caller to have a direct (purchased) Plus entitlement.
+`planKind` switches between "solo" and "family". For family plans,
+`familyCircleId` designates which circle's first six members receive
+derived Plus while the subscription is active. Pass `familyCircleId`
+as null to clear the designation. The caller must own the chosen
+circle.
+
+ * @summary Set the caller's plan kind and (optionally) family circle
+ */
+export const getUpdateMyPlusPlanUrl = () => {
+  return `/api/me/plus-plan`;
+};
+
+export const updateMyPlusPlan = async (
+  updatePlusPlanBody: UpdatePlusPlanBody,
+  options?: RequestInit,
+): Promise<PlusStatus> => {
+  return customFetch<PlusStatus>(getUpdateMyPlusPlanUrl(), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updatePlusPlanBody),
+  });
+};
+
+export const getUpdateMyPlusPlanMutationOptions = <
+  TError = ErrorType<
+    ErrorResponse | UnauthorizedResponse | PaymentRequiredResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMyPlusPlan>>,
+    TError,
+    { data: BodyType<UpdatePlusPlanBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateMyPlusPlan>>,
+  TError,
+  { data: BodyType<UpdatePlusPlanBody> },
+  TContext
+> => {
+  const mutationKey = ["updateMyPlusPlan"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateMyPlusPlan>>,
+    { data: BodyType<UpdatePlusPlanBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return updateMyPlusPlan(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateMyPlusPlanMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateMyPlusPlan>>
+>;
+export type UpdateMyPlusPlanMutationBody = BodyType<UpdatePlusPlanBody>;
+export type UpdateMyPlusPlanMutationError = ErrorType<
+  ErrorResponse | UnauthorizedResponse | PaymentRequiredResponse
+>;
+
+/**
+ * @summary Set the caller's plan kind and (optionally) family circle
+ */
+export const useUpdateMyPlusPlan = <
+  TError = ErrorType<
+    ErrorResponse | UnauthorizedResponse | PaymentRequiredResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMyPlusPlan>>,
+    TError,
+    { data: BodyType<UpdatePlusPlanBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateMyPlusPlan>>,
+  TError,
+  { data: BodyType<UpdatePlusPlanBody> },
+  TContext
+> => {
+  return useMutation(getUpdateMyPlusPlanMutationOptions(options));
 };
 
 /**

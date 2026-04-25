@@ -3,7 +3,27 @@ import {
   listCustomerActiveEntitlements,
   listEntitlements,
 } from "@replit/revenuecat-sdk";
+import { and, asc, eq } from "drizzle-orm";
+import {
+  db,
+  circleMembersTable,
+  circlesTable,
+  usersTable,
+} from "@workspace/db";
 import { logger } from "./logger";
+
+/**
+ * Hard cap on the number of family members that receive derived Plus from
+ * one family-plan subscription. Mirrors the value advertised in the paywall.
+ */
+export const FAMILY_PLAN_MEMBER_CAP = 6;
+
+/**
+ * After a family-plan subscriber's entitlement lapses, derived recipients
+ * keep Plus for this long so a single late renewal doesn't visibly downgrade
+ * everyone in the family circle.
+ */
+export const FAMILY_PLAN_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 
 export const PLUS_ENTITLEMENT_IDENTIFIER = "plus";
 
@@ -125,13 +145,18 @@ async function resolvePlusEntitlementId(
 
 /**
  * Returns true iff the given Clerk userId currently has the `plus`
- * entitlement active in RevenueCat. Uses the userId as the RevenueCat
- * App User ID (set on the client via Purchases.logIn).
+ * entitlement active in RevenueCat directly (i.e. their own purchase).
+ * Used as the building block for `isPlus`, which also considers derived
+ * Plus from a family-plan subscriber's family circle.
  *
  * On any error we return `false` and log — gated mutations should fail
  * closed rather than accidentally granting access.
+ *
+ * Side effect: when the call succeeds AND the user is currently active,
+ * `users.subscription_last_active_at` is bumped to "now" so derived
+ * recipients can be granted a 7-day grace window after a lapse.
  */
-export async function isPlus(userId: string): Promise<boolean> {
+export async function isPlusDirect(userId: string): Promise<boolean> {
   if (!userId) return false;
 
   const cached = plusCache.get(userId);
@@ -185,9 +210,242 @@ export async function isPlus(userId: string): Promise<boolean> {
       value: hasPlus,
       expiresAt: Date.now() + PLUS_CACHE_TTL_MS,
     });
+
+    if (hasPlus) {
+      // Best-effort snapshot for the family-plan grace window. We deliberately
+      // don't await — a momentary DB hiccup must not break entitlement reads.
+      void db
+        .update(usersTable)
+        .set({ subscriptionLastActiveAt: new Date() })
+        .where(eq(usersTable.clerkId, userId))
+        .catch((err) => {
+          logger.warn(
+            { err, userId },
+            "Failed to update subscription_last_active_at",
+          );
+        });
+    }
+
     return hasPlus;
   } catch (err) {
-    logger.warn({ err, userId }, "isPlus check threw; failing closed");
+    logger.warn({ err, userId }, "isPlusDirect check threw; failing closed");
     return false;
   }
+}
+
+type DerivedPlusInfo = {
+  via: "family";
+  circleId: number;
+  ownerUserId: number;
+  ownerName: string;
+  graceUntil: Date | null;
+};
+
+/**
+ * Looks up whether `userId` (Clerk id) currently has Plus *derived* from
+ * being one of the first FAMILY_PLAN_MEMBER_CAP active members of any
+ * family-plan subscriber's `family_circle_id`. Returns the gifter info on
+ * a hit, or null otherwise.
+ *
+ * Important guarantees:
+ *  - Members 7+ in the chosen family circle do NOT receive Plus, even if
+ *    members above them later leave (we walk in joinedAt asc / createdAt asc).
+ *  - The subscriber themselves is not counted against the cap if they are
+ *    also a member of the family circle — they already have direct Plus.
+ *  - Owner Plus is checked via `isPlusDirect` (live RC) and falls back to
+ *    `subscription_last_active_at` within FAMILY_PLAN_GRACE_MS for the
+ *    7-day grace window.
+ */
+async function getDerivedPlusInfo(
+  userId: string,
+): Promise<DerivedPlusInfo | null> {
+  if (!userId) return null;
+
+  // Resolve the caller's internal user id once.
+  const callerRows = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.clerkId, userId))
+    .limit(1);
+  const caller = callerRows[0];
+  if (!caller) return null;
+
+  // Find every family circle the caller is currently an active member of
+  // whose owner has elected the family plan and designated this circle.
+  // We then narrow to circles where the caller is among the first
+  // FAMILY_PLAN_MEMBER_CAP active members.
+  const candidateCircles = await db
+    .select({
+      circleId: circlesTable.id,
+      ownerUserId: circlesTable.ownerId,
+      ownerClerkId: usersTable.clerkId,
+      ownerName: usersTable.displayName,
+      ownerLastActiveAt: usersTable.subscriptionLastActiveAt,
+    })
+    .from(circlesTable)
+    .innerJoin(usersTable, eq(usersTable.id, circlesTable.ownerId))
+    .innerJoin(
+      circleMembersTable,
+      and(
+        eq(circleMembersTable.circleId, circlesTable.id),
+        eq(circleMembersTable.userId, caller.id),
+        eq(circleMembersTable.status, "active"),
+      ),
+    )
+    .where(
+      and(
+        eq(usersTable.planKind, "family"),
+        eq(usersTable.familyCircleId, circlesTable.id),
+      ),
+    );
+
+  for (const candidate of candidateCircles) {
+    // Skip circles where the caller IS the owner — they should already get
+    // direct Plus and the caller path covers it.
+    if (candidate.ownerUserId === caller.id) continue;
+
+    // Pull active members in stable order, then drop the owner before
+    // taking the first FAMILY_PLAN_MEMBER_CAP. The owner already has direct
+    // Plus and must not consume one of the gifted slots — otherwise we'd
+    // gift to only `cap - 1` recipients whenever the owner is also a member
+    // of their own circle (the common case for "family" circles).
+    const earliestMembers = await db
+      .select({ userId: circleMembersTable.userId })
+      .from(circleMembersTable)
+      .where(
+        and(
+          eq(circleMembersTable.circleId, candidate.circleId),
+          eq(circleMembersTable.status, "active"),
+        ),
+      )
+      .orderBy(
+        asc(circleMembersTable.joinedAt),
+        asc(circleMembersTable.createdAt),
+        asc(circleMembersTable.id),
+      )
+      .limit(FAMILY_PLAN_MEMBER_CAP + 1);
+
+    const eligibleIds = earliestMembers
+      .map((m) => m.userId)
+      .filter((id): id is number => id != null && id !== candidate.ownerUserId)
+      .slice(0, FAMILY_PLAN_MEMBER_CAP);
+    if (!eligibleIds.includes(caller.id)) continue;
+
+    // Owner must be Plus (direct, or within grace).
+    const ownerActive = await isPlusDirect(candidate.ownerClerkId);
+    let graceUntil: Date | null = null;
+    if (!ownerActive) {
+      const last = candidate.ownerLastActiveAt;
+      if (!last) continue;
+      const cutoff = new Date(last.getTime() + FAMILY_PLAN_GRACE_MS);
+      if (cutoff.getTime() <= Date.now()) continue;
+      graceUntil = cutoff;
+    }
+
+    return {
+      via: "family",
+      circleId: candidate.circleId,
+      ownerUserId: candidate.ownerUserId,
+      ownerName: candidate.ownerName,
+      graceUntil,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Returns true iff the given Clerk userId currently has Plus access — either
+ * a direct purchased entitlement OR derived access via a family-plan
+ * subscriber's family circle.
+ */
+export async function isPlus(userId: string): Promise<boolean> {
+  if (!userId) return false;
+  if (await isPlusDirect(userId)) return true;
+  const derived = await getDerivedPlusInfo(userId);
+  return derived !== null;
+}
+
+export type PlusStatus = {
+  isPlus: boolean;
+  source: "direct" | "family" | "none";
+  planKind: "solo" | "family";
+  familyCircleId: number | null;
+  familyCircleMemberCount: number | null;
+  familyCircleMemberCap: number;
+  gifterUserId: number | null;
+  gifterName: string | null;
+  gifterCircleId: number | null;
+  graceUntil: string | null;
+};
+
+/**
+ * Builds the rich Plus status payload returned by /me/plus-status. Always
+ * resolves — failures yield a `none` status.
+ */
+export async function getPlusStatus(user: {
+  id: number;
+  clerkId: string;
+  planKind: string;
+  familyCircleId: number | null;
+}): Promise<PlusStatus> {
+  const direct = await isPlusDirect(user.clerkId);
+
+  let familyCircleMemberCount: number | null = null;
+  if (user.planKind === "family" && user.familyCircleId != null) {
+    const members = await db
+      .select({ id: circleMembersTable.id })
+      .from(circleMembersTable)
+      .where(
+        and(
+          eq(circleMembersTable.circleId, user.familyCircleId),
+          eq(circleMembersTable.status, "active"),
+        ),
+      );
+    familyCircleMemberCount = members.length;
+  }
+
+  if (direct) {
+    return {
+      isPlus: true,
+      source: "direct",
+      planKind: user.planKind === "family" ? "family" : "solo",
+      familyCircleId: user.familyCircleId ?? null,
+      familyCircleMemberCount,
+      familyCircleMemberCap: FAMILY_PLAN_MEMBER_CAP,
+      gifterUserId: null,
+      gifterName: null,
+      gifterCircleId: null,
+      graceUntil: null,
+    };
+  }
+
+  const derived = await getDerivedPlusInfo(user.clerkId);
+  if (derived) {
+    return {
+      isPlus: true,
+      source: "family",
+      planKind: user.planKind === "family" ? "family" : "solo",
+      familyCircleId: user.familyCircleId ?? null,
+      familyCircleMemberCount,
+      familyCircleMemberCap: FAMILY_PLAN_MEMBER_CAP,
+      gifterUserId: derived.ownerUserId,
+      gifterName: derived.ownerName,
+      gifterCircleId: derived.circleId,
+      graceUntil: derived.graceUntil ? derived.graceUntil.toISOString() : null,
+    };
+  }
+
+  return {
+    isPlus: false,
+    source: "none",
+    planKind: user.planKind === "family" ? "family" : "solo",
+    familyCircleId: user.familyCircleId ?? null,
+    familyCircleMemberCount,
+    familyCircleMemberCap: FAMILY_PLAN_MEMBER_CAP,
+    gifterUserId: null,
+    gifterName: null,
+    gifterCircleId: null,
+    graceUntil: null,
+  };
 }

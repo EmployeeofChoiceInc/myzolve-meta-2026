@@ -124,6 +124,63 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /me/plus-status:
+    get:
+      operationId: getMyPlusStatus
+      tags: [me]
+      summary: Get the caller's effective Plus status
+      description: |
+        Returns whether the caller has Plus, including derived Plus from a
+        family-plan subscriber's family circle. Mobile clients combine this
+        with the local RevenueCat SDK so derived recipients see Plus in the UI.
+      security: [{ clerk: [] }]
+      responses:
+        "200":
+          description: Plus status payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlusStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /me/plus-plan:
+    patch:
+      operationId: updateMyPlusPlan
+      tags: [me]
+      summary: Set the caller's plan kind and (optionally) family circle
+      description: |
+        Requires the caller to have a direct (purchased) Plus entitlement.
+        `planKind` switches between "solo" and "family". For family plans,
+        `familyCircleId` designates which circle's first six members receive
+        derived Plus while the subscription is active. Pass `familyCircleId`
+        as null to clear the designation. The caller must own the chosen
+        circle.
+      security: [{ clerk: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePlusPlanBody"
+      responses:
+        "200":
+          description: Updated Plus status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlusStatus"
+        "400":
+          description: Invalid request (e.g. caller does not own the circle)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "402":
+          $ref: "#/components/responses/PaymentRequired"
+
   # ── Circles ──────────────────────────────────────────────────────────────────
   /circles:
     get:
@@ -2901,6 +2958,17 @@ components:
           type: ["string", "null"]
         avatarObjectPath:
           type: ["string", "null"]
+        planKind:
+          type: string
+          enum: [solo, family]
+          description: |
+            Plus plan kind. "solo" gives the entitlement only to this user;
+            "family" extends derived Plus to up to 6 members of `familyCircleId`.
+        familyCircleId:
+          type: ["integer", "null"]
+          description: |
+            When `planKind` is "family", the circle whose first 6 active
+            members receive derived Plus while the subscription is active.
         createdAt:
           type: string
           format: date-time
@@ -2909,6 +2977,7 @@ components:
         - clerkId
         - displayName
         - email
+        - planKind
         - createdAt
 
     UpdateMeBody:
@@ -2922,6 +2991,75 @@ components:
           type: string
         timezone:
           type: string
+
+    PlusStatus:
+      type: object
+      description: |
+        The caller's effective Plus state, including derived access via a
+        family-plan subscriber's family circle.
+      properties:
+        isPlus:
+          type: boolean
+          description: True if the caller currently has Plus access (direct or derived).
+        source:
+          type: string
+          enum: [direct, family, none]
+          description: |
+            Where Plus is coming from. "direct" means the caller has their
+            own purchased entitlement. "family" means access is derived from
+            being a member of a family-plan subscriber's family circle.
+            "none" means no Plus access.
+        planKind:
+          type: string
+          enum: [solo, family]
+          description: The caller's own plan kind (only meaningful with a direct entitlement).
+        familyCircleId:
+          type: ["integer", "null"]
+          description: The caller's designated family circle, when on a family plan.
+        familyCircleMemberCount:
+          type: ["integer", "null"]
+          description: Active member count of the designated family circle (caller's own subscription).
+        familyCircleMemberCap:
+          type: integer
+          description: Hard cap on family-plan recipients (currently 6).
+        gifterUserId:
+          type: ["integer", "null"]
+          description: When `source` is "family", the user id of the subscriber gifting Plus.
+        gifterName:
+          type: ["string", "null"]
+          description: When `source` is "family", the display name of the subscriber gifting Plus.
+        gifterCircleId:
+          type: ["integer", "null"]
+          description: When `source` is "family", the family circle through which the gift flows.
+        graceUntil:
+          type: ["string", "null"]
+          format: date-time
+          description: |
+            When derived Plus is held open by the 7-day grace window after
+            the subscriber's entitlement lapsed, the cutoff at which derived
+            access ends. Null otherwise.
+      required:
+        - isPlus
+        - source
+        - planKind
+        - familyCircleMemberCap
+
+    UpdatePlusPlanBody:
+      type: object
+      properties:
+        planKind:
+          type: string
+          enum: [solo, family]
+        familyCircleId:
+          type: ["integer", "null"]
+          description: |
+            Optional. With `planKind` "family", null means the user has
+            chosen the family plan but hasn't designated a family circle
+            yet — derived Plus stays off until they do. With `planKind`
+            "solo", null clears any existing designation. Omit entirely
+            to leave the existing designation untouched.
+      required:
+        - planKind
 
     # ── Circle ────────────────────────────────────────────────────────────────
     Circle:
