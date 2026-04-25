@@ -1127,6 +1127,54 @@ export interface LedgerSummary {
   softMessage: string;
 }
 
+export interface LedgerProMonth {
+  /** 1-12 calendar month within the requested year. */
+  month: number;
+  given: number;
+  received: number;
+  /** Cumulative net of given − received from the start of the year through this month. */
+  balance: number;
+}
+
+export interface LedgerProPerson {
+  /** @nullable */
+  userId?: number | null;
+  name: string;
+  /** @nullable */
+  avatarObjectPath?: string | null;
+  amount: number;
+  count: number;
+}
+
+export interface LedgerProView {
+  circleId: number;
+  circleName: string;
+  year: number;
+  currency: string;
+  totalGiven: number;
+  totalReceived: number;
+  totalRepaid: number;
+  totalForgiven: number;
+  /** totalGiven − totalReceived for the year. */
+  netBalance: number;
+  entryCount: number;
+  months: LedgerProMonth[];
+  /** People you supported the most this year. */
+  topSupported: LedgerProPerson[];
+  /** People who supported you the most this year. */
+  topSupporters: LedgerProPerson[];
+  availableYears: number[];
+  softMessage: string;
+}
+
+export interface LedgerExport {
+  circleId: number;
+  year: number;
+  pdfUrl: string;
+  csvUrl: string;
+  expiresAt: string;
+}
+
 export type DashboardSummaryCircleHealth =
   (typeof DashboardSummaryCircleHealth)[keyof typeof DashboardSummaryCircleHealth];
 
@@ -1207,6 +1255,7 @@ export const UpdateNotificationPreferencesBodyPreferencesItemNotificationType =
     copilot_post_made: "copilot_post_made",
     wrapup_weekly: "wrapup_weekly",
     wrapup_monthly: "wrapup_monthly",
+    ledger_export_ready: "ledger_export_ready",
   } as const;
 
 export type UpdateNotificationPreferencesBodyPreferencesItem = {
@@ -1808,6 +1857,19 @@ export type GetCircleActivityParams = {
 export type GetCircleLedgerParams = {
   limit?: number;
   offset?: number;
+};
+
+export type GetCircleLedgerProYears200 = {
+  years: number[];
+  defaultYear: number;
+};
+
+export type GetCircleLedgerProParams = {
+  year?: number;
+};
+
+export type CreateCircleLedgerExportBody = {
+  year: number;
 };
 
 export type ListNotificationsParams = {

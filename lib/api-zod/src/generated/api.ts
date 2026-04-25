@@ -1767,6 +1767,117 @@ export const GetCircleLedgerSummaryResponse = zod.object({
 });
 
 /**
+ * Returns the years for which this circle has ledger entries
+visible to the authenticated user. Used to populate the year
+selector in the Pro view. Requires MyZolve Connect Plus.
+
+ * @summary List years that have ledger activity (Plus only)
+ */
+export const GetCircleLedgerProYearsParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const GetCircleLedgerProYearsResponse = zod.object({
+  years: zod.array(zod.number()),
+  defaultYear: zod.number(),
+});
+
+/**
+ * Returns rich aggregates scoped to the authenticated user inside
+a circle for a given calendar year: monthly given/received bars,
+the people they've supported and been supported by most, and
+running balance. Requires MyZolve Connect Plus.
+
+ * @summary Get the Pro ledger view for a circle and year (Plus only)
+ */
+export const GetCircleLedgerProParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const GetCircleLedgerProQueryParams = zod.object({
+  year: zod.coerce.number().optional(),
+});
+
+export const GetCircleLedgerProResponse = zod.object({
+  circleId: zod.number(),
+  circleName: zod.string(),
+  year: zod.number(),
+  currency: zod.string(),
+  totalGiven: zod.number(),
+  totalReceived: zod.number(),
+  totalRepaid: zod.number(),
+  totalForgiven: zod.number(),
+  netBalance: zod.number().describe("totalGiven − totalReceived for the year."),
+  entryCount: zod.number(),
+  months: zod.array(
+    zod.object({
+      month: zod
+        .number()
+        .describe("1-12 calendar month within the requested year."),
+      given: zod.number(),
+      received: zod.number(),
+      balance: zod
+        .number()
+        .describe(
+          "Cumulative net of given − received from the start of the year through this month.",
+        ),
+    }),
+  ),
+  topSupported: zod
+    .array(
+      zod.object({
+        userId: zod.number().nullish(),
+        name: zod.string(),
+        avatarObjectPath: zod.string().nullish(),
+        amount: zod.number(),
+        count: zod.number(),
+      }),
+    )
+    .describe("People you supported the most this year."),
+  topSupporters: zod
+    .array(
+      zod.object({
+        userId: zod.number().nullish(),
+        name: zod.string(),
+        avatarObjectPath: zod.string().nullish(),
+        amount: zod.number(),
+        count: zod.number(),
+      }),
+    )
+    .describe("People who supported you the most this year."),
+  availableYears: zod.array(zod.number()),
+  softMessage: zod.string(),
+});
+
+/**
+ * Generates a multi-page PDF and a CSV of every ledger entry for
+the given year and stores them. The response always carries
+short-lived signed URLs (`pdfUrl`, `csvUrl`) the client can
+download and share. In addition, when the member has the
+`ledger_export_ready` notification preference enabled, an
+in-app notification, push notification and email are all
+delivered (subject to the per-channel toggles in
+`notification_preferences`). Requires MyZolve Connect Plus.
+
+ * @summary Generate a year recap PDF + CSV export (Plus only)
+ */
+export const CreateCircleLedgerExportParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const CreateCircleLedgerExportBody = zod.object({
+  year: zod.number(),
+});
+
+export const CreateCircleLedgerExportResponse = zod.object({
+  circleId: zod.number(),
+  year: zod.number(),
+  pdfUrl: zod.string(),
+  csvUrl: zod.string(),
+  expiresAt: zod.coerce.date(),
+});
+
+/**
  * @summary List notifications for the current user
  */
 export const listNotificationsQueryLimitDefault = 30;
@@ -1858,6 +1969,7 @@ export const UpdateNotificationPreferencesBody = zod.object({
         "copilot_post_made",
         "wrapup_weekly",
         "wrapup_monthly",
+        "ledger_export_ready",
       ]),
       enabled: zod.boolean(),
     }),

@@ -28,6 +28,25 @@ export async function getUserName(userId: number): Promise<string> {
   return user?.displayName ?? "Someone";
 }
 
+export async function isNotificationTypeEnabled(
+  userId: number,
+  notificationType: string,
+): Promise<boolean> {
+  const pref = await db
+    .select({ enabled: notificationPreferencesTable.enabled })
+    .from(notificationPreferencesTable)
+    .where(
+      and(
+        eq(notificationPreferencesTable.userId, userId),
+        eq(notificationPreferencesTable.notificationType, notificationType),
+      ),
+    )
+    .limit(1)
+    .then((r) => r[0] ?? null);
+  // Default to enabled when no row exists — matches createNotification.
+  return pref ? pref.enabled : true;
+}
+
 export async function createNotification(params: {
   userId: number;
   circleId?: number;
@@ -37,21 +56,11 @@ export async function createNotification(params: {
   targetEntityType?: string;
   targetEntityId?: number;
 }) {
-  const pref = await db
-    .select({ enabled: notificationPreferencesTable.enabled })
-    .from(notificationPreferencesTable)
-    .where(
-      and(
-        eq(notificationPreferencesTable.userId, params.userId),
-        eq(notificationPreferencesTable.notificationType, params.notificationType),
-      ),
-    )
-    .limit(1)
-    .then((r) => r[0] ?? null);
-
-  if (pref && !pref.enabled) {
-    return;
-  }
+  const enabled = await isNotificationTypeEnabled(
+    params.userId,
+    params.notificationType,
+  );
+  if (!enabled) return;
 
   await db.insert(notificationsTable).values({
     userId: params.userId,

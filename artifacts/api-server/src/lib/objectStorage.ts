@@ -128,6 +128,52 @@ export class ObjectStorageService {
     });
   }
 
+  /**
+   * Server-side helper that uploads in-memory bytes (e.g. a generated
+   * PDF or CSV) into a private bucket subfolder and returns the
+   * resulting object path. Used by the ledger export pipeline so we
+   * never round-trip large files through the client.
+   */
+  async putObjectBytes(params: {
+    subfolder: string;
+    fileName: string;
+    contentType: string;
+    bytes: Buffer | Uint8Array;
+  }): Promise<{ objectPath: string; gcsPath: string }> {
+    let entityDir = this.getPrivateObjectDir();
+    if (!entityDir.endsWith("/")) entityDir = `${entityDir}/`;
+
+    const sub = params.subfolder.replace(/^\/+|\/+$/g, "");
+    const safeName = params.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const fullPath = `${entityDir}${sub}/${randomUUID()}/${safeName}`;
+    const { bucketName, objectName } = parseObjectPath(fullPath);
+
+    const bucket = objectStorageClient.bucket(bucketName);
+    const file = bucket.file(objectName);
+    await file.save(Buffer.from(params.bytes), {
+      contentType: params.contentType,
+      resumable: false,
+    });
+
+    const entityId = fullPath.slice(entityDir.length);
+    return {
+      objectPath: `/objects/${entityId}`,
+      gcsPath: fullPath,
+    };
+  }
+
+  /**
+   * Returns a short-lived signed GET URL for an object stored under
+   * the private bucket. Used to hand the client a direct download
+   * link (e.g. for ledger exports). The link expires after `ttlSec`.
+   */
+  async getSignedDownloadURL(objectPath: string, ttlSec: number = 3600): Promise<string> {
+    const file = await this.getObjectEntityFile(objectPath);
+    const bucketName = file.bucket.name;
+    const objectName = file.name;
+    return signObjectURL({ bucketName, objectName, method: "GET", ttlSec });
+  }
+
   async getObjectEntityFile(objectPath: string): Promise<File> {
     if (!objectPath.startsWith("/objects/")) {
       throw new ObjectNotFoundError();

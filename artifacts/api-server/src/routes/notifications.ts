@@ -34,6 +34,7 @@ const updatePrefsSchema = z.object({
         "copilot_post_made",
         "wrapup_weekly",
         "wrapup_monthly",
+        "ledger_export_ready",
       ]),
       enabled: z.boolean(),
     }),
@@ -164,6 +165,7 @@ const ALL_PREFERENCE_TYPES = [
   "copilot_post_made",
   "wrapup_weekly",
   "wrapup_monthly",
+  "ledger_export_ready",
 ] as const;
 
 router.get("/notifications/preferences", requireAuth, async (req, res) => {

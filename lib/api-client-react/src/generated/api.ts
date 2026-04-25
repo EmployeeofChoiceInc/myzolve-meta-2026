@@ -34,6 +34,7 @@ import type {
   CreateAttachmentBody,
   CreateCareDateBody,
   CreateCircleBody,
+  CreateCircleLedgerExportBody,
   CreateCommentBody,
   CreateConnectionBody,
   CreateContributionBody,
@@ -54,6 +55,8 @@ import type {
   ForbiddenResponse,
   GetCircleActivityParams,
   GetCircleLedgerParams,
+  GetCircleLedgerProParams,
+  GetCircleLedgerProYears200,
   GetLatestWrapupParams,
   GetNotificationUnreadCount200,
   GratitudeNote,
@@ -61,6 +64,8 @@ import type {
   InviteCopilotBody,
   JoinRequest,
   LedgerEntry,
+  LedgerExport,
+  LedgerProView,
   LedgerSummary,
   ListAuditLogParams,
   ListCommentsParams,
@@ -5090,6 +5095,333 @@ export function useGetCircleLedgerSummary<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * Returns the years for which this circle has ledger entries
+visible to the authenticated user. Used to populate the year
+selector in the Pro view. Requires MyZolve Connect Plus.
+
+ * @summary List years that have ledger activity (Plus only)
+ */
+export const getGetCircleLedgerProYearsUrl = (circleId: number) => {
+  return `/api/circles/${circleId}/ledger/pro/years`;
+};
+
+export const getCircleLedgerProYears = async (
+  circleId: number,
+  options?: RequestInit,
+): Promise<GetCircleLedgerProYears200> => {
+  return customFetch<GetCircleLedgerProYears200>(
+    getGetCircleLedgerProYearsUrl(circleId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetCircleLedgerProYearsQueryKey = (circleId: number) => {
+  return [`/api/circles/${circleId}/ledger/pro/years`] as const;
+};
+
+export const getGetCircleLedgerProYearsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCircleLedgerProYears>>,
+  TError = ErrorType<UnauthorizedResponse | PaymentRequiredResponse>,
+>(
+  circleId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCircleLedgerProYears>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetCircleLedgerProYearsQueryKey(circleId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCircleLedgerProYears>>
+  > = ({ signal }) =>
+    getCircleLedgerProYears(circleId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!circleId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCircleLedgerProYears>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCircleLedgerProYearsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCircleLedgerProYears>>
+>;
+export type GetCircleLedgerProYearsQueryError = ErrorType<
+  UnauthorizedResponse | PaymentRequiredResponse
+>;
+
+/**
+ * @summary List years that have ledger activity (Plus only)
+ */
+
+export function useGetCircleLedgerProYears<
+  TData = Awaited<ReturnType<typeof getCircleLedgerProYears>>,
+  TError = ErrorType<UnauthorizedResponse | PaymentRequiredResponse>,
+>(
+  circleId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCircleLedgerProYears>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCircleLedgerProYearsQueryOptions(
+    circleId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns rich aggregates scoped to the authenticated user inside
+a circle for a given calendar year: monthly given/received bars,
+the people they've supported and been supported by most, and
+running balance. Requires MyZolve Connect Plus.
+
+ * @summary Get the Pro ledger view for a circle and year (Plus only)
+ */
+export const getGetCircleLedgerProUrl = (
+  circleId: number,
+  params?: GetCircleLedgerProParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/circles/${circleId}/ledger/pro?${stringifiedParams}`
+    : `/api/circles/${circleId}/ledger/pro`;
+};
+
+export const getCircleLedgerPro = async (
+  circleId: number,
+  params?: GetCircleLedgerProParams,
+  options?: RequestInit,
+): Promise<LedgerProView> => {
+  return customFetch<LedgerProView>(
+    getGetCircleLedgerProUrl(circleId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetCircleLedgerProQueryKey = (
+  circleId: number,
+  params?: GetCircleLedgerProParams,
+) => {
+  return [
+    `/api/circles/${circleId}/ledger/pro`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetCircleLedgerProQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCircleLedgerPro>>,
+  TError = ErrorType<UnauthorizedResponse | PaymentRequiredResponse>,
+>(
+  circleId: number,
+  params?: GetCircleLedgerProParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCircleLedgerPro>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetCircleLedgerProQueryKey(circleId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCircleLedgerPro>>
+  > = ({ signal }) =>
+    getCircleLedgerPro(circleId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!circleId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCircleLedgerPro>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCircleLedgerProQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCircleLedgerPro>>
+>;
+export type GetCircleLedgerProQueryError = ErrorType<
+  UnauthorizedResponse | PaymentRequiredResponse
+>;
+
+/**
+ * @summary Get the Pro ledger view for a circle and year (Plus only)
+ */
+
+export function useGetCircleLedgerPro<
+  TData = Awaited<ReturnType<typeof getCircleLedgerPro>>,
+  TError = ErrorType<UnauthorizedResponse | PaymentRequiredResponse>,
+>(
+  circleId: number,
+  params?: GetCircleLedgerProParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCircleLedgerPro>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCircleLedgerProQueryOptions(
+    circleId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Generates a multi-page PDF and a CSV of every ledger entry for
+the given year and stores them. The response always carries
+short-lived signed URLs (`pdfUrl`, `csvUrl`) the client can
+download and share. In addition, when the member has the
+`ledger_export_ready` notification preference enabled, an
+in-app notification, push notification and email are all
+delivered (subject to the per-channel toggles in
+`notification_preferences`). Requires MyZolve Connect Plus.
+
+ * @summary Generate a year recap PDF + CSV export (Plus only)
+ */
+export const getCreateCircleLedgerExportUrl = (circleId: number) => {
+  return `/api/circles/${circleId}/ledger/export`;
+};
+
+export const createCircleLedgerExport = async (
+  circleId: number,
+  createCircleLedgerExportBody: CreateCircleLedgerExportBody,
+  options?: RequestInit,
+): Promise<LedgerExport> => {
+  return customFetch<LedgerExport>(getCreateCircleLedgerExportUrl(circleId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createCircleLedgerExportBody),
+  });
+};
+
+export const getCreateCircleLedgerExportMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | PaymentRequiredResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCircleLedgerExport>>,
+    TError,
+    { circleId: number; data: BodyType<CreateCircleLedgerExportBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createCircleLedgerExport>>,
+  TError,
+  { circleId: number; data: BodyType<CreateCircleLedgerExportBody> },
+  TContext
+> => {
+  const mutationKey = ["createCircleLedgerExport"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createCircleLedgerExport>>,
+    { circleId: number; data: BodyType<CreateCircleLedgerExportBody> }
+  > = (props) => {
+    const { circleId, data } = props ?? {};
+
+    return createCircleLedgerExport(circleId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateCircleLedgerExportMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createCircleLedgerExport>>
+>;
+export type CreateCircleLedgerExportMutationBody =
+  BodyType<CreateCircleLedgerExportBody>;
+export type CreateCircleLedgerExportMutationError = ErrorType<
+  UnauthorizedResponse | PaymentRequiredResponse
+>;
+
+/**
+ * @summary Generate a year recap PDF + CSV export (Plus only)
+ */
+export const useCreateCircleLedgerExport = <
+  TError = ErrorType<UnauthorizedResponse | PaymentRequiredResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCircleLedgerExport>>,
+    TError,
+    { circleId: number; data: BodyType<CreateCircleLedgerExportBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createCircleLedgerExport>>,
+  TError,
+  { circleId: number; data: BodyType<CreateCircleLedgerExportBody> },
+  TContext
+> => {
+  return useMutation(getCreateCircleLedgerExportMutationOptions(options));
+};
 
 /**
  * @summary List notifications for the current user

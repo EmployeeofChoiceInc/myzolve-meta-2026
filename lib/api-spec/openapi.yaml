@@ -1320,6 +1320,103 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /circles/{circleId}/ledger/pro/years:
+    get:
+      operationId: getCircleLedgerProYears
+      tags: [ledger]
+      summary: List years that have ledger activity (Plus only)
+      description: |
+        Returns the years for which this circle has ledger entries
+        visible to the authenticated user. Used to populate the year
+        selector in the Pro view. Requires MyZolve Connect Plus.
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      responses:
+        "200":
+          description: Years list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  years:
+                    type: array
+                    items: { type: integer }
+                  defaultYear: { type: integer }
+                required: [years, defaultYear]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "402":
+          $ref: "#/components/responses/PaymentRequired"
+
+  /circles/{circleId}/ledger/pro:
+    get:
+      operationId: getCircleLedgerPro
+      tags: [ledger]
+      summary: Get the Pro ledger view for a circle and year (Plus only)
+      description: |
+        Returns rich aggregates scoped to the authenticated user inside
+        a circle for a given calendar year: monthly given/received bars,
+        the people they've supported and been supported by most, and
+        running balance. Requires MyZolve Connect Plus.
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - name: year
+          in: query
+          required: false
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Pro view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LedgerProView"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "402":
+          $ref: "#/components/responses/PaymentRequired"
+
+  /circles/{circleId}/ledger/export:
+    post:
+      operationId: createCircleLedgerExport
+      tags: [ledger]
+      summary: Generate a year recap PDF + CSV export (Plus only)
+      description: |
+        Generates a multi-page PDF and a CSV of every ledger entry for
+        the given year and stores them. The response always carries
+        short-lived signed URLs (`pdfUrl`, `csvUrl`) the client can
+        download and share. In addition, when the member has the
+        `ledger_export_ready` notification preference enabled, an
+        in-app notification, push notification and email are all
+        delivered (subject to the per-channel toggles in
+        `notification_preferences`). Requires MyZolve Connect Plus.
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                year: { type: integer }
+              required: [year]
+      responses:
+        "200":
+          description: Export ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LedgerExport"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "402":
+          $ref: "#/components/responses/PaymentRequired"
+
   # ── Notifications ────────────────────────────────────────────────────────────
   /notifications:
     get:
@@ -3648,6 +3745,88 @@ components:
         - currency
         - softMessage
 
+    LedgerProMonth:
+      type: object
+      properties:
+        month:
+          type: integer
+          description: 1-12 calendar month within the requested year.
+        given: { type: number }
+        received: { type: number }
+        balance:
+          type: number
+          description: Cumulative net of given − received from the start of the year through this month.
+      required: [month, given, received, balance]
+
+    LedgerProPerson:
+      type: object
+      properties:
+        userId: { type: ["integer", "null"] }
+        name: { type: string }
+        avatarObjectPath: { type: ["string", "null"] }
+        amount: { type: number }
+        count: { type: integer }
+      required: [name, amount, count]
+
+    LedgerProView:
+      type: object
+      properties:
+        circleId: { type: integer }
+        circleName: { type: string }
+        year: { type: integer }
+        currency: { type: string }
+        totalGiven: { type: number }
+        totalReceived: { type: number }
+        totalRepaid: { type: number }
+        totalForgiven: { type: number }
+        netBalance:
+          type: number
+          description: totalGiven − totalReceived for the year.
+        entryCount: { type: integer }
+        months:
+          type: array
+          items: { $ref: "#/components/schemas/LedgerProMonth" }
+        topSupported:
+          type: array
+          items: { $ref: "#/components/schemas/LedgerProPerson" }
+          description: People you supported the most this year.
+        topSupporters:
+          type: array
+          items: { $ref: "#/components/schemas/LedgerProPerson" }
+          description: People who supported you the most this year.
+        availableYears:
+          type: array
+          items: { type: integer }
+        softMessage: { type: string }
+      required:
+        - circleId
+        - circleName
+        - year
+        - currency
+        - totalGiven
+        - totalReceived
+        - totalRepaid
+        - totalForgiven
+        - netBalance
+        - entryCount
+        - months
+        - topSupported
+        - topSupporters
+        - availableYears
+        - softMessage
+
+    LedgerExport:
+      type: object
+      properties:
+        circleId: { type: integer }
+        year: { type: integer }
+        pdfUrl: { type: string }
+        csvUrl: { type: string }
+        expiresAt:
+          type: string
+          format: date-time
+      required: [circleId, year, pdfUrl, csvUrl, expiresAt]
+
     # ── Dashboard ─────────────────────────────────────────────────────────────
     DashboardSummary:
       type: object
@@ -3793,6 +3972,7 @@ components:
                   - copilot_post_made
                   - wrapup_weekly
                   - wrapup_monthly
+                  - ledger_export_ready
               enabled:
                 type: boolean
             required: [notificationType, enabled]

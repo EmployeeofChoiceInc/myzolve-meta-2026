@@ -4,6 +4,8 @@ import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
 import { hasAcknowledgedOnboarding } from "@/lib/onboardingFlag";
+import { hasSeenYearRecap } from "@/lib/yearRecapFlag";
+import { useSubscription } from "@/lib/revenuecat";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   getListUpcomingCareDatesQueryKey,
@@ -112,6 +114,30 @@ export default function HomeScreen() {
       router.replace("/onboarding");
     }
   }, [isLoading, circles, router, onboardingAck]);
+
+  // Year recap auto-present: in January, the very first time a Plus
+  // member with at least one circle opens Home for the year, push them
+  // straight into their Year of Care recap.  We use AsyncStorage so it
+  // only fires once per (user, year), and gate on `isPlus` so free
+  // members don't get redirected into a Plus-gated screen.
+  const { isPlus } = useSubscription();
+  useEffect(() => {
+    if (!isPlus || !userId) return;
+    if (!circles || circles.length === 0) return;
+    const now = new Date();
+    if (now.getMonth() !== 0) return; // January only.
+    const recapYear = now.getFullYear() - 1;
+    let cancelled = false;
+    hasSeenYearRecap(userId, recapYear).then((seen) => {
+      if (cancelled || seen) return;
+      router.push(
+        `/year-recap?circleId=${circles[0].id}&year=${recapYear}` as never,
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isPlus, userId, circles, router]);
 
   const greeting = user?.firstName ? `Hi, ${user.firstName}.` : "Welcome home.";
   const dashboard = dashboardQuery.data;
