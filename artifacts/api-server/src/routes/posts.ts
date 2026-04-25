@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
 import { validateBody, validateParams, validateQuery, circleIdParam, paginationQuery } from "../middlewares/validate";
+import { canManagePosts } from "../lib/permissions";
 import { db } from "@workspace/db";
 import {
   circlePostsTable,
@@ -241,7 +242,7 @@ router.delete(
       return;
     }
 
-    const isOwnerOrAdmin = ["owner", "admin"].includes(member.role);
+    const isOwnerOrAdmin = canManagePosts(member.role);
     if (post.authorUserId !== userId && !isOwnerOrAdmin) {
       res.status(403).json({ error: "Only the author or circle admin can delete this post" });
       return;

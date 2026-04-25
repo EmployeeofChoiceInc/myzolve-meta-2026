@@ -15,18 +15,29 @@ import { eq, and } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { addDays } from "date-fns";
 import { createAuditLog, createNotification } from "../lib/helpers";
+import {
+  canManageMembers,
+  isOwnerOrAdmin,
+  isPlusGatedRole,
+  ASSIGNABLE_ROLES,
+} from "../lib/permissions";
+import { isPlus } from "../lib/revenuecat";
+import { assertCanJoinAnotherCircle } from "../lib/circleLimits";
 
 const router = Router();
 
 const createInvitationSchema = z.object({
   invitedEmail: z.string().email().optional(),
-  role: z.enum(["member", "admin", "guest"]).optional().default("member"),
+  role: z
+    .enum(["member", "guest", "admin", "host", "treasurer", "scribe"])
+    .optional()
+    .default("member"),
   customMessage: z.string().max(1000).optional(),
   expiresInDays: z.number().int().min(1).max(365).optional().default(7),
 });
 
 const updateMemberSchema = z.object({
-  role: z.enum(["member", "admin", "guest"]),
+  role: z.enum(ASSIGNABLE_ROLES),
 });
 
 function memberToApi(
@@ -134,8 +145,11 @@ router.patch(
       return;
     }
 
-    if (circle.ownerId !== userId && myMembership.role !== "admin") {
-      res.status(403).json({ error: "Only owners and admins can update member roles" });
+    // Only the circle owner can change roles. Sub-roles (host/treasurer/
+    // scribe) are part of Plus, so the host role itself does NOT grant the
+    // ability to delegate further.
+    if (circle.ownerId !== userId) {
+      res.status(403).json({ error: "Only the circle owner can update member roles" });
       return;
     }
 
@@ -156,6 +170,22 @@ router.patch(
     if (targetMember.role === "owner") {
       res.status(403).json({ error: "The circle owner's role cannot be changed" });
       return;
+    }
+
+    // Granting a Plus sub-role requires the granting owner to have an active
+    // Plus entitlement. Demoting back to member/guest is always allowed so a
+    // circle is never left in a stranded state if the owner downgrades.
+    if (isPlusGatedRole(role)) {
+      const ownerHasPlus = await isPlus(req.dbUser!.clerkId);
+      if (!ownerHasPlus) {
+        res.status(402).json({
+          error: "plus_required",
+          reason: "role_grant",
+          message:
+            "Granting host, treasurer, or scribe roles is part of MyZolve Connect Plus.",
+        });
+        return;
+      }
     }
 
     const [updated] = await db
@@ -253,8 +283,7 @@ router.delete(
     }
 
     if (
-      circle.ownerId !== userId &&
-      myMembership.role !== "admin" &&
+      !canManageMembers(myMembership.role) &&
       target.userId !== userId
     ) {
       res.status(403).json({ error: "Forbidden" });
@@ -292,7 +321,7 @@ router.get("/circles/:circleId/invitations", requireAuth, validateParams(circleI
     return;
   }
 
-  if (!["owner", "admin"].includes(myMembership.role)) {
+  if (!canManageMembers(myMembership.role)) {
     res.status(403).json({ error: "Only circle admins can view pending invitations" });
     return;
   }
@@ -327,12 +356,52 @@ router.post("/circles/:circleId/invitations", requireAuth, validateParams(circle
     .limit(1)
     .then((r) => r[0]);
 
-  if (!myMembership || !["owner", "admin"].includes(myMembership.role)) {
+  if (!myMembership || !canManageMembers(myMembership.role)) {
     res.status(403).json({ error: "Only circle owners and admins can send invitations" });
     return;
   }
 
   const { invitedEmail, role = "member", customMessage, expiresInDays = 7 } = req.body;
+
+  // Inviting someone directly into a Plus sub-role (host / treasurer /
+  // scribe) is an owner-only delegation. Hosts have invite power for
+  // member/guest, but cannot indirectly hand out privileged sub-roles.
+  // The Plus entitlement is checked against the circle owner so the
+  // inviter's own subscription state cannot bypass the gate.
+  if (isPlusGatedRole(role)) {
+    const circle = await db
+      .select()
+      .from(circlesTable)
+      .where(eq(circlesTable.id, circleId))
+      .limit(1)
+      .then((r) => r[0]);
+    if (!circle) {
+      res.status(404).json({ error: "Circle not found" });
+      return;
+    }
+    if (circle.ownerId !== userId) {
+      res.status(403).json({
+        error: "Only the circle owner can invite host, treasurer, or scribe",
+      });
+      return;
+    }
+    const owner = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, circle.ownerId))
+      .limit(1)
+      .then((r) => r[0]);
+    const ownerHasPlus = owner ? await isPlus(owner.clerkId) : false;
+    if (!ownerHasPlus) {
+      res.status(402).json({
+        error: "plus_required",
+        reason: "role_grant",
+        message:
+          "Inviting someone as host, treasurer, or scribe is part of MyZolve Connect Plus.",
+      });
+      return;
+    }
+  }
 
   const token = randomBytes(24).toString("hex");
   const expiresAt = addDays(new Date(), expiresInDays);
@@ -359,6 +428,7 @@ router.post("/circles/:circleId/invitations", requireAuth, validateParams(circle
 
 router.post("/invitations/:token/accept", requireAuth, validateParams(invitationTokenParam), async (req, res) => {
   const userId = req.dbUser!.id;
+  const clerkId = req.dbUser!.clerkId;
   const token = String(req.params.token);
 
   const invitation = await db
@@ -388,6 +458,31 @@ router.post("/invitations/:token/accept", requireAuth, validateParams(invitation
   ) {
     res.status(403).json({ error: "This invitation was sent to a different email address" });
     return;
+  }
+
+  // Existing memberships are not affected — only block joining a NEW circle
+  // that would push past the free cap.
+  const existingMembershipQuick = await db
+    .select({ id: circleMembersTable.id, status: circleMembersTable.status })
+    .from(circleMembersTable)
+    .where(
+      and(
+        eq(circleMembersTable.circleId, invitation.circleId),
+        eq(circleMembersTable.userId, userId),
+      ),
+    )
+    .limit(1)
+    .then((r) => r[0] ?? null);
+
+  const wouldBeNewMembership =
+    !existingMembershipQuick || existingMembershipQuick.status !== "active";
+
+  if (wouldBeNewMembership) {
+    const cap = await assertCanJoinAnotherCircle({ userId, clerkId });
+    if (cap) {
+      res.status(402).json(cap);
+      return;
+    }
   }
 
   const user = req.dbUser!;
@@ -498,7 +593,7 @@ router.delete("/invitations/:invitationId", requireAuth, validateParams(invitati
 
   if (
     !myMembership ||
-    (!["owner", "admin"].includes(myMembership.role) &&
+    (!canManageMembers(myMembership.role) &&
       invitation.invitedByUserId !== userId)
   ) {
     res.status(403).json({ error: "Forbidden" });
@@ -640,7 +735,7 @@ router.get(
       .limit(1)
       .then((r) => r[0]);
 
-    if (!myMembership || !["owner", "admin"].includes(myMembership.role)) {
+    if (!myMembership || !canManageMembers(myMembership.role)) {
       res.status(403).json({ error: "Only circle admins can view join requests" });
       return;
     }
@@ -697,7 +792,7 @@ router.post(
       .limit(1)
       .then((r) => r[0]);
 
-    if (!myMembership || !["owner", "admin"].includes(myMembership.role)) {
+    if (!myMembership || !canManageMembers(myMembership.role)) {
       res.status(403).json({ error: "Only circle admins can approve join requests" });
       return;
     }
@@ -718,6 +813,26 @@ router.post(
     if (!joinRequest) {
       res.status(404).json({ error: "Join request not found or already resolved" });
       return;
+    }
+
+    // Cap applies to the requester (the person being added), not the
+    // approver. We resolve the requester's clerkId for the Plus check.
+    const requesterRow = await db
+      .select({ id: usersTable.id, clerkId: usersTable.clerkId })
+      .from(usersTable)
+      .where(eq(usersTable.id, joinRequest.userId))
+      .limit(1)
+      .then((r) => r[0] ?? null);
+
+    if (requesterRow) {
+      const cap = await assertCanJoinAnotherCircle({
+        userId: requesterRow.id,
+        clerkId: requesterRow.clerkId,
+      });
+      if (cap) {
+        res.status(402).json(cap);
+        return;
+      }
     }
 
     const now = new Date();
@@ -833,7 +948,7 @@ router.post(
       .limit(1)
       .then((r) => r[0]);
 
-    if (!myMembership || !["owner", "admin"].includes(myMembership.role)) {
+    if (!myMembership || !canManageMembers(myMembership.role)) {
       res.status(403).json({ error: "Only circle admins can decline join requests" });
       return;
     }

@@ -12,6 +12,8 @@ import {
 } from "@workspace/db";
 import { eq, and, count, sql } from "drizzle-orm";
 import { createAuditLog } from "../lib/helpers";
+import { isOwnerOrAdmin, canManageLedger } from "../lib/permissions";
+import { assertCanJoinAnotherCircle } from "../lib/circleLimits";
 import {
   supportRequestsTable,
   servicePostsTable,
@@ -169,6 +171,15 @@ router.post(
       return;
     }
 
+    const cap = await assertCanJoinAnotherCircle({
+      userId,
+      clerkId: req.dbUser!.clerkId,
+    });
+    if (cap) {
+      res.status(402).json(cap);
+      return;
+    }
+
     const existingRequest = await db
       .select()
       .from(circleJoinRequestsTable)
@@ -276,6 +287,14 @@ router.get("/circles", requireAuth, async (req, res) => {
 
 router.post("/circles", requireAuth, validateBody(createCircleSchema), async (req, res) => {
   const userId = req.dbUser!.id;
+  const clerkId = req.dbUser!.clerkId;
+
+  const cap = await assertCanJoinAnotherCircle({ userId, clerkId });
+  if (cap) {
+    res.status(402).json(cap);
+    return;
+  }
+
   const {
     name,
     circleType = "family",
@@ -381,7 +400,7 @@ router.patch("/circles/:circleId", requireAuth, validateParams(circleIdParam), v
     .limit(1)
     .then((r) => r[0]);
 
-  if (!membership || !["owner", "admin"].includes(membership.role)) {
+  if (!membership || !isOwnerOrAdmin(membership.role)) {
     res.status(403).json({ error: "Forbidden" });
     return;
   }
@@ -490,7 +509,7 @@ router.get("/circles/:circleId/stats", requireAuth, validateParams(circleIdParam
       ),
     );
 
-  const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+  const isAdminOrOwner = canManageLedger(member.role);
 
   const isRequestVisible = (r: { visibilityScope: string | null; createdByUserId: number }) => {
     if (isAdminOrOwner) return true;

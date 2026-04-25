@@ -25,6 +25,7 @@ import {
   Skeleton,
 } from "@/components/UI";
 import { Screen } from "@/components/Screen";
+import { PaywallSheet } from "@/components/PaywallSheet";
 import { useColors } from "@/hooks/useColors";
 import { CIRCLE_TYPE_LABELS } from "@/lib/circleTypes";
 
@@ -44,6 +45,7 @@ export default function CirclesScreen() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [type, setType] = useState<string>("chosen_family");
+  const [paywallVisible, setPaywallVisible] = useState(false);
 
   function submit() {
     if (name.trim().length < 2) {
@@ -69,7 +71,18 @@ export default function CirclesScreen() {
           setType("chosen_family");
           router.push(`/circle/${newCircle.id}`);
         },
-        onError: () => {
+        onError: (err: unknown) => {
+          // 402 means the free 2-circle cap was hit. Close the create sheet
+          // and pop the paywall so the user has a clear path forward.
+          const status =
+            typeof err === "object" && err !== null && "status" in err
+              ? (err as { status?: number }).status
+              : undefined;
+          if (status === 402) {
+            setOpen(false);
+            setPaywallVisible(true);
+            return;
+          }
           Alert.alert("Couldn't create circle", "Please try again.");
         },
       }
@@ -291,6 +304,10 @@ export default function CirclesScreen() {
           </KeyboardAwareScrollView>
         </View>
       </Modal>
+      <PaywallSheet
+        visible={paywallVisible}
+        onClose={() => setPaywallVisible(false)}
+      />
     </>
   );
 }

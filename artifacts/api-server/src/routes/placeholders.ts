@@ -6,6 +6,7 @@ import { db } from "@workspace/db";
 import { placeholderMembersTable, circleMembersTable, usersTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { assertCircleMember, createAuditLog } from "../lib/helpers";
+import { canManageMembers } from "../lib/permissions";
 
 const router = Router();
 
@@ -84,7 +85,7 @@ router.post(
       return;
     }
 
-    const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+    const isAdminOrOwner = canManageMembers(member.role);
     if (!isAdminOrOwner) {
       res.status(403).json({ error: "Only admins can add placeholder members" });
       return;
@@ -132,7 +133,7 @@ router.patch(
       return;
     }
 
-    const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+    const isAdminOrOwner = canManageMembers(member.role);
     if (!isAdminOrOwner) {
       res.status(403).json({ error: "Only admins can update placeholder members" });
       return;
@@ -181,7 +182,7 @@ router.delete(
       return;
     }
 
-    const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+    const isAdminOrOwner = canManageMembers(member.role);
     if (!isAdminOrOwner) {
       res.status(403).json({ error: "Only admins can remove placeholder members" });
       return;

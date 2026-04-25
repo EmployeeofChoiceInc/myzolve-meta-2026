@@ -77,6 +77,7 @@ import type {
   NotFoundResponse,
   NotificationList,
   NotificationPreference,
+  PaymentRequiredResponse,
   PlaceholderMember,
   ReactionSummary,
   ReactionToggleResult,
@@ -524,7 +525,7 @@ export const createCircle = async (
 };
 
 export const getCreateCircleMutationOptions = <
-  TError = ErrorType<UnauthorizedResponse>,
+  TError = ErrorType<UnauthorizedResponse | PaymentRequiredResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -565,13 +566,15 @@ export type CreateCircleMutationResult = NonNullable<
   Awaited<ReturnType<typeof createCircle>>
 >;
 export type CreateCircleMutationBody = BodyType<CreateCircleBody>;
-export type CreateCircleMutationError = ErrorType<UnauthorizedResponse>;
+export type CreateCircleMutationError = ErrorType<
+  UnauthorizedResponse | PaymentRequiredResponse
+>;
 
 /**
  * @summary Create a new circle
  */
 export const useCreateCircle = <
-  TError = ErrorType<UnauthorizedResponse>,
+  TError = ErrorType<UnauthorizedResponse | PaymentRequiredResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1070,7 +1073,10 @@ export const updateCircleMember = async (
 
 export const getUpdateCircleMemberMutationOptions = <
   TError = ErrorType<
-    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+    | UnauthorizedResponse
+    | PaymentRequiredResponse
+    | ForbiddenResponse
+    | NotFoundResponse
   >,
   TContext = unknown,
 >(options?: {
@@ -1125,7 +1131,10 @@ export type UpdateCircleMemberMutationResult = NonNullable<
 >;
 export type UpdateCircleMemberMutationBody = BodyType<UpdateCircleMemberBody>;
 export type UpdateCircleMemberMutationError = ErrorType<
-  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  | UnauthorizedResponse
+  | PaymentRequiredResponse
+  | ForbiddenResponse
+  | NotFoundResponse
 >;
 
 /**
@@ -1133,7 +1142,10 @@ export type UpdateCircleMemberMutationError = ErrorType<
  */
 export const useUpdateCircleMember = <
   TError = ErrorType<
-    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+    | UnauthorizedResponse
+    | PaymentRequiredResponse
+    | ForbiddenResponse
+    | NotFoundResponse
   >,
   TContext = unknown,
 >(options?: {
@@ -1352,7 +1364,11 @@ export const createJoinRequest = async (
 
 export const getCreateJoinRequestMutationOptions = <
   TError = ErrorType<
-    BadRequestResponse | UnauthorizedResponse | NotFoundResponse | void
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | PaymentRequiredResponse
+    | NotFoundResponse
+    | void
   >,
   TContext = unknown,
 >(options?: {
@@ -1395,7 +1411,11 @@ export type CreateJoinRequestMutationResult = NonNullable<
 >;
 export type CreateJoinRequestMutationBody = BodyType<CreateJoinRequestBody>;
 export type CreateJoinRequestMutationError = ErrorType<
-  BadRequestResponse | UnauthorizedResponse | NotFoundResponse | void
+  | BadRequestResponse
+  | UnauthorizedResponse
+  | PaymentRequiredResponse
+  | NotFoundResponse
+  | void
 >;
 
 /**
@@ -1403,7 +1423,11 @@ export type CreateJoinRequestMutationError = ErrorType<
  */
 export const useCreateJoinRequest = <
   TError = ErrorType<
-    BadRequestResponse | UnauthorizedResponse | NotFoundResponse | void
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | PaymentRequiredResponse
+    | NotFoundResponse
+    | void
   >,
   TContext = unknown,
 >(options?: {
@@ -1536,7 +1560,10 @@ export const approveJoinRequest = async (
 
 export const getApproveJoinRequestMutationOptions = <
   TError = ErrorType<
-    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+    | UnauthorizedResponse
+    | PaymentRequiredResponse
+    | ForbiddenResponse
+    | NotFoundResponse
   >,
   TContext = unknown,
 >(options?: {
@@ -1579,7 +1606,10 @@ export type ApproveJoinRequestMutationResult = NonNullable<
 >;
 
 export type ApproveJoinRequestMutationError = ErrorType<
-  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  | UnauthorizedResponse
+  | PaymentRequiredResponse
+  | ForbiddenResponse
+  | NotFoundResponse
 >;
 
 /**
@@ -1587,7 +1617,10 @@ export type ApproveJoinRequestMutationError = ErrorType<
  */
 export const useApproveJoinRequest = <
   TError = ErrorType<
-    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+    | UnauthorizedResponse
+    | PaymentRequiredResponse
+    | ForbiddenResponse
+    | NotFoundResponse
   >,
   TContext = unknown,
 >(options?: {
@@ -1814,7 +1847,9 @@ export const createCircleInvitation = async (
 };
 
 export const getCreateCircleInvitationMutationOptions = <
-  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TError = ErrorType<
+    UnauthorizedResponse | PaymentRequiredResponse | ForbiddenResponse
+  >,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1856,14 +1891,16 @@ export type CreateCircleInvitationMutationResult = NonNullable<
 >;
 export type CreateCircleInvitationMutationBody = BodyType<CreateInvitationBody>;
 export type CreateCircleInvitationMutationError = ErrorType<
-  UnauthorizedResponse | ForbiddenResponse
+  UnauthorizedResponse | PaymentRequiredResponse | ForbiddenResponse
 >;
 
 /**
  * @summary Invite someone to a circle
  */
 export const useCreateCircleInvitation = <
-  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TError = ErrorType<
+    UnauthorizedResponse | PaymentRequiredResponse | ForbiddenResponse
+  >,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1900,7 +1937,9 @@ export const acceptInvitation = async (
 };
 
 export const getAcceptInvitationMutationOptions = <
-  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TError = ErrorType<
+    UnauthorizedResponse | PaymentRequiredResponse | NotFoundResponse
+  >,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1942,14 +1981,16 @@ export type AcceptInvitationMutationResult = NonNullable<
 >;
 
 export type AcceptInvitationMutationError = ErrorType<
-  UnauthorizedResponse | NotFoundResponse
+  UnauthorizedResponse | PaymentRequiredResponse | NotFoundResponse
 >;
 
 /**
  * @summary Accept a circle invitation by token
  */
 export const useAcceptInvitation = <
-  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TError = ErrorType<
+    UnauthorizedResponse | PaymentRequiredResponse | NotFoundResponse
+  >,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<

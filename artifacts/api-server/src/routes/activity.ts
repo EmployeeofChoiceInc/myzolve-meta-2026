@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../middlewares/requireAuth";
 import { validateParams, validateQuery, circleIdParam, paginationQuery } from "../middlewares/validate";
+import { canManageLedger } from "../lib/permissions";
 import { db } from "@workspace/db";
 import {
   activityFeedItemsTable,
@@ -43,7 +44,7 @@ router.get("/circles/:circleId/activity", requireAuth, validateParams(circleIdPa
     return;
   }
 
-  const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+  const isAdminOrOwner = canManageLedger(member.role);
 
   const items = await db
     .select({ item: activityFeedItemsTable, actor: usersTable })
@@ -114,7 +115,7 @@ router.get("/circles/:circleId/ledger", requireAuth, validateParams(circleIdPara
     .limit(1)
     .then((r) => r[0]);
 
-  const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+  const isAdminOrOwner = canManageLedger(member.role);
   const ledgerMode = circle?.ledgerMode ?? "private";
 
   if ((ledgerMode === "private" || ledgerMode === "admin_only") && !isAdminOrOwner) {
@@ -171,7 +172,7 @@ router.get(
       .limit(1)
       .then((r) => r[0]);
 
-    const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+    const isAdminOrOwner = canManageLedger(member.role);
     const ledgerMode = circle?.ledgerMode ?? "private";
 
     if ((ledgerMode === "private" || ledgerMode === "admin_only") && !isAdminOrOwner) {
@@ -278,7 +279,7 @@ router.get("/circles/:circleId/dashboard", requireAuth, validateParams(circleIdP
     return;
   }
 
-  const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+  const isAdminOrOwner = canManageLedger(member.role);
 
   const allOpenRequests = await db
     .select()

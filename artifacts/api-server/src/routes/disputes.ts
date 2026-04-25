@@ -13,6 +13,7 @@ import {
 } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { assertCircleMember, createAuditLog, createNotification, getUserName } from "../lib/helpers";
+import { canManageLedger } from "../lib/permissions";
 
 const router = Router();
 
@@ -176,7 +177,7 @@ router.get(
       return;
     }
 
-    const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+    const isAdminOrOwner = canManageLedger(member.role);
 
     const rows = await db
       .select({ dispute: disputesTable, raiser: usersTable })
@@ -280,7 +281,7 @@ router.post(
       return;
     }
 
-    const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+    const isAdminOrOwner = canManageLedger(member.role);
     if (!isAdminOrOwner) {
       res.status(403).json({ error: "Only admins can resolve disputes" });
       return;

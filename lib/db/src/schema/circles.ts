@@ -32,6 +32,11 @@ export const circleMembersTable = pgTable("circle_members", {
     .notNull()
     .references(() => circlesTable.id, { onDelete: "cascade" }),
   userId: integer("user_id").references(() => usersTable.id),
+  // Plain text for forward compatibility. Known values:
+  //   owner | admin | host | treasurer | scribe | member | guest
+  // host/treasurer/scribe are Plus sub-roles — see
+  // artifacts/api-server/src/lib/permissions.ts for the rules around granting
+  // and the capability matrix.
   role: text("role").notNull().default("member"),
   status: text("status").notNull().default("active"),
   joinedAt: timestamp("joined_at", { withTimezone: true }),

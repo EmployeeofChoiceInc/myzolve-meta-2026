@@ -29,6 +29,11 @@ import {
 import { Screen } from "@/components/Screen";
 import { useColors } from "@/hooks/useColors";
 import { safeBack } from "@/lib/safeBack";
+import {
+  type CircleRole,
+  ROLE_LABELS,
+  rolePillColors,
+} from "@/lib/circleRoles";
 
 export default function MembersScreen() {
   const c = useColors();
@@ -109,11 +114,16 @@ export default function MembersScreen() {
                       </AppText>
                     ) : null}
                   </View>
-                  <Pill
-                    label={m.role}
-                    bg={m.role === "owner" ? c.primarySoft : c.muted}
-                    fg={m.role === "owner" ? c.primary : c.foreground}
-                  />
+                  {(() => {
+                    const pill = rolePillColors(m.role, c);
+                    return (
+                      <Pill
+                        label={ROLE_LABELS[m.role as CircleRole] ?? m.role}
+                        bg={pill.bg}
+                        fg={pill.fg}
+                      />
+                    );
+                  })()}
                 </Row>
               </PressableCard>
             ))}
@@ -149,7 +159,16 @@ export default function MembersScreen() {
                         </AppText>
                       </Row>
                     </View>
-                    <Pill label={inv.role} />
+                    {(() => {
+                      const pill = rolePillColors(inv.role, c);
+                      return (
+                        <Pill
+                          label={ROLE_LABELS[inv.role as CircleRole] ?? inv.role}
+                          bg={pill.bg}
+                          fg={pill.fg}
+                        />
+                      );
+                    })()}
                   </Row>
                 ))}
             </View>

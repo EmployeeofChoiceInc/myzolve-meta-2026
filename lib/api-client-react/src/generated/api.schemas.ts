@@ -13,6 +13,30 @@ export interface ErrorResponse {
   error: string;
 }
 
+export type PaywallErrorError =
+  (typeof PaywallErrorError)[keyof typeof PaywallErrorError];
+
+export const PaywallErrorError = {
+  plus_required: "plus_required",
+} as const;
+
+export type PaywallErrorReason =
+  (typeof PaywallErrorReason)[keyof typeof PaywallErrorReason];
+
+export const PaywallErrorReason = {
+  circle_limit: "circle_limit",
+  role_grant: "role_grant",
+} as const;
+
+/**
+ * Returned with 402 when a Plus entitlement is required.
+ */
+export interface PaywallError {
+  error: PaywallErrorError;
+  reason: PaywallErrorReason;
+  message: string;
+}
+
 export interface UserProfile {
   id: number;
   clerkId: string;
@@ -73,6 +97,9 @@ export type CircleMyRole = (typeof CircleMyRole)[keyof typeof CircleMyRole];
 export const CircleMyRole = {
   owner: "owner",
   admin: "admin",
+  host: "host",
+  treasurer: "treasurer",
+  scribe: "scribe",
   member: "member",
   guest: "guest",
 } as const;
@@ -193,6 +220,9 @@ export type CircleMemberRole =
 export const CircleMemberRole = {
   owner: "owner",
   admin: "admin",
+  host: "host",
+  treasurer: "treasurer",
+  scribe: "scribe",
   member: "member",
   guest: "guest",
 } as const;
@@ -228,6 +258,9 @@ export type UpdateCircleMemberBodyRole =
 
 export const UpdateCircleMemberBodyRole = {
   admin: "admin",
+  host: "host",
+  treasurer: "treasurer",
+  scribe: "scribe",
   member: "member",
   guest: "guest",
 } as const;
@@ -241,6 +274,9 @@ export type CircleInvitationRole =
 
 export const CircleInvitationRole = {
   admin: "admin",
+  host: "host",
+  treasurer: "treasurer",
+  scribe: "scribe",
   member: "member",
   guest: "guest",
 } as const;
@@ -421,6 +457,9 @@ export type CreateInvitationBodyRole =
 
 export const CreateInvitationBodyRole = {
   admin: "admin",
+  host: "host",
+  treasurer: "treasurer",
+  scribe: "scribe",
   member: "member",
   guest: "guest",
 } as const;
@@ -1742,6 +1781,12 @@ export type ForbiddenResponse = ErrorResponse;
  * Not found
  */
 export type NotFoundResponse = ErrorResponse;
+
+/**
+ * Plus entitlement required. The client should open the Plus paywall.
+
+ */
+export type PaymentRequiredResponse = PaywallError;
 
 export type ListSupportRequestsParams = {
   status?: string;

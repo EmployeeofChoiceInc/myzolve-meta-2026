@@ -73,7 +73,15 @@ export const ListCirclesResponseItem = zod.object({
   ledgerMode: zod.enum(["private", "summary", "full", "admin_only"]),
   ownerId: zod.number(),
   memberCount: zod.number(),
-  myRole: zod.enum(["owner", "admin", "member", "guest"]),
+  myRole: zod.enum([
+    "owner",
+    "admin",
+    "host",
+    "treasurer",
+    "scribe",
+    "member",
+    "guest",
+  ]),
   createdAt: zod.coerce.date(),
 });
 export const ListCirclesResponse = zod.array(ListCirclesResponseItem);
@@ -130,7 +138,15 @@ export const GetCircleResponse = zod.object({
   ledgerMode: zod.enum(["private", "summary", "full", "admin_only"]),
   ownerId: zod.number(),
   memberCount: zod.number(),
-  myRole: zod.enum(["owner", "admin", "member", "guest"]),
+  myRole: zod.enum([
+    "owner",
+    "admin",
+    "host",
+    "treasurer",
+    "scribe",
+    "member",
+    "guest",
+  ]),
   createdAt: zod.coerce.date(),
 });
 
@@ -177,7 +193,15 @@ export const UpdateCircleResponse = zod.object({
   ledgerMode: zod.enum(["private", "summary", "full", "admin_only"]),
   ownerId: zod.number(),
   memberCount: zod.number(),
-  myRole: zod.enum(["owner", "admin", "member", "guest"]),
+  myRole: zod.enum([
+    "owner",
+    "admin",
+    "host",
+    "treasurer",
+    "scribe",
+    "member",
+    "guest",
+  ]),
   createdAt: zod.coerce.date(),
 });
 
@@ -220,7 +244,15 @@ export const ListCircleMembersResponseItem = zod.object({
   displayName: zod.string(),
   email: zod.string().nullish(),
   avatarObjectPath: zod.string().nullish(),
-  role: zod.enum(["owner", "admin", "member", "guest"]),
+  role: zod.enum([
+    "owner",
+    "admin",
+    "host",
+    "treasurer",
+    "scribe",
+    "member",
+    "guest",
+  ]),
   status: zod.enum(["active", "pending", "removed"]),
   joinedAt: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
@@ -238,7 +270,9 @@ export const UpdateCircleMemberParams = zod.object({
 });
 
 export const UpdateCircleMemberBody = zod.object({
-  role: zod.enum(["admin", "member", "guest"]).optional(),
+  role: zod
+    .enum(["admin", "host", "treasurer", "scribe", "member", "guest"])
+    .optional(),
 });
 
 export const UpdateCircleMemberResponse = zod.object({
@@ -248,7 +282,15 @@ export const UpdateCircleMemberResponse = zod.object({
   displayName: zod.string(),
   email: zod.string().nullish(),
   avatarObjectPath: zod.string().nullish(),
-  role: zod.enum(["owner", "admin", "member", "guest"]),
+  role: zod.enum([
+    "owner",
+    "admin",
+    "host",
+    "treasurer",
+    "scribe",
+    "member",
+    "guest",
+  ]),
   status: zod.enum(["active", "pending", "removed"]),
   joinedAt: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
@@ -355,7 +397,7 @@ export const ListCircleInvitationsResponseItem = zod.object({
   circleId: zod.number(),
   invitedEmail: zod.string().nullish(),
   invitedByUserId: zod.number(),
-  role: zod.enum(["admin", "member", "guest"]),
+  role: zod.enum(["admin", "host", "treasurer", "scribe", "member", "guest"]),
   customMessage: zod.string().nullish(),
   status: zod.enum(["pending", "sent", "accepted", "expired", "revoked"]),
   token: zod.string(),
@@ -378,7 +420,7 @@ export const createCircleInvitationBodyRoleDefault = `member`;
 export const CreateCircleInvitationBody = zod.object({
   invitedEmail: zod.string().email().nullish(),
   role: zod
-    .enum(["admin", "member", "guest"])
+    .enum(["admin", "host", "treasurer", "scribe", "member", "guest"])
     .default(createCircleInvitationBodyRoleDefault),
   customMessage: zod.string().optional(),
 });
@@ -397,7 +439,15 @@ export const AcceptInvitationResponse = zod.object({
   displayName: zod.string(),
   email: zod.string().nullish(),
   avatarObjectPath: zod.string().nullish(),
-  role: zod.enum(["owner", "admin", "member", "guest"]),
+  role: zod.enum([
+    "owner",
+    "admin",
+    "host",
+    "treasurer",
+    "scribe",
+    "member",
+    "guest",
+  ]),
   status: zod.enum(["active", "pending", "removed"]),
   joinedAt: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
@@ -536,7 +586,15 @@ export const TransferCircleOwnershipResponse = zod.object({
   displayName: zod.string(),
   email: zod.string().nullish(),
   avatarObjectPath: zod.string().nullish(),
-  role: zod.enum(["owner", "admin", "member", "guest"]),
+  role: zod.enum([
+    "owner",
+    "admin",
+    "host",
+    "treasurer",
+    "scribe",
+    "member",
+    "guest",
+  ]),
   status: zod.enum(["active", "pending", "removed"]),
   joinedAt: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),

@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import { Alert, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -20,6 +20,7 @@ import {
   Skeleton,
 } from "@/components/UI";
 import { Screen } from "@/components/Screen";
+import { PaywallSheet } from "@/components/PaywallSheet";
 import { useColors } from "@/hooks/useColors";
 import { CIRCLE_TYPE_LABELS } from "@/lib/circleTypes";
 import { safeBack } from "@/lib/safeBack";
@@ -39,6 +40,7 @@ export default function DiscoverScreen() {
   const qc = useQueryClient();
   const { data, isLoading, refetch, isRefetching } = useDiscoverCircles();
   const joinRequest = useCreateJoinRequest();
+  const [paywallVisible, setPaywallVisible] = useState(false);
 
   function handleCirclePress(circle: DiscoverCircle) {
     // Members can open the full circle detail.  Non-members would
@@ -81,7 +83,15 @@ export default function DiscoverScreen() {
                       : `You're now a member of ${circle.name}.`,
                   );
                 },
-                onError: () => {
+                onError: (err: unknown) => {
+                  const status =
+                    typeof err === "object" && err !== null && "status" in err
+                      ? (err as { status?: number }).status
+                      : undefined;
+                  if (status === 402) {
+                    setPaywallVisible(true);
+                    return;
+                  }
                   Alert.alert(
                     "Couldn't send request",
                     "Please try again in a moment.",
@@ -189,6 +199,10 @@ export default function DiscoverScreen() {
           </View>
         )}
       </Screen>
+      <PaywallSheet
+        visible={paywallVisible}
+        onClose={() => setPaywallVisible(false)}
+      />
     </>
   );
 }

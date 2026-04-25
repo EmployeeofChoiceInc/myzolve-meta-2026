@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
 import { validateBody, validateQuery, validateParams, circleIdParam, requestIdParam, contributionIdParam, repaymentIdParam, requestsListQuery, repaymentsListQuery } from "../middlewares/validate";
+import { canManageLedger } from "../lib/permissions";
 import { db } from "@workspace/db";
 import {
   supportRequestsTable,
@@ -91,7 +92,7 @@ async function getRequestWithVisibilityCheck(requestId: number, userId: number) 
   const member = await assertCircleMember(row.circleId, userId);
   if (!member) return null;
 
-  const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+  const isAdminOrOwner = canManageLedger(member.role);
   const isCreator = row.createdByUserId === userId;
   const scope = row.visibilityScope;
 
@@ -197,7 +198,7 @@ router.get("/circles/:circleId/requests", requireAuth, validateParams(circleIdPa
     return;
   }
 
-  const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+  const isAdminOrOwner = canManageLedger(member.role);
 
   const rows = await db
     .select({ req: supportRequestsTable, user: usersTable })
@@ -392,7 +393,7 @@ router.get("/requests/:requestId", requireAuth, validateParams(requestIdParam), 
     return;
   }
 
-  const isAdminOrOwner = ["owner", "admin"].includes(member.role);
+  const isAdminOrOwner = canManageLedger(member.role);
   const scope = row.req.visibilityScope;
   const isCreator = row.req.createdByUserId === userId;
 
@@ -463,7 +464,7 @@ router.patch("/requests/:requestId", requireAuth, validateParams(requestIdParam)
     return;
   }
 
-  if (existing.createdByUserId !== userId && !["owner", "admin"].includes(member.role)) {
+  if (existing.createdByUserId !== userId && !canManageLedger(member.role)) {
     res.status(403).json({ error: "Forbidden" });
     return;
   }
