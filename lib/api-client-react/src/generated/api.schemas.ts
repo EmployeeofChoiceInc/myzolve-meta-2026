@@ -1674,24 +1674,57 @@ export interface AuditEntry {
   createdAt: string;
 }
 
+/**
+ * Media kind. Voice/video require an active Plus entitlement to create.
+ */
+export type AttachmentKind =
+  (typeof AttachmentKind)[keyof typeof AttachmentKind];
+
+export const AttachmentKind = {
+  photo: "photo",
+  voice: "voice",
+  video: "video",
+} as const;
+
 export interface Attachment {
   id: number;
   circleId: number;
   uploadedByUserId: number;
   targetEntityType: string;
   targetEntityId: number;
+  /** Media kind. Voice/video require an active Plus entitlement to create. */
+  kind: AttachmentKind;
   fileName: string;
   /** @nullable */
   fileSize?: number | null;
   /** @nullable */
   mimeType?: string | null;
+  /**
+   * Duration in milliseconds for voice/video attachments.
+   * @nullable
+   */
+  durationMs?: number | null;
+  /** @nullable */
+  width?: number | null;
+  /** @nullable */
+  height?: number | null;
   storageKey: string;
   downloadUrl: string;
   status: string;
   createdAt: string;
 }
 
+export type CreateAttachmentBodyKind =
+  (typeof CreateAttachmentBodyKind)[keyof typeof CreateAttachmentBodyKind];
+
+export const CreateAttachmentBodyKind = {
+  photo: "photo",
+  voice: "voice",
+  video: "video",
+} as const;
+
 export interface CreateAttachmentBody {
+  kind?: CreateAttachmentBodyKind;
   /**
    * @minLength 1
    * @maxLength 500
@@ -1701,6 +1734,15 @@ export interface CreateAttachmentBody {
   fileSize?: number;
   /** @maxLength 200 */
   mimeType?: string;
+  /**
+   * @minimum 0
+   * @maximum 300000
+   */
+  durationMs?: number;
+  /** @minimum 0 */
+  width?: number;
+  /** @minimum 0 */
+  height?: number;
   /**
    * @minLength 1
    * @maxLength 2000

@@ -7691,7 +7691,13 @@ export function useListAuditLog<
  */
 export const getListAttachmentsUrl = (
   circleId: number,
-  entityType: "support_request" | "service_post" | "repayment",
+  entityType:
+    | "support_request"
+    | "service_post"
+    | "repayment"
+    | "circle_post"
+    | "comment"
+    | "gratitude_note",
   entityId: number,
 ) => {
   return `/api/circles/${circleId}/attachments/${entityType}/${entityId}`;
@@ -7699,7 +7705,13 @@ export const getListAttachmentsUrl = (
 
 export const listAttachments = async (
   circleId: number,
-  entityType: "support_request" | "service_post" | "repayment",
+  entityType:
+    | "support_request"
+    | "service_post"
+    | "repayment"
+    | "circle_post"
+    | "comment"
+    | "gratitude_note",
   entityId: number,
   options?: RequestInit,
 ): Promise<Attachment[]> => {
@@ -7714,7 +7726,13 @@ export const listAttachments = async (
 
 export const getListAttachmentsQueryKey = (
   circleId: number,
-  entityType: "support_request" | "service_post" | "repayment",
+  entityType:
+    | "support_request"
+    | "service_post"
+    | "repayment"
+    | "circle_post"
+    | "comment"
+    | "gratitude_note",
   entityId: number,
 ) => {
   return [
@@ -7727,7 +7745,13 @@ export const getListAttachmentsQueryOptions = <
   TError = ErrorType<UnauthorizedResponse>,
 >(
   circleId: number,
-  entityType: "support_request" | "service_post" | "repayment",
+  entityType:
+    | "support_request"
+    | "service_post"
+    | "repayment"
+    | "circle_post"
+    | "comment"
+    | "gratitude_note",
   entityId: number,
   options?: {
     query?: UseQueryOptions<
@@ -7778,7 +7802,13 @@ export function useListAttachments<
   TError = ErrorType<UnauthorizedResponse>,
 >(
   circleId: number,
-  entityType: "support_request" | "service_post" | "repayment",
+  entityType:
+    | "support_request"
+    | "service_post"
+    | "repayment"
+    | "circle_post"
+    | "comment"
+    | "gratitude_note",
   entityId: number,
   options?: {
     query?: UseQueryOptions<
@@ -7808,7 +7838,13 @@ export function useListAttachments<
  */
 export const getCreateAttachmentUrl = (
   circleId: number,
-  entityType: "support_request" | "service_post" | "repayment",
+  entityType:
+    | "support_request"
+    | "service_post"
+    | "repayment"
+    | "circle_post"
+    | "comment"
+    | "gratitude_note",
   entityId: number,
 ) => {
   return `/api/circles/${circleId}/attachments/${entityType}/${entityId}`;
@@ -7816,7 +7852,13 @@ export const getCreateAttachmentUrl = (
 
 export const createAttachment = async (
   circleId: number,
-  entityType: "support_request" | "service_post" | "repayment",
+  entityType:
+    | "support_request"
+    | "service_post"
+    | "repayment"
+    | "circle_post"
+    | "comment"
+    | "gratitude_note",
   entityId: number,
   createAttachmentBody: CreateAttachmentBody,
   options?: RequestInit,
@@ -7841,7 +7883,13 @@ export const getCreateAttachmentMutationOptions = <
     TError,
     {
       circleId: number;
-      entityType: "support_request" | "service_post" | "repayment";
+      entityType:
+        | "support_request"
+        | "service_post"
+        | "repayment"
+        | "circle_post"
+        | "comment"
+        | "gratitude_note";
       entityId: number;
       data: BodyType<CreateAttachmentBody>;
     },
@@ -7853,7 +7901,13 @@ export const getCreateAttachmentMutationOptions = <
   TError,
   {
     circleId: number;
-    entityType: "support_request" | "service_post" | "repayment";
+    entityType:
+      | "support_request"
+      | "service_post"
+      | "repayment"
+      | "circle_post"
+      | "comment"
+      | "gratitude_note";
     entityId: number;
     data: BodyType<CreateAttachmentBody>;
   },
@@ -7872,7 +7926,13 @@ export const getCreateAttachmentMutationOptions = <
     Awaited<ReturnType<typeof createAttachment>>,
     {
       circleId: number;
-      entityType: "support_request" | "service_post" | "repayment";
+      entityType:
+        | "support_request"
+        | "service_post"
+        | "repayment"
+        | "circle_post"
+        | "comment"
+        | "gratitude_note";
       entityId: number;
       data: BodyType<CreateAttachmentBody>;
     }
@@ -7909,7 +7969,13 @@ export const useCreateAttachment = <
     TError,
     {
       circleId: number;
-      entityType: "support_request" | "service_post" | "repayment";
+      entityType:
+        | "support_request"
+        | "service_post"
+        | "repayment"
+        | "circle_post"
+        | "comment"
+        | "gratitude_note";
       entityId: number;
       data: BodyType<CreateAttachmentBody>;
     },
@@ -7921,7 +7987,13 @@ export const useCreateAttachment = <
   TError,
   {
     circleId: number;
-    entityType: "support_request" | "service_post" | "repayment";
+    entityType:
+      | "support_request"
+      | "service_post"
+      | "repayment"
+      | "circle_post"
+      | "comment"
+      | "gratitude_note";
     entityId: number;
     data: BodyType<CreateAttachmentBody>;
   },

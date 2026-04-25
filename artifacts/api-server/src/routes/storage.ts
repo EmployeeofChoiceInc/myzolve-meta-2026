@@ -121,13 +121,21 @@ router.post("/storage/avatar/request-url", requireAuth, async (req: Request, res
  * Request a presigned URL for a wall post image upload.
  * Requires active circle membership.
  */
+// Caps for rich media uploads. Plus members can upload bigger files
+// (50 MB) so they can post short videos and high-quality voice notes.
+// Free members keep the 10 MB photo cap.
+const FREE_MEDIA_BYTES = 10 * 1024 * 1024;
+const PLUS_MEDIA_BYTES = 50 * 1024 * 1024;
+
 router.post("/storage/circle-media/request-url", requireAuth, async (req: Request, res: Response) => {
   const userId = req.dbUser!.id;
-  const { name, size, contentType, circleId } = req.body as {
+  const clerkId = req.dbUser!.clerkId;
+  const { name, size, contentType, circleId, kind: rawKind } = req.body as {
     name?: string;
     size?: number;
     contentType?: string;
     circleId?: number;
+    kind?: string;
   };
 
   if (!name || !size || !contentType || !circleId) {
@@ -135,13 +143,21 @@ router.post("/storage/circle-media/request-url", requireAuth, async (req: Reques
     return;
   }
 
-  if (!contentType.startsWith("image/")) {
-    res.status(400).json({ error: "Only image files are allowed" });
+  const kind = rawKind === "voice" || rawKind === "video" ? rawKind : "photo";
+
+  // Content-type sanity check per kind. We're forgiving on the exact subtype
+  // (different recorders pick different containers) but require the right
+  // top-level type so the client can't trick us into hosting arbitrary blobs.
+  if (kind === "photo" && !contentType.startsWith("image/")) {
+    res.status(400).json({ error: "Only image files are allowed for photos" });
     return;
   }
-
-  if (size > 10 * 1024 * 1024) {
-    res.status(400).json({ error: "Image must be under 10 MB" });
+  if (kind === "voice" && !contentType.startsWith("audio/")) {
+    res.status(400).json({ error: "Only audio files are allowed for voice notes" });
+    return;
+  }
+  if (kind === "video" && !contentType.startsWith("video/")) {
+    res.status(400).json({ error: "Only video files are allowed for video clips" });
     return;
   }
 
@@ -163,11 +179,45 @@ router.post("/storage/circle-media/request-url", requireAuth, async (req: Reques
     return;
   }
 
+  // Voice + video are Plus-only to *create*. Anyone can play back what's
+  // already posted (handled in user-media GET below).
+  let userIsPlus = false;
+  if (kind === "voice" || kind === "video") {
+    userIsPlus = await isPlus(clerkId);
+    if (!userIsPlus) {
+      res.status(402).json({
+        error: "plus_required",
+        reason: kind === "voice" ? "voice_note" : "video_clip",
+        message:
+          kind === "voice"
+            ? "MyZolve Connect Plus is required to record voice notes."
+            : "MyZolve Connect Plus is required to share video clips.",
+      });
+      return;
+    }
+  } else {
+    // Photos: Plus members get the bigger per-file cap too.
+    userIsPlus = await isPlus(clerkId);
+  }
+
+  const maxBytes = userIsPlus ? PLUS_MEDIA_BYTES : FREE_MEDIA_BYTES;
+  if (size > maxBytes) {
+    const mb = Math.round(maxBytes / (1024 * 1024));
+    res.status(400).json({ error: `File must be under ${mb} MB` });
+    return;
+  }
+
   try {
     const uploadURL = await objectStorageService.getObjectEntityUploadURL();
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
-    registerPendingUpload(objectPath, userId, circleId);
-    res.json({ uploadURL, objectPath, metadata: { name, size, contentType } });
+    const allowedMimePrefix: "image/" | "audio/" | "video/" =
+      kind === "photo" ? "image/" : kind === "voice" ? "audio/" : "video/";
+    registerPendingUpload(objectPath, userId, circleId, {
+      kind,
+      maxBytes,
+      allowedMimePrefix,
+    });
+    res.json({ uploadURL, objectPath, metadata: { name, size, contentType, kind } });
   } catch (error) {
     logger.error({ err: error }, "Error generating circle media upload URL");
     res.status(500).json({ error: "Failed to generate upload URL" });
@@ -356,6 +406,40 @@ router.get("/storage/user-media/*path", requireAuth, async (req: Request, res: R
           .where(
             and(
               eq(circleMembersTable.circleId, banner.circleId),
+              eq(circleMembersTable.userId, userId),
+              eq(circleMembersTable.status, "active"),
+            ),
+          )
+          .limit(1)
+          .then((r) => r[0] ?? null);
+        authorized = !!membership;
+      }
+    }
+
+    // Rich-media attachments (multi-photo, voice notes, short videos)
+    // attached to wall posts, requests, comments, gratitude notes, etc.
+    // Any active member of the owning circle may stream them — playback is
+    // not Plus-gated, only creation is.
+    if (!authorized) {
+      const attachment = await db
+        .select({ circleId: attachmentsTable.circleId })
+        .from(attachmentsTable)
+        .where(
+          and(
+            eq(attachmentsTable.storageKey, objectPath),
+            eq(attachmentsTable.status, "active"),
+          ),
+        )
+        .limit(1)
+        .then((r) => r[0] ?? null);
+
+      if (attachment) {
+        const membership = await db
+          .select({ id: circleMembersTable.id })
+          .from(circleMembersTable)
+          .where(
+            and(
+              eq(circleMembersTable.circleId, attachment.circleId),
               eq(circleMembersTable.userId, userId),
               eq(circleMembersTable.status, "active"),
             ),

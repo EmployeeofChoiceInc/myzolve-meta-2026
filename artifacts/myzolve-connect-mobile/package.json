@@ -60,6 +60,7 @@
   },
   "dependencies": {
     "@clerk/expo": "^3.2.1",
+    "expo-audio": "~1.1.1",
     "expo-auth-session": "^7.0.10",
     "expo-crypto": "^15.0.8",
     "expo-device": "~8.0.10",
@@ -67,6 +68,7 @@
     "expo-media-library": "~18.2.1",
     "expo-notifications": "~0.32.16",
     "expo-sharing": "~14.0.8",
+    "expo-video": "~3.0.16",
     "react-native-purchases": "9.7.2"
   }
 }

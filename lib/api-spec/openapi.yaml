@@ -2016,7 +2016,7 @@ paths:
         - name: entityType
           in: path
           required: true
-          schema: { type: string, enum: [support_request, service_post, repayment] }
+          schema: { type: string, enum: [support_request, service_post, repayment, circle_post, comment, gratitude_note] }
         - name: entityId
           in: path
           required: true
@@ -2042,7 +2042,7 @@ paths:
         - name: entityType
           in: path
           required: true
-          schema: { type: string, enum: [support_request, service_post, repayment] }
+          schema: { type: string, enum: [support_request, service_post, repayment, circle_post, comment, gratitude_note] }
         - name: entityId
           in: path
           required: true
@@ -4535,12 +4535,23 @@ components:
           type: string
         targetEntityId:
           type: integer
+        kind:
+          type: string
+          enum: [photo, voice, video]
+          description: Media kind. Voice/video require an active Plus entitlement to create.
         fileName:
           type: string
         fileSize:
           type: ["integer", "null"]
         mimeType:
           type: ["string", "null"]
+        durationMs:
+          type: ["integer", "null"]
+          description: Duration in milliseconds for voice/video attachments.
+        width:
+          type: ["integer", "null"]
+        height:
+          type: ["integer", "null"]
         storageKey:
           type: string
         downloadUrl:
@@ -4556,6 +4567,7 @@ components:
         - uploadedByUserId
         - targetEntityType
         - targetEntityId
+        - kind
         - fileName
         - storageKey
         - downloadUrl
@@ -4565,6 +4577,10 @@ components:
     CreateAttachmentBody:
       type: object
       properties:
+        kind:
+          type: string
+          enum: [photo, voice, video]
+          default: photo
         fileName:
           type: string
           minLength: 1
@@ -4575,6 +4591,16 @@ components:
         mimeType:
           type: string
           maxLength: 200
+        durationMs:
+          type: integer
+          minimum: 0
+          maximum: 300000
+        width:
+          type: integer
+          minimum: 0
+        height:
+          type: integer
+          minimum: 0
         storageKey:
           type: string
           minLength: 1

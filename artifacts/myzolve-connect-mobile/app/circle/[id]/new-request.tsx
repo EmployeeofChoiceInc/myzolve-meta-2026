@@ -1,3 +1,4 @@
+import { Feather } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Alert, Pressable, View } from "react-native";
@@ -7,26 +8,44 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   getListSupportRequestsQueryKey,
   useCreateSupportRequest,
+  type CreateSupportRequestBodyRequestType,
+  type CreateSupportRequestBodyUrgencyLevel,
 } from "@workspace/api-client-react";
 
 import { AppText, Button, Field, IconButton, Input, Row } from "@/components/UI";
 import { CopilotSwitcher } from "@/components/CopilotSwitcher";
+import { VoicePlayer, VoiceRecorder } from "@/components/MediaUI";
+import { PaywallSheet } from "@/components/PaywallSheet";
 import { useColors } from "@/hooks/useColors";
 import { useActingForInCircle } from "@/lib/copilot";
+import { useSubscription } from "@/lib/revenuecat";
+import {
+  type AttachmentTarget,
+  PlusRequiredError,
+  recordEntityAttachment,
+  uploadCircleMediaToStorage,
+} from "@/lib/postApi";
 import { safeBack } from "@/lib/safeBack";
 
-const URGENCIES: { value: string; label: string }[] = [
+const URGENCIES: { value: CreateSupportRequestBodyUrgencyLevel; label: string }[] = [
   { value: "low", label: "Low" },
   { value: "normal", label: "Normal" },
   { value: "important", label: "Important" },
   { value: "urgent", label: "Urgent" },
 ];
 
-const TYPES: { value: string; label: string }[] = [
+const TYPES: { value: CreateSupportRequestBodyRequestType; label: string }[] = [
   { value: "money", label: "Money" },
   { value: "service", label: "Service" },
   { value: "emergency", label: "Emergency" },
 ];
+
+interface PendingVoice {
+  uri: string;
+  durationMs: number;
+  mimeType: string;
+  fileName: string;
+}
 
 export default function NewRequestScreen() {
   const c = useColors();
@@ -37,14 +56,27 @@ export default function NewRequestScreen() {
   const qc = useQueryClient();
   const create = useCreateSupportRequest();
   const actingForUserId = useActingForInCircle(circleId);
+  const { isPlus } = useSubscription();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
-  const [requestType, setRequestType] = useState("money");
-  const [urgency, setUrgency] = useState("normal");
+  const [requestType, setRequestType] = useState<CreateSupportRequestBodyRequestType>("money");
+  const [urgency, setUrgency] = useState<CreateSupportRequestBodyUrgencyLevel>("normal");
+  const [voice, setVoice] = useState<PendingVoice | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [paywallOpen, setPaywallOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  function submit() {
+  function startVoice() {
+    if (!isPlus) {
+      setPaywallOpen(true);
+      return;
+    }
+    setRecording(true);
+  }
+
+  async function submit() {
     if (title.trim().length < 3) {
       Alert.alert("Add a title", "Give your request a short, clear title.");
       return;
@@ -54,29 +86,95 @@ export default function NewRequestScreen() {
       Alert.alert("Check the amount", "Please use a number for the amount.");
       return;
     }
-    create.mutate(
-      {
+    if (recording) {
+      Alert.alert("Finish recording", "Stop or cancel the voice note before posting.");
+      return;
+    }
+    setBusy(true);
+    // Upload voice to object storage BEFORE creating the request so an
+    // upload failure doesn't leave behind an orphan request that the user
+    // believes failed to create.
+    let voiceObjectPath: string | null = null;
+    if (voice) {
+      try {
+        voiceObjectPath = await uploadCircleMediaToStorage(circleId, {
+          uri: voice.uri,
+          name: voice.fileName,
+          size: 0,
+          contentType: voice.mimeType,
+          kind: "voice",
+          durationMs: voice.durationMs,
+        });
+      } catch (err) {
+        setBusy(false);
+        if (err instanceof PlusRequiredError) {
+          setPaywallOpen(true);
+        } else {
+          Alert.alert("Couldn't create", "Please try again.");
+        }
+        return;
+      }
+    }
+
+    let newReq: Awaited<ReturnType<typeof create.mutateAsync>>;
+    try {
+      newReq = await create.mutateAsync({
         circleId,
         data: {
           title: title.trim(),
           description: description.trim() || undefined,
           amountRequested: amt,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          requestType: requestType as any,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          urgencyLevel: urgency as any,
+          requestType,
+          urgencyLevel: urgency,
           currency: "USD",
           ...(actingForUserId ? { actingForUserId } : {}),
         },
-      },
-      {
-        onSuccess: (newReq) => {
-          qc.invalidateQueries({ queryKey: getListSupportRequestsQueryKey(circleId) });
-          router.replace(`/request/${newReq.id}`);
-        },
-        onError: () => Alert.alert("Couldn't create", "Please try again."),
+      });
+    } catch (err) {
+      setBusy(false);
+      if (err instanceof PlusRequiredError) {
+        setPaywallOpen(true);
+      } else {
+        Alert.alert("Couldn't create", "Please try again.");
       }
-    );
+      return;
+    }
+
+    let attachmentFailedPlus = false;
+    let attachmentFailed = false;
+    if (voice && voiceObjectPath) {
+      try {
+        const target: AttachmentTarget = {
+          circleId,
+          entityType: "support_request",
+          entityId: newReq.id,
+        };
+        await recordEntityAttachment(target, {
+          kind: "voice",
+          fileName: voice.fileName,
+          mimeType: voice.mimeType,
+          durationMs: voice.durationMs,
+          storageKey: voiceObjectPath,
+        });
+      } catch (err) {
+        attachmentFailed = true;
+        if (err instanceof PlusRequiredError) attachmentFailedPlus = true;
+      }
+    }
+
+    qc.invalidateQueries({ queryKey: getListSupportRequestsQueryKey(circleId) });
+    setBusy(false);
+    router.replace(`/request/${newReq.id}`);
+    if (attachmentFailed) {
+      if (attachmentFailedPlus) {
+        setPaywallOpen(true);
+      } else {
+        Alert.alert(
+          "Created, but the voice note didn't attach",
+          "Your request is live. You can add the voice note from the request screen.",
+        );
+      }
+    }
   }
 
   return (
@@ -189,16 +287,64 @@ export default function NewRequestScreen() {
             />
           </Field>
 
+          <Field label="Voice note (optional)">
+            {voice ? (
+              <View>
+                <VoicePlayer uri={voice.uri} durationMs={voice.durationMs} />
+                <Pressable
+                  onPress={() => setVoice(null)}
+                  disabled={busy}
+                  style={{ alignSelf: "flex-start", marginTop: 6, padding: 4 }}
+                >
+                  <AppText variant="caption" color={c.destructive}>
+                    Remove voice note
+                  </AppText>
+                </Pressable>
+              </View>
+            ) : recording ? (
+              <VoiceRecorder
+                testID="request-voice-recorder"
+                onComplete={(v) => {
+                  setVoice(v);
+                  setRecording(false);
+                }}
+                onCancel={() => setRecording(false)}
+              />
+            ) : (
+              <Pressable
+                onPress={startVoice}
+                disabled={busy}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                  paddingVertical: 10,
+                }}
+                testID="request-add-voice"
+              >
+                <Feather name="mic" size={18} color={c.primary} />
+                <AppText color={c.primary} weight="medium">
+                  Add voice note{!isPlus ? " · Plus" : ""}
+                </AppText>
+              </Pressable>
+            )}
+          </Field>
+
           <Button
             title="Post request"
             onPress={submit}
-            loading={create.isPending}
+            loading={busy || create.isPending}
             icon="send"
             testID="button-submit-request"
             style={{ marginTop: 8 }}
           />
         </KeyboardAwareScrollView>
       </View>
+      <PaywallSheet
+        visible={paywallOpen}
+        onClose={() => setPaywallOpen(false)}
+        onSubscribed={() => setPaywallOpen(false)}
+      />
     </>
   );
 }

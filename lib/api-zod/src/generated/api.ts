@@ -2453,7 +2453,14 @@ export const ListAuditLogResponse = zod.array(ListAuditLogResponseItem);
  */
 export const ListAttachmentsParams = zod.object({
   circleId: zod.coerce.number(),
-  entityType: zod.enum(["support_request", "service_post", "repayment"]),
+  entityType: zod.enum([
+    "support_request",
+    "service_post",
+    "repayment",
+    "circle_post",
+    "comment",
+    "gratitude_note",
+  ]),
   entityId: zod.coerce.number(),
 });
 
@@ -2463,9 +2470,20 @@ export const ListAttachmentsResponseItem = zod.object({
   uploadedByUserId: zod.number(),
   targetEntityType: zod.string(),
   targetEntityId: zod.number(),
+  kind: zod
+    .enum(["photo", "voice", "video"])
+    .describe(
+      "Media kind. Voice\/video require an active Plus entitlement to create.",
+    ),
   fileName: zod.string(),
   fileSize: zod.number().nullish(),
   mimeType: zod.string().nullish(),
+  durationMs: zod
+    .number()
+    .nullish()
+    .describe("Duration in milliseconds for voice\/video attachments."),
+  width: zod.number().nullish(),
+  height: zod.number().nullish(),
   storageKey: zod.string(),
   downloadUrl: zod.string(),
   status: zod.string(),
@@ -2478,20 +2496,45 @@ export const ListAttachmentsResponse = zod.array(ListAttachmentsResponseItem);
  */
 export const CreateAttachmentParams = zod.object({
   circleId: zod.coerce.number(),
-  entityType: zod.enum(["support_request", "service_post", "repayment"]),
+  entityType: zod.enum([
+    "support_request",
+    "service_post",
+    "repayment",
+    "circle_post",
+    "comment",
+    "gratitude_note",
+  ]),
   entityId: zod.coerce.number(),
 });
 
+export const createAttachmentBodyKindDefault = `photo`;
 export const createAttachmentBodyFileNameMax = 500;
 
 export const createAttachmentBodyMimeTypeMax = 200;
 
+export const createAttachmentBodyDurationMsMin = 0;
+export const createAttachmentBodyDurationMsMax = 300000;
+
+export const createAttachmentBodyWidthMin = 0;
+
+export const createAttachmentBodyHeightMin = 0;
+
 export const createAttachmentBodyStorageKeyMax = 2000;
 
 export const CreateAttachmentBody = zod.object({
+  kind: zod
+    .enum(["photo", "voice", "video"])
+    .default(createAttachmentBodyKindDefault),
   fileName: zod.string().min(1).max(createAttachmentBodyFileNameMax),
   fileSize: zod.number().min(1).optional(),
   mimeType: zod.string().max(createAttachmentBodyMimeTypeMax).optional(),
+  durationMs: zod
+    .number()
+    .min(createAttachmentBodyDurationMsMin)
+    .max(createAttachmentBodyDurationMsMax)
+    .optional(),
+  width: zod.number().min(createAttachmentBodyWidthMin).optional(),
+  height: zod.number().min(createAttachmentBodyHeightMin).optional(),
   storageKey: zod.string().min(1).max(createAttachmentBodyStorageKeyMax),
 });
 

@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Alert, Modal, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
@@ -33,7 +33,10 @@ import {
   Skeleton,
 } from "@/components/UI";
 import { CopilotAttribution } from "@/components/CopilotSwitcher";
+import { CircleVideoPlayer, VoicePlayer } from "@/components/MediaUI";
 import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@clerk/expo";
+import { Image } from "expo-image";
 import { safeBack } from "@/lib/safeBack";
 import {
   STATUS_COLORS,
@@ -41,6 +44,86 @@ import {
   URGENCY_LABELS,
   formatMoney,
 } from "@/lib/circleTypes";
+import { useEntityAttachments } from "@/lib/postApi";
+
+const REQ_API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+  : "";
+
+function reqAttachmentUrl(downloadUrl: string | null | undefined): string | undefined {
+  if (!downloadUrl) return undefined;
+  return `${REQ_API_BASE}${downloadUrl}`;
+}
+
+function RequestAttachmentsBlock({
+  circleId,
+  requestId,
+}: {
+  circleId: number;
+  requestId: number;
+}) {
+  const c = useColors();
+  const { getToken } = useAuth();
+  const [token, setToken] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    getToken()
+      .then((t) => alive && setToken(t ?? null))
+      .catch(() => alive && setToken(null));
+    return () => {
+      alive = false;
+    };
+  }, [getToken]);
+  const { data } = useEntityAttachments({
+    circleId,
+    entityType: "support_request",
+    entityId: requestId,
+  });
+  if (!data || data.length === 0) return null;
+  const authHeader = token ? `Bearer ${token}` : null;
+  return (
+    <Card style={{ marginTop: 12 }}>
+      <AppText weight="semibold" style={{ marginBottom: 8 }}>
+        Attachments
+      </AppText>
+      <View style={{ gap: 8 }}>
+        {data.map((a) => {
+          const uri = reqAttachmentUrl(a.downloadUrl);
+          if (!uri) return null;
+          if (a.kind === "voice") {
+            return (
+              <VoicePlayer
+                key={a.id}
+                uri={uri}
+                authHeader={authHeader}
+                durationMs={a.durationMs}
+              />
+            );
+          }
+          if (a.kind === "video") {
+            return <CircleVideoPlayer key={a.id} uri={uri} authHeader={authHeader} />;
+          }
+          if (token) {
+            return (
+              <Image
+                key={a.id}
+                source={{ uri, headers: { Authorization: `Bearer ${token}` } }}
+                style={{
+                  width: "100%",
+                  aspectRatio: 4 / 3,
+                  borderRadius: 16,
+                  backgroundColor: c.muted,
+                }}
+                contentFit="cover"
+              />
+            );
+          }
+          return null;
+        })}
+      </View>
+    </Card>
+  );
+}
 
 export default function RequestDetailScreen() {
   const c = useColors();
@@ -246,6 +329,8 @@ export default function RequestDetailScreen() {
                   <AppText>{req.description}</AppText>
                 </Card>
               ) : null}
+
+              <RequestAttachmentsBlock circleId={req.circleId} requestId={req.id} />
 
               <Card style={{ marginTop: 12 }}>
                 <Row justify="space-between" style={{ marginBottom: 10 }}>
