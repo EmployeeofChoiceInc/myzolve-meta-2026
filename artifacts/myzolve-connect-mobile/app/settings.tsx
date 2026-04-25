@@ -22,8 +22,11 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 
 import { AppText, Avatar, Button, Card, Row, Skeleton } from "@/components/UI";
+import { PaywallSheet } from "@/components/PaywallSheet";
+import { PlusBadge } from "@/components/PlusBadge";
 import { Screen } from "@/components/Screen";
 import { useColors } from "@/hooks/useColors";
+import { useSubscription } from "@/lib/revenuecat";
 
 const LABELS: Record<string, string> = {
   new_request: "New requests",
@@ -61,6 +64,8 @@ export default function SettingsScreen() {
   const revoke = useRevokeCopilotGrant();
 
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [paywallOpen, setPaywallOpen] = useState(false);
+  const { isPlus, isAvailable, initError } = useSubscription();
 
   const copilotInvalidate = () =>
     qc.invalidateQueries({ queryKey: getListCopilotGrantsQueryKey() });
@@ -188,6 +193,68 @@ export default function SettingsScreen() {
         <AppText color={c.mutedForeground} style={{ marginTop: 4, marginBottom: 24 }}>
           Decide what you'd like to hear about.
         </AppText>
+
+        {/* PLUS SECTION */}
+        {/*
+          Always render the row so users can find the manage screen even when
+          the SDK failed to initialize. When unavailable we still navigate to
+          /plus, which surfaces the init error and a retry path.
+        */}
+        <Pressable
+          testID="settings-plus-row"
+          onPress={() => {
+            if (isPlus) {
+              router.push("/plus");
+            } else if (isAvailable) {
+              setPaywallOpen(true);
+            } else {
+              router.push("/plus");
+            }
+          }}
+          style={({ pressed }) => ({
+            opacity: pressed ? 0.85 : 1,
+            marginBottom: 20,
+          })}
+        >
+          <Card>
+            <Row gap={12} align="center">
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: c.primarySoft,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Feather name="star" size={18} color={c.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Row gap={8} align="center">
+                  <AppText weight="semibold">MyZolve Connect Plus</AppText>
+                  {isPlus ? <PlusBadge size="sm" variant="solid" /> : null}
+                </Row>
+                <AppText
+                  variant="caption"
+                  color={c.mutedForeground}
+                  style={{ marginTop: 2 }}
+                >
+                  {isPlus
+                    ? "Manage your subscription"
+                    : !isAvailable
+                      ? initError ?? "Subscriptions are temporarily unavailable"
+                      : "Bigger circles, richer moments, and more"}
+                </AppText>
+              </View>
+              <Feather
+                name="chevron-right"
+                size={20}
+                color={c.mutedForeground}
+              />
+            </Row>
+          </Card>
+        </Pressable>
 
         {/* CO-PILOT SECTION */}
         <AppText variant="title" style={{ marginBottom: 6 }}>
@@ -489,6 +556,11 @@ export default function SettingsScreen() {
         onClose={() => setInviteOpen(false)}
         onInvited={copilotInvalidate}
         existing={sentByMe}
+      />
+
+      <PaywallSheet
+        visible={paywallOpen}
+        onClose={() => setPaywallOpen(false)}
       />
     </>
   );

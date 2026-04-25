@@ -25,8 +25,15 @@ import {
   registerForPushNotificationsAsync,
   unregisterPushToken,
 } from "@/lib/pushNotifications";
+import { initializeRevenueCat, SubscriptionProvider } from "@/lib/revenuecat";
 
 configureNotificationHandler();
+
+try {
+  initializeRevenueCat();
+} catch {
+  // Surface as initError via the subscription context; never block app boot.
+}
 
 SplashScreen.preventAutoHideAsync();
 
@@ -135,6 +142,7 @@ function RootLayoutNav() {
       <Stack.Screen name="onboarding" options={{ title: "Welcome" }} />
       <Stack.Screen name="discover" options={{ title: "Discover" }} />
       <Stack.Screen name="settings" options={{ title: "Settings" }} />
+      <Stack.Screen name="plus" options={{ title: "MyZolve Connect Plus" }} />
       {/*
         circle/[id] has its own _layout.tsx (a nested Stack), so from
         this outer Stack's perspective the entire folder is a single
@@ -183,14 +191,16 @@ export default function RootLayout() {
         >
           <QueryClientProvider client={queryClient}>
             <AuthBridge>
-              <CopilotProvider>
-                <GestureHandlerRootView style={{ flex: 1 }}>
-                  <KeyboardProvider>
-                    <StatusBar style="dark" />
-                    <RootLayoutNav />
-                  </KeyboardProvider>
-                </GestureHandlerRootView>
-              </CopilotProvider>
+              <SubscriptionProvider>
+                <CopilotProvider>
+                  <GestureHandlerRootView style={{ flex: 1 }}>
+                    <KeyboardProvider>
+                      <StatusBar style="dark" />
+                      <RootLayoutNav />
+                    </KeyboardProvider>
+                  </GestureHandlerRootView>
+                </CopilotProvider>
+              </SubscriptionProvider>
             </AuthBridge>
           </QueryClientProvider>
         </ClerkProvider>

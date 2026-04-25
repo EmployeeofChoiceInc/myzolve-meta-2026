@@ -14,6 +14,7 @@ runButton = "Project"
 [agent]
 stack = "PNPM_WORKSPACE"
 expertMode = true
+integrations = ["revenuecat:1.0.0"]
 
 [postMerge]
 path = "scripts/post-merge.sh"
@@ -53,3 +54,14 @@ externalPort = 3003
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+EXPO_PUBLIC_REVENUECAT_TEST_API_KEY = "test_cHKCkztolVOInNDcZmvseCXIvku"
+EXPO_PUBLIC_REVENUECAT_IOS_API_KEY = "appl_NnYviUJBCHhmsfKNYIQMYlHoosn"
+EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY = "goog_pdAeiaQZjlVnqojThNoytibmcCz"
+REVENUECAT_PROJECT_ID = "proje9e3fcdd"
+REVENUECAT_TEST_STORE_APP_ID = "app9f03985ea9"
+REVENUECAT_APPLE_APP_STORE_APP_ID = "app4c87883785"
+REVENUECAT_GOOGLE_PLAY_STORE_APP_ID = "appb74a9b2aa1"
