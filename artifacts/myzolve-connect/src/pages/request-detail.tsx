@@ -321,6 +321,16 @@ export default function RequestDetailPage() {
           <CardDescription className="text-base mt-2 text-foreground/80">
             Requested by <span className="font-medium">{request.createdByName}</span>
           </CardDescription>
+          {request.actingForName ? (
+            <div className="mt-2">
+              <CopilotAttribution
+                helperName={request.createdByName}
+                forName={request.actingForName}
+                review={request.copilotReview ?? undefined}
+                size="compact"
+              />
+            </div>
+          ) : null}
         </CardHeader>
 
         <CardContent className="pt-6 space-y-8">
