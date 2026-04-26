@@ -1,6 +1,8 @@
 import { useParams, Link } from "wouter";
 import { useListSupportRequests, useCreateSupportRequest, getListSupportRequestsQueryKey } from "@workspace/api-client-react";
 import { HandHeart, Plus, ArrowLeft, Zap } from "lucide-react";
+import { CopilotSwitcher, CopilotAttribution } from "@/components/copilot-switcher";
+import { useActingForInCircle } from "@/lib/copilot";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +26,7 @@ export default function RequestsPage() {
   const { data: requests, isLoading } = useListSupportRequests(circleId);
   const createRequest = useCreateSupportRequest();
   const { data: placeholders } = usePlaceholderMembers(circleId);
+  const actingForUserId = useActingForInCircle(circleId);
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
@@ -60,6 +63,7 @@ export default function RequestsPage() {
           visibilityScope: "whole_circle",
           onBehalfOfPlaceholderId: form.onBehalfOfPlaceholderId ? parseInt(form.onBehalfOfPlaceholderId) : undefined,
           dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : undefined,
+          ...(actingForUserId ? { actingForUserId } : {}),
         },
       },
       {
@@ -189,6 +193,14 @@ export default function RequestsPage() {
                     <CardDescription className="text-sm">
                       Requested by <span className="font-medium text-foreground">{req.createdByName || "A member"}</span>
                     </CardDescription>
+                    {req.actingForName ? (
+                      <CopilotAttribution
+                        helperName={req.createdByName || "A helper"}
+                        forName={req.actingForName}
+                        review={req.copilotReview}
+                        size="compact"
+                      />
+                    ) : null}
                   </CardHeader>
 
                   <CardContent className="pb-4 flex-1">
@@ -217,6 +229,7 @@ export default function RequestsPage() {
             <DialogTitle className="text-2xl font-bold">Ask for support</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            <CopilotSwitcher circleId={circleId} />
             {placeholders && placeholders.length > 0 && (
               <div className="space-y-1.5">
                 <Label>Requesting on behalf of (optional)</Label>

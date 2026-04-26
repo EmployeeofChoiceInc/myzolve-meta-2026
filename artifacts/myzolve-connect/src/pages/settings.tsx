@@ -20,9 +20,21 @@ import {
   useMyPlusStatus,
   objectPathToUrl,
 } from "@/hooks/use-api";
-import { Camera, Star, ChevronRight } from "lucide-react";
+import { Camera, Star, ChevronRight, UserCheck, UserPlus, Trash2, Users, Sparkles } from "lucide-react";
 import { Link } from "wouter";
 import { PlusBadge } from "@/components/plus-badge";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { useCopilot } from "@/lib/copilot";
+import {
+  useListCircles,
+  useListCircleMembers,
+  useInviteCopilot,
+  useRevokeCopilotGrant,
+  getListCopilotGrantsQueryKey,
+  type CopilotGrant,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 const profileFormSchema = z.object({
   firstName: z.string().max(100).optional(),
@@ -44,6 +56,10 @@ const NOTIFICATION_TYPES = [
   { key: "dispute_resolved", label: "Dispute resolved", description: "When a dispute you raised is resolved" },
   { key: "member_joined", label: "New members", description: "When someone joins your circle" },
   { key: "circle_update", label: "Circle updates", description: "Role changes and important circle updates" },
+  { key: "copilot_invite_received", label: "Co-pilot invitations", description: "When someone invites you to be their co-pilot" },
+  { key: "copilot_post_made", label: "Posted on your behalf", description: "When your co-pilot posts something for you" },
+  { key: "wrapup_weekly", label: "Weekly wrap-up", description: "A gentle weekly recap of care moments" },
+  { key: "wrapup_monthly", label: "Monthly wrap-up", description: "A monthly recap of care moments" },
 ] as const;
 
 function NotificationPreferencesCard() {
@@ -365,8 +381,269 @@ export default function SettingsPage() {
 
       <PlusSummaryCard />
 
+      <CopilotSection />
+
       <NotificationPreferencesCard />
     </div>
+  );
+}
+
+function CopilotSection() {
+  const { grantsAsHelper, grantsAsGrantor, isLoading } = useCopilot();
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const revoke = useRevokeCopilotGrant();
+  const qc = useQueryClient();
+  const { toast } = useToast();
+
+  function handleRevoke(grant: CopilotGrant) {
+    if (!confirm("Remove this co-pilot connection?")) return;
+    revoke.mutate(
+      { grantId: grant.id },
+      {
+        onSuccess: () => {
+          toast({ title: "Connection removed" });
+          qc.invalidateQueries({ queryKey: getListCopilotGrantsQueryKey() });
+        },
+        onError: () =>
+          toast({ title: "Could not remove connection", variant: "destructive" }),
+      },
+    );
+  }
+
+  return (
+    <Card className="rounded-3xl border-border/50 shadow-sm" data-testid="settings-copilot-section">
+      <CardHeader className="pb-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <UserCheck className="w-5 h-5 text-primary" />
+              Co-pilot
+            </CardTitle>
+            <CardDescription className="mt-1">
+              Let someone you trust post on your behalf, or help someone in your circle.
+            </CardDescription>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-full"
+            onClick={() => setInviteOpen(true)}
+            data-testid="button-invite-copilot"
+          >
+            <UserPlus className="w-4 h-4 mr-1.5" />
+            Invite
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {isLoading ? (
+          <div className="space-y-2">
+            <div className="h-12 bg-muted/40 rounded-xl animate-pulse" />
+            <div className="h-12 bg-muted/40 rounded-xl animate-pulse" />
+          </div>
+        ) : (
+          <>
+            <CopilotGrantList
+              title="People who help you"
+              description="They can post on your behalf in their circle."
+              empty="Nobody is helping you yet."
+              grants={grantsAsGrantor}
+              showLabel={(g) => g.helperName ?? "Helper"}
+              avatarPath={(g) => g.helperAvatarObjectPath}
+              onRevoke={handleRevoke}
+            />
+            <CopilotGrantList
+              title="People you help"
+              description="You can post on their behalf in their circle."
+              empty="You're not helping anyone yet."
+              grants={grantsAsHelper}
+              showLabel={(g) => g.grantorName ?? "Member"}
+              avatarPath={(g) => g.grantorAvatarObjectPath}
+              onRevoke={handleRevoke}
+            />
+          </>
+        )}
+      </CardContent>
+      <InviteCopilotDialog open={inviteOpen} onOpenChange={setInviteOpen} />
+    </Card>
+  );
+}
+
+function CopilotGrantList({
+  title,
+  description,
+  empty,
+  grants,
+  showLabel,
+  avatarPath,
+  onRevoke,
+}: {
+  title: string;
+  description: string;
+  empty: string;
+  grants: CopilotGrant[];
+  showLabel: (g: CopilotGrant) => string;
+  avatarPath: (g: CopilotGrant) => string | null | undefined;
+  onRevoke: (g: CopilotGrant) => void;
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-2">
+        <Users className="w-4 h-4 text-muted-foreground" />
+        <p className="text-sm font-semibold">{title}</p>
+      </div>
+      <p className="text-xs text-muted-foreground mb-3">{description}</p>
+      {grants.length === 0 ? (
+        <p className="text-sm text-muted-foreground italic py-3">{empty}</p>
+      ) : (
+        <div className="space-y-2">
+          {grants.map((g) => {
+            const url = objectPathToUrl(avatarPath(g) ?? null);
+            const label = showLabel(g);
+            return (
+              <div
+                key={g.id}
+                className="flex items-center gap-3 p-3 rounded-2xl border border-border/40"
+                data-testid={`copilot-grant-${g.id}`}
+              >
+                <Avatar className="w-9 h-9">
+                  {url ? <AvatarImage src={url} alt={label} /> : null}
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                    {label.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{label}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {g.circleName ?? `Circle #${g.circleId}`}
+                    {g.status !== "active" ? ` · ${g.status}` : ""}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive"
+                  onClick={() => onRevoke(g)}
+                  title="Remove connection"
+                  data-testid={`button-revoke-grant-${g.id}`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InviteCopilotDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const { data: circles } = useListCircles();
+  const [circleId, setCircleId] = useState<string>("");
+  const [helperId, setHelperId] = useState<string>("");
+  const numericCircleId = circleId ? Number(circleId) : null;
+  const { data: members } = useListCircleMembers(numericCircleId ?? 0, {
+    query: { enabled: !!numericCircleId },
+  });
+  const invite = useInviteCopilot();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  function handleClose(v: boolean) {
+    if (!v) {
+      setCircleId("");
+      setHelperId("");
+    }
+    onOpenChange(v);
+  }
+
+  function handleInvite() {
+    if (!numericCircleId || !helperId) {
+      toast({ title: "Pick a circle and a member.", variant: "destructive" });
+      return;
+    }
+    invite.mutate(
+      { circleId: numericCircleId, data: { helperUserId: Number(helperId) } },
+      {
+        onSuccess: () => {
+          toast({ title: "Invitation sent." });
+          qc.invalidateQueries({ queryKey: getListCopilotGrantsQueryKey() });
+          handleClose(false);
+        },
+        onError: () =>
+          toast({ title: "Could not send invitation.", variant: "destructive" }),
+      },
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-md rounded-3xl">
+        <DialogHeader>
+          <DialogTitle>Invite a co-pilot</DialogTitle>
+          <DialogDescription>
+            Pick a circle, then pick someone there who can post on your behalf.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 pt-2">
+          <div className="space-y-1.5">
+            <Label>Circle</Label>
+            <Select value={circleId} onValueChange={setCircleId}>
+              <SelectTrigger className="rounded-xl" data-testid="select-invite-circle">
+                <SelectValue placeholder="Pick a circle" />
+              </SelectTrigger>
+              <SelectContent>
+                {(circles ?? []).map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {numericCircleId ? (
+            <div className="space-y-1.5">
+              <Label>Helper</Label>
+              <Select value={helperId} onValueChange={setHelperId}>
+                <SelectTrigger className="rounded-xl" data-testid="select-invite-helper">
+                  <SelectValue placeholder="Pick a member" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(members ?? [])
+                    .filter((m) => !!m.userId)
+                    .map((m) => (
+                      <SelectItem key={m.userId!} value={String(m.userId)}>
+                        {m.displayName ?? `Member #${m.userId}`}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" className="rounded-full" onClick={() => handleClose(false)}>
+            Cancel
+          </Button>
+          <Button
+            className="rounded-full"
+            onClick={handleInvite}
+            disabled={invite.isPending}
+            data-testid="button-send-copilot-invite"
+          >
+            <Sparkles className="w-4 h-4 mr-1.5" />
+            {invite.isPending ? "Sending..." : "Send invitation"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

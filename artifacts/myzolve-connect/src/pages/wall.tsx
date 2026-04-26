@@ -33,6 +33,8 @@ import { VoiceRecorder } from "@/components/voice-recorder";
 import { MediaAttachmentList } from "@/components/media-attachment-display";
 import { PlusBadge } from "@/components/plus-badge";
 import { usePaywall } from "@/components/paywall-dialog";
+import { CopilotSwitcher, CopilotAttribution } from "@/components/copilot-switcher";
+import { useActingForInCircle } from "@/lib/copilot";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -90,11 +92,15 @@ function CommentsSection({ circleId, postId }: { circleId: number; postId: numbe
   const [commentText, setCommentText] = useState("");
   const { data: comments } = useComments(circleId, "circle_post", postId);
   const createComment = useCreateComment(circleId, "circle_post", postId);
+  const actingForUserId = useActingForInCircle(circleId);
 
   function handleSubmit() {
     if (!commentText.trim()) return;
     createComment.mutate(
-      { body: commentText.trim() },
+      {
+        body: commentText.trim(),
+        ...(actingForUserId ? { actingForUserId } : {}),
+      },
       { onSuccess: () => setCommentText("") },
     );
   }
@@ -128,12 +134,21 @@ function CommentsSection({ circleId, postId }: { circleId: number; postId: numbe
                   <p className="text-xs font-medium text-foreground hover:underline cursor-pointer">{c.authorName}</p>
                 </Link>
                 <p className="text-sm text-foreground/80">{c.body}</p>
+                {c.actingForName ? (
+                  <CopilotAttribution
+                    helperName={c.authorName}
+                    forName={c.actingForName}
+                    review={c.copilotReview}
+                    size="compact"
+                  />
+                ) : null}
                 <p className="text-[10px] text-muted-foreground mt-0.5">
                   {formatDistanceToNow(new Date(c.createdAt), { addSuffix: true })}
                 </p>
               </div>
             </div>
           ))}
+          <CopilotSwitcher circleId={circleId} className="mb-1" />
           <div className="flex gap-2">
             <Input
               value={commentText}
@@ -222,6 +237,14 @@ function PostCard({
           )}
         </div>
 
+        {post.actingForName ? (
+          <CopilotAttribution
+            helperName={post.authorName}
+            forName={post.actingForName}
+            review={post.copilotReview}
+          />
+        ) : null}
+
         {post.title && <h3 className="font-semibold text-foreground">{post.title}</h3>}
         <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">{post.body}</p>
 
@@ -288,6 +311,7 @@ function ComposeDialog({
   const createPost = useCreateCirclePost(circleId);
   const circleMediaUpload = useCircleMediaUpload(circleId);
   const uploadCircleMedia = useUploadCircleMedia(circleId);
+  const actingForUserId = useActingForInCircle(circleId);
   const { toast } = useToast();
   const paywall = usePaywall();
   const openPaywall = paywall.open;
@@ -489,6 +513,7 @@ function ComposeDialog({
             title: title.trim() || undefined,
             body: body.trim(),
             imageObjectPath: firstPhotoObjectPath,
+            ...(actingForUserId ? { actingForUserId } : {}),
           },
           { onSuccess: resolve, onError: reject },
         );
@@ -547,6 +572,7 @@ function ComposeDialog({
           <DialogDescription>Share something with your circle.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 pt-2">
+          <CopilotSwitcher circleId={circleId} />
           <Input
             placeholder="Title (optional)"
             value={title}

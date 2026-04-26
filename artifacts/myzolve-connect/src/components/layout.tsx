@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Heart, Home, Users, Bell, Settings, LogOut, Menu, Check, Compass, MessageCircle, Star } from "lucide-react";
+import { Heart, Home, Users, Bell, Settings, LogOut, Menu, Check, Compass, MessageCircle, Star, Sparkles, Flag } from "lucide-react";
 import { useClerk, useUser } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -7,10 +7,20 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useUnreadCount, useMessageInbox, useNotifications, useMarkNotificationRead, useMyPlusStatus } from "@/hooks/use-api";
+import { useUnreadCount, useMessageInbox, useNotifications, useMarkNotificationRead, useMyPlusStatus, type Notification } from "@/hooks/use-api";
 import { PlusBadge } from "@/components/plus-badge";
 import { displayEmail } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import {
+  useGetLatestWrapup,
+  useReviewCopilotPost,
+  getListNotificationsQueryKey,
+  getGetNotificationUnreadCountQueryKey,
+  getGetLatestWrapupQueryKey,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 const notificationTypeLabel: Record<string, string> = {
   new_contribution: "Support received",
@@ -24,7 +34,56 @@ const notificationTypeLabel: Record<string, string> = {
   circle_invitation: "Circle invitation",
   ownership_transferred: "Ownership transferred",
   direct_message: "New message",
+  copilot_invite_received: "Co-pilot invitation",
+  copilot_post_made: "Posted on your behalf",
+  wrapup_weekly: "Weekly wrap-up",
+  wrapup_monthly: "Monthly wrap-up",
 };
+
+const COPILOT_ENTITY_TYPES = new Set([
+  "support_request",
+  "comment",
+  "gratitude_note",
+  "circle_post",
+]);
+type CopilotEntityType =
+  | "support_request"
+  | "comment"
+  | "gratitude_note"
+  | "circle_post";
+
+function WrapupBell() {
+  const { isSignedIn } = useUser();
+  const { data: weekly } = useGetLatestWrapup(
+    { kind: "weekly" },
+    { query: { enabled: !!isSignedIn } },
+  );
+  const { data: monthly } = useGetLatestWrapup(
+    { kind: "monthly" },
+    { query: { enabled: !!isSignedIn } },
+  );
+  const hasUnread = (!!weekly && !weekly.readAt) || (!!monthly && !monthly.readAt);
+  const target = monthly && !monthly.readAt && (!weekly || weekly.readAt)
+    ? "/wrapup?kind=monthly"
+    : "/wrapup";
+
+  return (
+    <Link href={target}>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="relative rounded-full text-muted-foreground hover:text-foreground"
+        data-testid="button-wrapup-bell"
+        title="Gratitude wrap-ups"
+      >
+        <Sparkles className="w-5 h-5" />
+        {hasUnread && (
+          <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-orange-500 ring-2 ring-card" />
+        )}
+      </Button>
+    </Link>
+  );
+}
 
 function NotificationDrawer() {
   const { data: unreadData } = useUnreadCount();
@@ -32,6 +91,80 @@ function NotificationDrawer() {
   const { data: notifData } = useNotifications(20);
   const notifications = notifData?.notifications ?? [];
   const markRead = useMarkNotificationRead();
+  const review = useReviewCopilotPost();
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const [reviewing, setReviewing] = useState<{
+    id: number;
+    decision: "approved" | "flagged";
+  } | null>(null);
+
+  function invalidateAll() {
+    qc.invalidateQueries({ queryKey: getListNotificationsQueryKey() });
+    qc.invalidateQueries({ queryKey: getGetNotificationUnreadCountQueryKey() });
+  }
+
+  function handleTap(n: Notification) {
+    if (!n.isRead) {
+      markRead.mutate(n.id, { onSuccess: invalidateAll });
+    }
+    if (n.notificationType === "copilot_invite_received") {
+      setLocation("/settings");
+      return;
+    }
+    if (n.notificationType === "wrapup_weekly") {
+      setLocation("/wrapup");
+      qc.invalidateQueries({ queryKey: getGetLatestWrapupQueryKey({ kind: "weekly" }) });
+      return;
+    }
+    if (n.notificationType === "wrapup_monthly") {
+      setLocation("/wrapup?kind=monthly");
+      qc.invalidateQueries({ queryKey: getGetLatestWrapupQueryKey({ kind: "monthly" }) });
+      return;
+    }
+    if (n.targetEntityType === "support_request" && n.targetEntityId) {
+      setLocation(`/requests/${n.targetEntityId}`);
+    } else if (n.targetEntityType === "circle" && n.targetEntityId) {
+      setLocation(`/circles/${n.targetEntityId}`);
+    } else if (
+      (n.targetEntityType === "circle_post" || n.targetEntityType === "comment") &&
+      n.circleId
+    ) {
+      setLocation(`/circles/${n.circleId}/wall`);
+    } else if (n.targetEntityType === "gratitude_note" && n.circleId) {
+      setLocation(`/circles/${n.circleId}`);
+    }
+  }
+
+  function submitReview(
+    notificationId: number,
+    entityType: CopilotEntityType,
+    entityId: number,
+    decision: "approved" | "flagged",
+  ) {
+    setReviewing({ id: notificationId, decision });
+    review.mutate(
+      { entityType, entityId, data: { review: decision } },
+      {
+        onSuccess: () => {
+          markRead.mutate(notificationId, { onSuccess: invalidateAll });
+          setReviewing(null);
+          toast({
+            title: decision === "approved" ? "Approved" : "Flagged",
+            description:
+              decision === "approved"
+                ? "Thanks — the post stays as-is."
+                : "Got it — the post has been flagged for review.",
+          });
+        },
+        onError: () => {
+          setReviewing(null);
+          toast({ title: "Could not save review.", variant: "destructive" });
+        },
+      },
+    );
+  }
 
   return (
     <Sheet>
@@ -62,35 +195,90 @@ function NotificationDrawer() {
             </div>
           ) : (
             <div className="divide-y divide-border/50">
-              {notifications.map((n) => (
-                <div
-                  key={n.id}
-                  className={`p-4 transition-colors ${!n.isRead ? "bg-primary/3" : "bg-background"}`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${!n.isRead ? "bg-primary" : "bg-transparent"}`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-muted-foreground mb-0.5">
-                        {notificationTypeLabel[n.notificationType] ?? n.notificationType}
-                      </p>
-                      <p className="text-sm font-medium leading-snug">{n.title}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{n.body}</p>
-                      <p className="text-[10px] text-muted-foreground/60 mt-1">
-                        {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
-                      </p>
+              {notifications.map((n) => {
+                const isCopilotPost =
+                  n.notificationType === "copilot_post_made" &&
+                  !!n.targetEntityType &&
+                  COPILOT_ENTITY_TYPES.has(n.targetEntityType) &&
+                  !!n.targetEntityId;
+                const isReviewing = reviewing?.id === n.id;
+                return (
+                  <div
+                    key={n.id}
+                    className={`p-4 transition-colors ${!n.isRead ? "bg-primary/3" : "bg-background"}`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${!n.isRead ? "bg-primary" : "bg-transparent"}`} />
+                      <div className="flex-1 min-w-0">
+                        <button
+                          type="button"
+                          onClick={() => handleTap(n)}
+                          className="text-left w-full"
+                          data-testid={`notification-tap-${n.id}`}
+                        >
+                          <p className="text-xs font-medium text-muted-foreground mb-0.5">
+                            {notificationTypeLabel[n.notificationType] ?? n.notificationType}
+                          </p>
+                          <p className="text-sm font-medium leading-snug">{n.title}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{n.body}</p>
+                          <p className="text-[10px] text-muted-foreground/60 mt-1">
+                            {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                          </p>
+                        </button>
+                        {isCopilotPost && (
+                          <div className="flex gap-2 mt-3">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="rounded-full h-8 text-xs gap-1"
+                              disabled={isReviewing}
+                              onClick={() =>
+                                submitReview(
+                                  n.id,
+                                  n.targetEntityType as CopilotEntityType,
+                                  n.targetEntityId!,
+                                  "approved",
+                                )
+                              }
+                              data-testid={`copilot-approve-${n.id}`}
+                            >
+                              <Check className="w-3 h-3" />
+                              Looks good
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="rounded-full h-8 text-xs gap-1 text-destructive hover:text-destructive"
+                              disabled={isReviewing}
+                              onClick={() =>
+                                submitReview(
+                                  n.id,
+                                  n.targetEntityType as CopilotEntityType,
+                                  n.targetEntityId!,
+                                  "flagged",
+                                )
+                              }
+                              data-testid={`copilot-flag-${n.id}`}
+                            >
+                              <Flag className="w-3 h-3" />
+                              Flag
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      {!n.isRead && (
+                        <button
+                          className="p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+                          onClick={() => markRead.mutate(n.id, { onSuccess: invalidateAll })}
+                          title="Mark as read"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
-                    {!n.isRead && (
-                      <button
-                        className="p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
-                        onClick={() => markRead.mutate(n.id)}
-                        title="Mark as read"
-                      >
-                        <Check className="w-3.5 h-3.5" />
-                      </button>
-                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </ScrollArea>
@@ -171,6 +359,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           MyZolve Connect
         </Link>
         <div className="flex items-center gap-2">
+          <WrapupBell />
           <NotificationDrawer />
           <Sheet>
             <SheetTrigger asChild>
@@ -203,6 +392,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Top bar for desktop with user menu */}
         <header className="hidden md:flex items-center justify-end p-6">
           <div className="flex items-center gap-4">
+            <WrapupBell />
             <NotificationDrawer />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

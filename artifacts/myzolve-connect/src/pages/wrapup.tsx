@@ -121,11 +121,11 @@ export default function WrapupPage() {
         <CurrentWrapupCard wrapup={latest} />
       )}
 
-      {history && history.wrapups.length > 1 && (
+      {history && history.length > 1 && (
         <section>
           <h2 className="text-lg font-semibold mb-4">Earlier wrap-ups</h2>
           <div className="space-y-3">
-            {history.wrapups
+            {history
               .filter((w) => w.id !== latest?.id)
               .map((w) => (
                 <Card
