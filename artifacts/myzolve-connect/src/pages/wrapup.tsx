@@ -8,6 +8,7 @@ import {
   Smile,
   Star,
   CalendarDays,
+  ChevronDown,
 } from "lucide-react";
 import {
   useGetLatestWrapup,
@@ -85,27 +86,49 @@ export default function WrapupPage() {
 
   const latest = kind === "weekly" ? weeklyLatest : monthlyLatest;
   const isLoading = latest === undefined;
-  const { data: history } = useListWrapups({ kind, limit: 8 });
+  const { data: weeklyHistory } = useListWrapups({ kind: "weekly", limit: 8 });
+  const { data: monthlyHistory } = useListWrapups({ kind: "monthly", limit: 8 });
   const markRead = useMarkWrapupRead();
+  const [expandedHistoryId, setExpandedHistoryId] = useState<number | null>(null);
+
+  function refreshAfterRead(targetKind: "weekly" | "monthly") {
+    queryClient.invalidateQueries({
+      queryKey: getGetLatestWrapupQueryKey({ kind: targetKind }),
+    });
+    queryClient.invalidateQueries({
+      queryKey: getListWrapupsQueryKey({ kind: targetKind, limit: 8 }),
+    });
+  }
+
+  function markWrapupRead(w: Wrapup) {
+    if (w.readAt) return;
+    markRead.mutate(
+      { wrapupId: w.id },
+      { onSuccess: () => refreshAfterRead(w.kind) },
+    );
+  }
 
   useEffect(() => {
-    if (latest && !latest.readAt) {
-      markRead.mutate(
-        { wrapupId: latest.id },
-        {
-          onSuccess: () => {
-            queryClient.invalidateQueries({
-              queryKey: getGetLatestWrapupQueryKey({ kind }),
-            });
-            queryClient.invalidateQueries({
-              queryKey: getListWrapupsQueryKey({ kind, limit: 8 }),
-            });
-          },
-        },
-      );
-    }
+    if (latest) markWrapupRead(latest);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [latest?.id]);
+
+  // History merges both kinds, newest first, excluding the currently visible latest.
+  const history = useMemo<Wrapup[]>(() => {
+    const all = [...(weeklyHistory ?? []), ...(monthlyHistory ?? [])];
+    return all
+      .filter((w) => w.id !== latest?.id)
+      .sort((a, b) => parseISO(b.periodEnd).getTime() - parseISO(a.periodEnd).getTime());
+  }, [weeklyHistory, monthlyHistory, latest?.id]);
+
+  function toggleHistory(w: Wrapup) {
+    if (expandedHistoryId === w.id) {
+      setExpandedHistoryId(null);
+    } else {
+      setExpandedHistoryId(w.id);
+      markWrapupRead(w);
+    }
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 max-w-3xl mx-auto">
@@ -151,40 +174,82 @@ export default function WrapupPage() {
         <CurrentWrapupCard wrapup={latest} />
       )}
 
-      {history && history.length > 1 && (
+      {history.length > 0 && (
         <section>
           <h2 className="text-lg font-semibold mb-4">Earlier wrap-ups</h2>
+          <p className="text-xs text-muted-foreground mb-3">
+            Both weekly and monthly recaps. Tap one to open it.
+          </p>
           <div className="space-y-3">
-            {history
-              .filter((w) => w.id !== latest?.id)
-              .map((w) => (
+            {history.map((w) => {
+              const isOpen = expandedHistoryId === w.id;
+              const isUnread = !w.readAt;
+              return (
                 <Card
                   key={w.id}
-                  className="rounded-2xl border-border/50 shadow-none"
+                  className="rounded-2xl border-border/50 shadow-none overflow-hidden"
                   data-testid={`wrapup-history-${w.id}`}
                 >
-                  <CardContent className="p-4 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                      <CalendarDays className="w-5 h-5" />
+                  <button
+                    type="button"
+                    onClick={() => toggleHistory(w)}
+                    aria-expanded={isOpen}
+                    className="w-full text-left"
+                    data-testid={`wrapup-history-toggle-${w.id}`}
+                  >
+                    <div className="p-4 flex items-center gap-3 hover:bg-muted/30 transition-colors">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                        <CalendarDays className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm truncate">
+                            {w.content.periodLabel}
+                          </p>
+                          <Badge
+                            variant="outline"
+                            className="rounded-full text-[10px] uppercase tracking-wide"
+                          >
+                            {w.kind === "weekly" ? "Weekly" : "Monthly"}
+                          </Badge>
+                          {isUnread && (
+                            <span
+                              className="w-2 h-2 rounded-full bg-orange-500"
+                              aria-label="unread"
+                            />
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {format(parseISO(w.periodStart), "MMM d")} —{" "}
+                          {format(parseISO(w.periodEnd), "MMM d, yyyy")}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="text-right hidden sm:block">
+                          <p className="text-xs text-muted-foreground">Moments</p>
+                          <p className="text-sm font-semibold">
+                            {w.content.topMoments.length}
+                          </p>
+                        </div>
+                        <ChevronDown
+                          className={`w-4 h-4 text-muted-foreground transition-transform ${
+                            isOpen ? "rotate-180" : ""
+                          }`}
+                        />
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">
-                        {w.content.periodLabel}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(parseISO(w.periodStart), "MMM d")} —{" "}
-                        {format(parseISO(w.periodEnd), "MMM d, yyyy")}
-                      </p>
+                  </button>
+                  {isOpen && (
+                    <div
+                      className="border-t border-border/40 p-4 sm:p-6 bg-muted/10"
+                      data-testid={`wrapup-history-content-${w.id}`}
+                    >
+                      <CurrentWrapupCard wrapup={w} />
                     </div>
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">Moments</p>
-                      <p className="text-sm font-semibold">
-                        {w.content.topMoments.length}
-                      </p>
-                    </div>
-                  </CardContent>
+                  )}
                 </Card>
-              ))}
+              );
+            })}
           </div>
         </section>
       )}

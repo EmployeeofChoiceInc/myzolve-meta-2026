@@ -33,6 +33,8 @@ import {
   usePlaceholderMembers,
 } from "@/hooks/use-api";
 import { customFetch } from "@workspace/api-client-react";
+import { CopilotSwitcher, CopilotAttribution } from "@/components/copilot-switcher";
+import { useActingForInCircle } from "@/lib/copilot";
 
 const REACTION_ICONS: Record<string, React.ReactNode> = {
   heart: <Heart className="w-3.5 h-3.5" />,
@@ -85,6 +87,7 @@ export default function RequestDetailPage() {
   const [returnProofFile, setReturnProofFile] = useState<File | null>(null);
 
   const circleId = requestData?.circleId ?? 0;
+  const actingForUserId = useActingForInCircle(circleId);
 
   const { data: placeholders } = usePlaceholderMembers(circleId);
   const { data: comments } = useComments(circleId, "support_request", requestId);
@@ -235,7 +238,10 @@ export default function RequestDetailPage() {
   const handlePostComment = () => {
     if (!commentBody.trim()) return;
     createComment.mutate(
-      { body: commentBody.trim() },
+      {
+        body: commentBody.trim(),
+        ...(actingForUserId ? { actingForUserId } : {}),
+      },
       {
         onSuccess: () => {
           setCommentBody("");
@@ -480,6 +486,7 @@ export default function RequestDetailPage() {
             Kind Words {comments && comments.length > 0 && <span className="text-sm font-normal text-muted-foreground">({comments.length})</span>}
           </h3>
 
+          <CopilotSwitcher circleId={circleId} className="mb-1" />
           <div className="flex gap-3 items-start">
             <div className="flex-1">
               <Textarea
@@ -518,6 +525,14 @@ export default function RequestDetailPage() {
                       </Link>
                       <span className="text-xs text-muted-foreground ml-auto">{format(new Date(comment.createdAt), "MMM d")}</span>
                     </div>
+                    {comment.actingForName ? (
+                      <CopilotAttribution
+                        helperName={comment.authorName}
+                        forName={comment.actingForName}
+                        review={comment.copilotReview ?? null}
+                        size="compact"
+                      />
+                    ) : null}
                     <p className="text-sm text-foreground/90 leading-relaxed">{comment.body}</p>
                     <div className="flex items-center gap-3 mt-2">
                       <button
@@ -553,7 +568,7 @@ export default function RequestDetailPage() {
                             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                               if (!replyBody.trim()) return;
                               createComment.mutate(
-                                { body: replyBody.trim(), parentCommentId: comment.id },
+                                { body: replyBody.trim(), parentCommentId: comment.id, ...(actingForUserId ? { actingForUserId } : {}) },
                                 {
                                   onSuccess: () => {
                                     setReplyBody("");
@@ -573,7 +588,7 @@ export default function RequestDetailPage() {
                           onClick={() => {
                             if (!replyBody.trim()) return;
                             createComment.mutate(
-                              { body: replyBody.trim(), parentCommentId: comment.id },
+                              { body: replyBody.trim(), parentCommentId: comment.id, ...(actingForUserId ? { actingForUserId } : {}) },
                               {
                                 onSuccess: () => {
                                   setReplyBody("");
@@ -603,6 +618,14 @@ export default function RequestDetailPage() {
                               </Link>
                               <span className="text-xs text-muted-foreground ml-auto">{format(new Date(reply.createdAt), "MMM d")}</span>
                             </div>
+                            {reply.actingForName ? (
+                              <CopilotAttribution
+                                helperName={reply.authorName}
+                                forName={reply.actingForName}
+                                review={reply.copilotReview ?? null}
+                                size="compact"
+                              />
+                            ) : null}
                             <p className="text-sm text-foreground/80 leading-relaxed">{reply.body}</p>
                           </div>
                         ))}
