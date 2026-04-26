@@ -10,6 +10,7 @@ import {
 import { useUser } from "@clerk/react";
 import {
   useListCopilotGrants,
+  getListCopilotGrantsQueryKey,
   type CopilotGrant,
 } from "@workspace/api-client-react";
 
@@ -18,6 +19,7 @@ interface CopilotContextValue {
   setActingFor: (circleId: number, userId: number | null) => void;
   grantsAsHelper: CopilotGrant[];
   grantsAsGrantor: CopilotGrant[];
+  pendingInvitesAsHelper: CopilotGrant[];
   isLoading: boolean;
 }
 
@@ -26,6 +28,7 @@ const CopilotContext = createContext<CopilotContextValue>({
   setActingFor: () => {},
   grantsAsHelper: [],
   grantsAsGrantor: [],
+  pendingInvitesAsHelper: [],
   isLoading: false,
 });
 
@@ -33,7 +36,10 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
   const { isSignedIn } = useUser();
   const [actingFor, setActingForState] = useState<Record<number, number | null>>({});
   const { data, isLoading } = useListCopilotGrants({
-    query: { enabled: !!isSignedIn },
+    query: {
+      enabled: !!isSignedIn,
+      queryKey: getListCopilotGrantsQueryKey(),
+    },
   });
 
   const setActingFor = useCallback((circleId: number, userId: number | null) => {
@@ -46,6 +52,10 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
   );
   const grantors = useMemo(
     () => (data?.peopleWhoHelpMe ?? []).filter((g) => g.status === "active"),
+    [data],
+  );
+  const pendingInvitesAsHelper = useMemo(
+    () => (data?.peopleIHelp ?? []).filter((g) => g.status === "pending"),
     [data],
   );
 
@@ -79,9 +89,10 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
       setActingFor,
       grantsAsHelper: helpers,
       grantsAsGrantor: grantors,
+      pendingInvitesAsHelper,
       isLoading,
     }),
-    [actingFor, setActingFor, helpers, grantors, isLoading],
+    [actingFor, setActingFor, helpers, grantors, pendingInvitesAsHelper, isLoading],
   );
 
   return <CopilotContext.Provider value={value}>{children}</CopilotContext.Provider>;

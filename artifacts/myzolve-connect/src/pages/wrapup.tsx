@@ -38,26 +38,53 @@ const MOMENT_META: Record<
   reaction_received: { icon: Smile, tone: "bg-orange-500/10 text-orange-600" },
 };
 
-function useKindFromQuery(): "weekly" | "monthly" {
+function useKindFromQuery(): "weekly" | "monthly" | null {
   const [location] = useLocation();
   return useMemo(() => {
     const idx = location.indexOf("?");
-    if (idx === -1) return "weekly";
+    if (idx === -1) return null;
     const params = new URLSearchParams(location.slice(idx + 1));
-    return params.get("kind") === "monthly" ? "monthly" : "weekly";
+    const v = params.get("kind");
+    if (v === "monthly") return "monthly";
+    if (v === "weekly") return "weekly";
+    return null;
   }, [location]);
 }
 
 export default function WrapupPage() {
-  const initialKind = useKindFromQuery();
-  const [kind, setKind] = useState<"weekly" | "monthly">(initialKind);
+  const requestedKind = useKindFromQuery();
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    setKind(initialKind);
-  }, [initialKind]);
+  // Pre-fetch both kinds so we can pick whichever is unread for the initial view.
+  const { data: weeklyLatest } = useGetLatestWrapup({ kind: "weekly" });
+  const { data: monthlyLatest } = useGetLatestWrapup({ kind: "monthly" });
 
-  const { data: latest, isLoading } = useGetLatestWrapup({ kind });
+  const [kind, setKind] = useState<"weekly" | "monthly">("weekly");
+  const [defaulted, setDefaulted] = useState(false);
+
+  // Apply the URL kind immediately whenever it changes.
+  useEffect(() => {
+    if (requestedKind) {
+      setKind(requestedKind);
+      setDefaulted(true);
+    }
+  }, [requestedKind]);
+
+  // Apply the unread-aware default once, on first load, only if no URL kind is set.
+  useEffect(() => {
+    if (defaulted) return;
+    if (requestedKind) return;
+    if (weeklyLatest === undefined || monthlyLatest === undefined) return;
+    if (weeklyLatest && !weeklyLatest.readAt) {
+      setKind("weekly");
+    } else if (monthlyLatest && !monthlyLatest.readAt) {
+      setKind("monthly");
+    }
+    setDefaulted(true);
+  }, [defaulted, requestedKind, weeklyLatest, monthlyLatest]);
+
+  const latest = kind === "weekly" ? weeklyLatest : monthlyLatest;
+  const isLoading = latest === undefined;
   const { data: history } = useListWrapups({ kind, limit: 8 });
   const markRead = useMarkWrapupRead();
 
@@ -96,7 +123,10 @@ export default function WrapupPage() {
               type="button"
               role="tab"
               aria-selected={kind === k}
-              onClick={() => setKind(k)}
+              onClick={() => {
+                setDefaulted(true);
+                setKind(k);
+              }}
               className={`px-4 py-1.5 text-sm font-medium rounded-full transition-colors ${
                 kind === k
                   ? "bg-primary text-primary-foreground"

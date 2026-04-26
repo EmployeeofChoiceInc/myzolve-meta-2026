@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Heart, Home, Users, Bell, Settings, LogOut, Menu, Check, Compass, MessageCircle, Star, Sparkles, Flag } from "lucide-react";
+import { Heart, Home, Users, Bell, Settings, LogOut, Menu, Check, Compass, MessageCircle, Star, Flag, X as XIcon } from "lucide-react";
 import { useClerk, useUser } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -14,11 +14,13 @@ import { formatDistanceToNow } from "date-fns";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import {
-  useGetLatestWrapup,
   useReviewCopilotPost,
+  useAcceptCopilotGrant,
+  useDeclineCopilotGrant,
   getListNotificationsQueryKey,
   getGetNotificationUnreadCountQueryKey,
   getGetLatestWrapupQueryKey,
+  getListCopilotGrantsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -52,39 +54,6 @@ type CopilotEntityType =
   | "gratitude_note"
   | "circle_post";
 
-function WrapupBell() {
-  const { isSignedIn } = useUser();
-  const { data: weekly } = useGetLatestWrapup(
-    { kind: "weekly" },
-    { query: { enabled: !!isSignedIn } },
-  );
-  const { data: monthly } = useGetLatestWrapup(
-    { kind: "monthly" },
-    { query: { enabled: !!isSignedIn } },
-  );
-  const hasUnread = (!!weekly && !weekly.readAt) || (!!monthly && !monthly.readAt);
-  const target = monthly && !monthly.readAt && (!weekly || weekly.readAt)
-    ? "/wrapup?kind=monthly"
-    : "/wrapup";
-
-  return (
-    <Link href={target}>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="relative rounded-full text-muted-foreground hover:text-foreground"
-        data-testid="button-wrapup-bell"
-        title="Gratitude wrap-ups"
-      >
-        <Sparkles className="w-5 h-5" />
-        {hasUnread && (
-          <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-orange-500 ring-2 ring-card" />
-        )}
-      </Button>
-    </Link>
-  );
-}
-
 function NotificationDrawer() {
   const { data: unreadData } = useUnreadCount();
   const unreadCount = unreadData?.unreadCount ?? 0;
@@ -92,6 +61,8 @@ function NotificationDrawer() {
   const notifications = notifData?.notifications ?? [];
   const markRead = useMarkNotificationRead();
   const review = useReviewCopilotPost();
+  const acceptGrant = useAcceptCopilotGrant();
+  const declineGrant = useDeclineCopilotGrant();
   const qc = useQueryClient();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -99,10 +70,48 @@ function NotificationDrawer() {
     id: number;
     decision: "approved" | "flagged";
   } | null>(null);
+  const [respondingGrantNotifId, setRespondingGrantNotifId] = useState<number | null>(null);
 
   function invalidateAll() {
     qc.invalidateQueries({ queryKey: getListNotificationsQueryKey() });
     qc.invalidateQueries({ queryKey: getGetNotificationUnreadCountQueryKey() });
+  }
+
+  function respondToInvite(notification: Notification, action: "accept" | "decline") {
+    const grantId = notification.targetEntityId;
+    if (!grantId) {
+      setLocation("/settings");
+      return;
+    }
+    setRespondingGrantNotifId(notification.id);
+    const mutation = action === "accept" ? acceptGrant : declineGrant;
+    mutation.mutate(
+      { grantId },
+      {
+        onSuccess: () => {
+          markRead.mutate(notification.id, { onSuccess: invalidateAll });
+          qc.invalidateQueries({ queryKey: getListCopilotGrantsQueryKey() });
+          setRespondingGrantNotifId(null);
+          toast({
+            title: action === "accept" ? "Invitation accepted" : "Invitation declined",
+            description:
+              action === "accept"
+                ? "You can now post on their behalf."
+                : "We let them know.",
+          });
+        },
+        onError: () => {
+          setRespondingGrantNotifId(null);
+          toast({
+            title:
+              action === "accept"
+                ? "Could not accept invitation."
+                : "Could not decline invitation.",
+            variant: "destructive",
+          });
+        },
+      },
+    );
   }
 
   function handleTap(n: Notification) {
@@ -201,7 +210,11 @@ function NotificationDrawer() {
                   !!n.targetEntityType &&
                   COPILOT_ENTITY_TYPES.has(n.targetEntityType) &&
                   !!n.targetEntityId;
+                const isCopilotInvite =
+                  n.notificationType === "copilot_invite_received" &&
+                  !!n.targetEntityId;
                 const isReviewing = reviewing?.id === n.id;
+                const isRespondingInvite = respondingGrantNotifId === n.id;
                 return (
                   <div
                     key={n.id}
@@ -262,6 +275,31 @@ function NotificationDrawer() {
                             >
                               <Flag className="w-3 h-3" />
                               Flag
+                            </Button>
+                          </div>
+                        )}
+                        {isCopilotInvite && (
+                          <div className="flex gap-2 mt-3">
+                            <Button
+                              size="sm"
+                              className="rounded-full h-8 text-xs gap-1"
+                              disabled={isRespondingInvite}
+                              onClick={() => respondToInvite(n, "accept")}
+                              data-testid={`copilot-accept-invite-${n.id}`}
+                            >
+                              <Check className="w-3 h-3" />
+                              Accept
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="rounded-full h-8 text-xs gap-1 text-muted-foreground"
+                              disabled={isRespondingInvite}
+                              onClick={() => respondToInvite(n, "decline")}
+                              data-testid={`copilot-decline-invite-${n.id}`}
+                            >
+                              <XIcon className="w-3 h-3" />
+                              Decline
                             </Button>
                           </div>
                         )}
@@ -359,7 +397,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           MyZolve Connect
         </Link>
         <div className="flex items-center gap-2">
-          <WrapupBell />
           <NotificationDrawer />
           <Sheet>
             <SheetTrigger asChild>
@@ -392,7 +429,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Top bar for desktop with user menu */}
         <header className="hidden md:flex items-center justify-end p-6">
           <div className="flex items-center gap-4">
-            <WrapupBell />
             <NotificationDrawer />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

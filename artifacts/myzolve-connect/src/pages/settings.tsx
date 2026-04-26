@@ -20,7 +20,7 @@ import {
   useMyPlusStatus,
   objectPathToUrl,
 } from "@/hooks/use-api";
-import { Camera, Star, ChevronRight, UserCheck, UserPlus, Trash2, Users, Sparkles } from "lucide-react";
+import { Camera, Star, ChevronRight, UserCheck, UserPlus, Trash2, Users, Sparkles, Check, X as XIcon, Inbox } from "lucide-react";
 import { Link } from "wouter";
 import { PlusBadge } from "@/components/plus-badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -29,8 +29,11 @@ import { useCopilot } from "@/lib/copilot";
 import {
   useListCircles,
   useListCircleMembers,
+  getListCircleMembersQueryKey,
   useInviteCopilot,
   useRevokeCopilotGrant,
+  useAcceptCopilotGrant,
+  useDeclineCopilotGrant,
   getListCopilotGrantsQueryKey,
   type CopilotGrant,
 } from "@workspace/api-client-react";
@@ -389,11 +392,17 @@ export default function SettingsPage() {
 }
 
 function CopilotSection() {
-  const { grantsAsHelper, grantsAsGrantor, isLoading } = useCopilot();
+  const { grantsAsHelper, grantsAsGrantor, pendingInvitesAsHelper, isLoading } = useCopilot();
   const [inviteOpen, setInviteOpen] = useState(false);
   const revoke = useRevokeCopilotGrant();
+  const accept = useAcceptCopilotGrant();
+  const decline = useDeclineCopilotGrant();
   const qc = useQueryClient();
   const { toast } = useToast();
+
+  function refresh() {
+    qc.invalidateQueries({ queryKey: getListCopilotGrantsQueryKey() });
+  }
 
   function handleRevoke(grant: CopilotGrant) {
     if (!confirm("Remove this co-pilot connection?")) return;
@@ -402,10 +411,38 @@ function CopilotSection() {
       {
         onSuccess: () => {
           toast({ title: "Connection removed" });
-          qc.invalidateQueries({ queryKey: getListCopilotGrantsQueryKey() });
+          refresh();
         },
         onError: () =>
           toast({ title: "Could not remove connection", variant: "destructive" }),
+      },
+    );
+  }
+
+  function handleAccept(grant: CopilotGrant) {
+    accept.mutate(
+      { grantId: grant.id },
+      {
+        onSuccess: () => {
+          toast({ title: "Invitation accepted" });
+          refresh();
+        },
+        onError: () =>
+          toast({ title: "Could not accept invitation", variant: "destructive" }),
+      },
+    );
+  }
+
+  function handleDecline(grant: CopilotGrant) {
+    decline.mutate(
+      { grantId: grant.id },
+      {
+        onSuccess: () => {
+          toast({ title: "Invitation declined" });
+          refresh();
+        },
+        onError: () =>
+          toast({ title: "Could not decline invitation", variant: "destructive" }),
       },
     );
   }
@@ -443,6 +480,65 @@ function CopilotSection() {
           </div>
         ) : (
           <>
+            {pendingInvitesAsHelper.length > 0 && (
+              <div data-testid="copilot-pending-invites">
+                <div className="flex items-center gap-2 mb-2">
+                  <Inbox className="w-4 h-4 text-muted-foreground" />
+                  <p className="text-sm font-semibold">Pending invitations</p>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Someone has asked you to be their co-pilot.
+                </p>
+                <div className="space-y-2">
+                  {pendingInvitesAsHelper.map((g) => {
+                    const url = objectPathToUrl(g.grantorAvatarObjectPath ?? null);
+                    const label = g.grantorName ?? "Member";
+                    const busy = accept.isPending || decline.isPending;
+                    return (
+                      <div
+                        key={g.id}
+                        className="flex items-center gap-3 p-3 rounded-2xl border border-border/40 bg-primary/5"
+                        data-testid={`copilot-pending-${g.id}`}
+                      >
+                        <Avatar className="w-9 h-9">
+                          {url ? <AvatarImage src={url} alt={label} /> : null}
+                          <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                            {label.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{label}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {g.circleName ?? `Circle #${g.circleId}`}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="rounded-full h-8 text-xs gap-1"
+                          disabled={busy}
+                          onClick={() => handleAccept(g)}
+                          data-testid={`button-accept-grant-${g.id}`}
+                        >
+                          <Check className="w-3 h-3" />
+                          Accept
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="rounded-full h-8 text-xs gap-1 text-muted-foreground"
+                          disabled={busy}
+                          onClick={() => handleDecline(g)}
+                          data-testid={`button-decline-grant-${g.id}`}
+                        >
+                          <XIcon className="w-3 h-3" />
+                          Decline
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <CopilotGrantList
               title="People who help you"
               description="They can post on your behalf in their circle."
@@ -550,7 +646,10 @@ function InviteCopilotDialog({
   const [helperId, setHelperId] = useState<string>("");
   const numericCircleId = circleId ? Number(circleId) : null;
   const { data: members } = useListCircleMembers(numericCircleId ?? 0, {
-    query: { enabled: !!numericCircleId },
+    query: {
+      enabled: !!numericCircleId,
+      queryKey: getListCircleMembersQueryKey(numericCircleId ?? 0),
+    },
   });
   const invite = useInviteCopilot();
   const { toast } = useToast();

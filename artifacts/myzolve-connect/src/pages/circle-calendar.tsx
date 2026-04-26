@@ -108,7 +108,10 @@ export default function CircleCalendarPage() {
   });
 
   const { data: careDates = [], isLoading } = useListCareDates(circleId, {
-    query: { enabled: !!circleId },
+    query: {
+      enabled: !!circleId,
+      queryKey: getListCareDatesQueryKey(circleId),
+    },
   });
 
   const createCareDate = useCreateCareDate();
