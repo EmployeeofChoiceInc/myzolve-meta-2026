@@ -18,7 +18,9 @@ import {
   useCreateCareDate,
   useUpdateCareDate,
   useDeleteCareDate,
+  useListCircleMembers,
   getListCareDatesQueryKey,
+  getListCircleMembersQueryKey,
   getListUpcomingCareDatesQueryKey,
   CareDateKind,
   type CareDate,
@@ -87,6 +89,7 @@ interface FormState {
   kind: CareDate["kind"];
   isAnnual: boolean;
   note: string;
+  targetUserId: string; // "" means "no specific person"
 }
 
 const EMPTY_FORM: FormState = {
@@ -95,6 +98,7 @@ const EMPTY_FORM: FormState = {
   kind: "birthday",
   isAnnual: true,
   note: "",
+  targetUserId: "",
 };
 
 export default function CircleCalendarPage() {
@@ -111,6 +115,13 @@ export default function CircleCalendarPage() {
     query: {
       enabled: !!circleId,
       queryKey: getListCareDatesQueryKey(circleId),
+    },
+  });
+
+  const { data: members = [] } = useListCircleMembers(circleId, {
+    query: {
+      enabled: !!circleId,
+      queryKey: getListCircleMembersQueryKey(circleId),
     },
   });
 
@@ -168,6 +179,7 @@ export default function CircleCalendarPage() {
       kind: c.kind,
       isAnnual: c.isAnnual,
       note: c.note ?? "",
+      targetUserId: c.targetUserId != null ? String(c.targetUserId) : "",
     });
     setDialogOpen(true);
   }
@@ -187,12 +199,14 @@ export default function CircleCalendarPage() {
       toast({ title: "Please add a name", variant: "destructive" });
       return;
     }
+    const targetUserIdNum = form.targetUserId ? Number(form.targetUserId) : undefined;
     const payload = {
       name: form.name.trim(),
       eventDate: form.eventDate,
       kind: form.kind,
       isAnnual: form.isAnnual,
       note: form.note.trim() ? form.note.trim() : undefined,
+      ...(targetUserIdNum ? { targetUserId: targetUserIdNum } : {}),
     };
 
     if (editing) {
@@ -421,6 +435,35 @@ export default function CircleCalendarPage() {
                 onCheckedChange={(v) => setForm({ ...form, isAnnual: v })}
                 data-testid="switch-care-date-annual"
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label>For someone in this circle (optional)</Label>
+              <Select
+                value={form.targetUserId === "" ? "__none__" : form.targetUserId}
+                onValueChange={(v) =>
+                  setForm({ ...form, targetUserId: v === "__none__" ? "" : v })
+                }
+              >
+                <SelectTrigger
+                  className="rounded-xl"
+                  data-testid="select-care-date-recipient"
+                >
+                  <SelectValue placeholder="No specific person" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No specific person</SelectItem>
+                  {members
+                    .filter((m) => m.userId != null)
+                    .map((m) => (
+                      <SelectItem key={m.id} value={String(m.userId)}>
+                        {m.displayName || m.email || `Member #${m.userId}`}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Helpful for birthdays or appointments tied to one person.
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="cd-note">Note (optional)</Label>
