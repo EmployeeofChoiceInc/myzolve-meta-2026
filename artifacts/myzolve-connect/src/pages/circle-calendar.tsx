@@ -322,7 +322,7 @@ export default function CircleCalendarPage() {
           ) : selectedDayDates.length === 0 ? (
             <Card className="rounded-2xl border-dashed border-border/50 shadow-none">
               <CardContent className="p-6 text-center text-sm text-muted-foreground">
-                No care dates on this day.
+                Nothing on the calendar for this day yet.
                 <div className="mt-3">
                   <Button
                     variant="outline"

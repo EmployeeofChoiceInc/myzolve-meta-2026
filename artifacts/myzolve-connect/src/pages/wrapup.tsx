@@ -397,6 +397,7 @@ function StatBox({
 }
 
 function EmptyState({ kind }: { kind: "weekly" | "monthly" }) {
+  const [, navigate] = useLocation();
   return (
     <Card className="rounded-3xl border-border/50 shadow-none">
       <CardContent className="p-10 text-center">
@@ -404,7 +405,9 @@ function EmptyState({ kind }: { kind: "weekly" | "monthly" }) {
           <Sparkles className="w-7 h-7" />
         </div>
         <h3 className="text-lg font-semibold mb-1">
-          Your first {kind === "weekly" ? "weekly" : "monthly"} wrap-up is on its way
+          {kind === "weekly"
+            ? "Your first wrap-up will arrive on Sunday."
+            : "Your first monthly wrap-up will arrive at month's end."}
         </h3>
         <p className="text-sm text-muted-foreground max-w-md mx-auto">
           We send a fresh recap of your circle's care moments {kind === "weekly" ? "every week" : "every month"}.
@@ -413,7 +416,7 @@ function EmptyState({ kind }: { kind: "weekly" | "monthly" }) {
         <Button
           variant="outline"
           className="rounded-full mt-6"
-          onClick={() => (window.location.href = "/dashboard")}
+          onClick={() => navigate("/dashboard")}
         >
           Back to home
         </Button>
