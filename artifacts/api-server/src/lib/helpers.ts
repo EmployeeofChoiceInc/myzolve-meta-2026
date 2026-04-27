@@ -1,6 +1,15 @@
 import { db } from "@workspace/db";
-import { circleMembersTable, usersTable, notificationsTable, auditLogsTable, notificationPreferencesTable, copilotGrantsTable } from "@workspace/db";
-import { eq, and, inArray, ne } from "drizzle-orm";
+import {
+  circleMembersTable,
+  usersTable,
+  notificationsTable,
+  auditLogsTable,
+  notificationPreferencesTable,
+  copilotGrantsTable,
+  userBlocksTable,
+  userConnectionsTable,
+} from "@workspace/db";
+import { eq, and, inArray, ne, or } from "drizzle-orm";
 import { dispatchPushToUser } from "./pushNotifications";
 
 export async function assertCircleMember(circleId: number, userId: number) {
@@ -199,6 +208,82 @@ export async function resolveActingFor(params: {
   }
   const actingForName = await getUserName(params.actingForUserId);
   return { actingForUserId: params.actingForUserId, actingForName };
+}
+
+/**
+ * Returns true if either user has blocked the other. Used to short-circuit
+ * profile views, search hits, message sends, comments, and connection
+ * requests so blocked pairs cannot reach each other server-side.
+ */
+export async function isBlockedEitherWay(a: number, b: number): Promise<boolean> {
+  if (a === b) return false;
+  const row = await db
+    .select({ id: userBlocksTable.id })
+    .from(userBlocksTable)
+    .where(
+      or(
+        and(eq(userBlocksTable.blockerUserId, a), eq(userBlocksTable.blockedUserId, b)),
+        and(eq(userBlocksTable.blockerUserId, b), eq(userBlocksTable.blockedUserId, a)),
+      ),
+    )
+    .limit(1)
+    .then((r) => r[0] ?? null);
+  return !!row;
+}
+
+/**
+ * Returns the set of user IDs that should be excluded from any list
+ * relevant to `meId`: anyone I've blocked, AND anyone who has blocked me.
+ * Cheap enough (single query) to call inline in search / list endpoints.
+ */
+export async function getBlockedUserIdSet(meId: number): Promise<Set<number>> {
+  const rows = await db
+    .select({
+      blockerUserId: userBlocksTable.blockerUserId,
+      blockedUserId: userBlocksTable.blockedUserId,
+    })
+    .from(userBlocksTable)
+    .where(
+      or(
+        eq(userBlocksTable.blockerUserId, meId),
+        eq(userBlocksTable.blockedUserId, meId),
+      ),
+    );
+  const out = new Set<number>();
+  for (const r of rows) {
+    if (r.blockerUserId === meId) out.add(r.blockedUserId);
+    if (r.blockedUserId === meId) out.add(r.blockerUserId);
+  }
+  return out;
+}
+
+/**
+ * Returns true if `a` and `b` have an accepted user-to-user connection.
+ * Cheap to call inline from `canMessage`-style helpers.
+ */
+export async function hasAcceptedUserConnection(a: number, b: number): Promise<boolean> {
+  if (a === b) return false;
+  const row = await db
+    .select({ id: userConnectionsTable.id })
+    .from(userConnectionsTable)
+    .where(
+      and(
+        eq(userConnectionsTable.status, "accepted"),
+        or(
+          and(
+            eq(userConnectionsTable.initiatorUserId, a),
+            eq(userConnectionsTable.receiverUserId, b),
+          ),
+          and(
+            eq(userConnectionsTable.initiatorUserId, b),
+            eq(userConnectionsTable.receiverUserId, a),
+          ),
+        ),
+      ),
+    )
+    .limit(1)
+    .then((r) => r[0] ?? null);
+  return !!row;
 }
 
 export async function createAuditLog(params: {

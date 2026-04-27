@@ -11,7 +11,11 @@ import {
   notificationsTable,
 } from "@workspace/db";
 import { eq, and, or, desc, asc, isNull, inArray } from "drizzle-orm";
-import { createNotification } from "../lib/helpers";
+import {
+  createNotification,
+  hasAcceptedUserConnection,
+  isBlockedEitherWay,
+} from "../lib/helpers";
 
 const router = Router();
 
@@ -23,8 +27,21 @@ const sendMessageSchema = z.object({
   body: z.string().min(1).max(5000),
 });
 
-/** Checks if two users share at least one active circle OR both own a circle. */
+/**
+ * Decides whether `senderId` may message `recipientId`. As of Task #95
+ * the rule is:
+ *
+ *   1. A block in either direction always returns false.
+ *   2. Otherwise, allow if they share at least one active circle.
+ *   3. Otherwise, allow if they have an accepted user-to-user connection.
+ *   4. Otherwise, fall back to the legacy "both are circle creators"
+ *      grandfather rule (kept so onboarding owners can still reach each
+ *      other through the Find People page before either has invited
+ *      anyone).
+ */
 async function canMessage(senderId: number, recipientId: number): Promise<boolean> {
+  if (await isBlockedEitherWay(senderId, recipientId)) return false;
+
   // Get circles where sender is an active member
   const senderCircles = await db
     .select({ circleId: circleMembersTable.circleId })
@@ -46,6 +63,8 @@ async function canMessage(senderId: number, recipientId: number): Promise<boolea
       .limit(1);
     if (shared.length > 0) return true;
   }
+
+  if (await hasAcceptedUserConnection(senderId, recipientId)) return true;
 
   // Both are circle creators?
   const [senderCircle, recipientCircle] = await Promise.all([

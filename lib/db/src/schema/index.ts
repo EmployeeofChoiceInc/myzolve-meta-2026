@@ -8,6 +8,7 @@ export * from "./notifications";
 export * from "./disputes";
 export * from "./placeholders";
 export * from "./connections";
+export * from "./userConnections";
 export * from "./attachments";
 export * from "./audit";
 export * from "./messages";

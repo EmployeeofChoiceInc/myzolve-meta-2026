@@ -31,6 +31,7 @@ import type {
   CircleStats,
   CircleVerificationApplicationBody,
   CircleVerificationDecisionBody,
+  CircleVisibilityEntry,
   Comment,
   Contribution,
   CopilotGrant,
@@ -75,6 +76,7 @@ import type {
   ListAuditLogParams,
   ListCommentsParams,
   ListDisputesParams,
+  ListMyUserConnectionsParams,
   ListNotificationsParams,
   ListServicePostsParams,
   ListSupportRequestsParams,
@@ -91,15 +93,18 @@ import type {
   PendingCircleVerification,
   PlaceholderMember,
   PlusStatus,
+  PublicUserProfile,
   ReactionSummary,
   ReactionToggleResult,
   RegisterDeviceTokenBody,
   Repayment,
   RepaymentPlan,
+  RequestUserConnectionBody,
   ResolveDisputeBody,
   RespondConnectionBody,
   ReviewCopilotPost200,
   ReviewCopilotPostBody,
+  SearchUsersParams,
   ServiceBoardSummary,
   ServicePost,
   SupportRequest,
@@ -113,6 +118,8 @@ import type {
   UpdateCircleMemberBody,
   UpdateCommentBody,
   UpdateMeBody,
+  UpdateMyCircleVisibility200,
+  UpdateMyCircleVisibilityBody,
   UpdateNotificationPreferencesBody,
   UpdatePlaceholderBody,
   UpdatePlusPlanBody,
@@ -120,7 +127,10 @@ import type {
   UpdateSupportRequestBody,
   UploadUrlRequest,
   UploadUrlResponse,
+  UserBlock,
+  UserConnection,
   UserProfile,
+  UserSearchResult,
   Wrapup,
   WrapupOrNull,
 } from "./api.schemas";
@@ -443,6 +453,1053 @@ export const useDeleteMe = <
   TContext
 > => {
   return useMutation(getDeleteMeMutationOptions(options));
+};
+
+/**
+ * @summary List the caller's per-circle "show on profile" overrides
+ */
+export const getListMyCircleVisibilityUrl = () => {
+  return `/api/me/circle-visibility`;
+};
+
+export const listMyCircleVisibility = async (
+  options?: RequestInit,
+): Promise<CircleVisibilityEntry[]> => {
+  return customFetch<CircleVisibilityEntry[]>(getListMyCircleVisibilityUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListMyCircleVisibilityQueryKey = () => {
+  return [`/api/me/circle-visibility`] as const;
+};
+
+export const getListMyCircleVisibilityQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMyCircleVisibility>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMyCircleVisibility>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListMyCircleVisibilityQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listMyCircleVisibility>>
+  > = ({ signal }) => listMyCircleVisibility({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMyCircleVisibility>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListMyCircleVisibilityQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMyCircleVisibility>>
+>;
+export type ListMyCircleVisibilityQueryError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary List the caller's per-circle "show on profile" overrides
+ */
+
+export function useListMyCircleVisibility<
+  TData = Awaited<ReturnType<typeof listMyCircleVisibility>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMyCircleVisibility>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListMyCircleVisibilityQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Toggle whether one of the caller's circles appears on their public profile
+ */
+export const getUpdateMyCircleVisibilityUrl = (circleId: number) => {
+  return `/api/me/circles/${circleId}/visibility`;
+};
+
+export const updateMyCircleVisibility = async (
+  circleId: number,
+  updateMyCircleVisibilityBody: UpdateMyCircleVisibilityBody,
+  options?: RequestInit,
+): Promise<UpdateMyCircleVisibility200> => {
+  return customFetch<UpdateMyCircleVisibility200>(
+    getUpdateMyCircleVisibilityUrl(circleId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(updateMyCircleVisibilityBody),
+    },
+  );
+};
+
+export const getUpdateMyCircleVisibilityMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMyCircleVisibility>>,
+    TError,
+    { circleId: number; data: BodyType<UpdateMyCircleVisibilityBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateMyCircleVisibility>>,
+  TError,
+  { circleId: number; data: BodyType<UpdateMyCircleVisibilityBody> },
+  TContext
+> => {
+  const mutationKey = ["updateMyCircleVisibility"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateMyCircleVisibility>>,
+    { circleId: number; data: BodyType<UpdateMyCircleVisibilityBody> }
+  > = (props) => {
+    const { circleId, data } = props ?? {};
+
+    return updateMyCircleVisibility(circleId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateMyCircleVisibilityMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateMyCircleVisibility>>
+>;
+export type UpdateMyCircleVisibilityMutationBody =
+  BodyType<UpdateMyCircleVisibilityBody>;
+export type UpdateMyCircleVisibilityMutationError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Toggle whether one of the caller's circles appears on their public profile
+ */
+export const useUpdateMyCircleVisibility = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMyCircleVisibility>>,
+    TError,
+    { circleId: number; data: BodyType<UpdateMyCircleVisibilityBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateMyCircleVisibility>>,
+  TError,
+  { circleId: number; data: BodyType<UpdateMyCircleVisibilityBody> },
+  TContext
+> => {
+  return useMutation(getUpdateMyCircleVisibilityMutationOptions(options));
+};
+
+/**
+ * @summary Find people by name, exact email, or exact phone (when discoverable)
+ */
+export const getSearchUsersUrl = (params: SearchUsersParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/users/search?${stringifiedParams}`
+    : `/api/users/search`;
+};
+
+export const searchUsers = async (
+  params: SearchUsersParams,
+  options?: RequestInit,
+): Promise<UserSearchResult[]> => {
+  return customFetch<UserSearchResult[]>(getSearchUsersUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getSearchUsersQueryKey = (params?: SearchUsersParams) => {
+  return [`/api/users/search`, ...(params ? [params] : [])] as const;
+};
+
+export const getSearchUsersQueryOptions = <
+  TData = Awaited<ReturnType<typeof searchUsers>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  params: SearchUsersParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof searchUsers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getSearchUsersQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof searchUsers>>> = ({
+    signal,
+  }) => searchUsers(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof searchUsers>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type SearchUsersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof searchUsers>>
+>;
+export type SearchUsersQueryError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Find people by name, exact email, or exact phone (when discoverable)
+ */
+
+export function useSearchUsers<
+  TData = Awaited<ReturnType<typeof searchUsers>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  params: SearchUsersParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof searchUsers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getSearchUsersQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Public profile of any signed-in user (block-aware)
+ */
+export const getGetUserPublicProfileUrl = (userId: number) => {
+  return `/api/users/${userId}/profile`;
+};
+
+export const getUserPublicProfile = async (
+  userId: number,
+  options?: RequestInit,
+): Promise<PublicUserProfile> => {
+  return customFetch<PublicUserProfile>(getGetUserPublicProfileUrl(userId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetUserPublicProfileQueryKey = (userId: number) => {
+  return [`/api/users/${userId}/profile`] as const;
+};
+
+export const getGetUserPublicProfileQueryOptions = <
+  TData = Awaited<ReturnType<typeof getUserPublicProfile>>,
+  TError = ErrorType<UnauthorizedResponse | ErrorResponse | NotFoundResponse>,
+>(
+  userId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUserPublicProfile>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetUserPublicProfileQueryKey(userId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getUserPublicProfile>>
+  > = ({ signal }) =>
+    getUserPublicProfile(userId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!userId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getUserPublicProfile>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetUserPublicProfileQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getUserPublicProfile>>
+>;
+export type GetUserPublicProfileQueryError = ErrorType<
+  UnauthorizedResponse | ErrorResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Public profile of any signed-in user (block-aware)
+ */
+
+export function useGetUserPublicProfile<
+  TData = Awaited<ReturnType<typeof getUserPublicProfile>>,
+  TError = ErrorType<UnauthorizedResponse | ErrorResponse | NotFoundResponse>,
+>(
+  userId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUserPublicProfile>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetUserPublicProfileQueryOptions(userId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List the caller's user-to-user connections
+ */
+export const getListMyUserConnectionsUrl = (
+  params?: ListMyUserConnectionsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/user-connections?${stringifiedParams}`
+    : `/api/user-connections`;
+};
+
+export const listMyUserConnections = async (
+  params?: ListMyUserConnectionsParams,
+  options?: RequestInit,
+): Promise<UserConnection[]> => {
+  return customFetch<UserConnection[]>(getListMyUserConnectionsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListMyUserConnectionsQueryKey = (
+  params?: ListMyUserConnectionsParams,
+) => {
+  return [`/api/user-connections`, ...(params ? [params] : [])] as const;
+};
+
+export const getListMyUserConnectionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMyUserConnections>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  params?: ListMyUserConnectionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listMyUserConnections>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListMyUserConnectionsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listMyUserConnections>>
+  > = ({ signal }) =>
+    listMyUserConnections(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMyUserConnections>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListMyUserConnectionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMyUserConnections>>
+>;
+export type ListMyUserConnectionsQueryError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary List the caller's user-to-user connections
+ */
+
+export function useListMyUserConnections<
+  TData = Awaited<ReturnType<typeof listMyUserConnections>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(
+  params?: ListMyUserConnectionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listMyUserConnections>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListMyUserConnectionsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Send a connection request to another user
+ */
+export const getRequestUserConnectionUrl = () => {
+  return `/api/user-connections`;
+};
+
+export const requestUserConnection = async (
+  requestUserConnectionBody: RequestUserConnectionBody,
+  options?: RequestInit,
+): Promise<UserConnection> => {
+  return customFetch<UserConnection>(getRequestUserConnectionUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(requestUserConnectionBody),
+  });
+};
+
+export const getRequestUserConnectionMutationOptions = <
+  TError = ErrorType<ErrorResponse | UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestUserConnection>>,
+    TError,
+    { data: BodyType<RequestUserConnectionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestUserConnection>>,
+  TError,
+  { data: BodyType<RequestUserConnectionBody> },
+  TContext
+> => {
+  const mutationKey = ["requestUserConnection"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestUserConnection>>,
+    { data: BodyType<RequestUserConnectionBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return requestUserConnection(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestUserConnectionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestUserConnection>>
+>;
+export type RequestUserConnectionMutationBody =
+  BodyType<RequestUserConnectionBody>;
+export type RequestUserConnectionMutationError = ErrorType<
+  ErrorResponse | UnauthorizedResponse
+>;
+
+/**
+ * @summary Send a connection request to another user
+ */
+export const useRequestUserConnection = <
+  TError = ErrorType<ErrorResponse | UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestUserConnection>>,
+    TError,
+    { data: BodyType<RequestUserConnectionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof requestUserConnection>>,
+  TError,
+  { data: BodyType<RequestUserConnectionBody> },
+  TContext
+> => {
+  return useMutation(getRequestUserConnectionMutationOptions(options));
+};
+
+/**
+ * @summary Accept an incoming connection request
+ */
+export const getAcceptUserConnectionUrl = (connectionId: number) => {
+  return `/api/user-connections/${connectionId}/accept`;
+};
+
+export const acceptUserConnection = async (
+  connectionId: number,
+  options?: RequestInit,
+): Promise<UserConnection> => {
+  return customFetch<UserConnection>(getAcceptUserConnectionUrl(connectionId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getAcceptUserConnectionMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof acceptUserConnection>>,
+    TError,
+    { connectionId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof acceptUserConnection>>,
+  TError,
+  { connectionId: number },
+  TContext
+> => {
+  const mutationKey = ["acceptUserConnection"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof acceptUserConnection>>,
+    { connectionId: number }
+  > = (props) => {
+    const { connectionId } = props ?? {};
+
+    return acceptUserConnection(connectionId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AcceptUserConnectionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof acceptUserConnection>>
+>;
+
+export type AcceptUserConnectionMutationError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Accept an incoming connection request
+ */
+export const useAcceptUserConnection = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof acceptUserConnection>>,
+    TError,
+    { connectionId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof acceptUserConnection>>,
+  TError,
+  { connectionId: number },
+  TContext
+> => {
+  return useMutation(getAcceptUserConnectionMutationOptions(options));
+};
+
+/**
+ * @summary Decline an incoming connection request
+ */
+export const getDeclineUserConnectionUrl = (connectionId: number) => {
+  return `/api/user-connections/${connectionId}/decline`;
+};
+
+export const declineUserConnection = async (
+  connectionId: number,
+  options?: RequestInit,
+): Promise<UserConnection> => {
+  return customFetch<UserConnection>(
+    getDeclineUserConnectionUrl(connectionId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getDeclineUserConnectionMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof declineUserConnection>>,
+    TError,
+    { connectionId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof declineUserConnection>>,
+  TError,
+  { connectionId: number },
+  TContext
+> => {
+  const mutationKey = ["declineUserConnection"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof declineUserConnection>>,
+    { connectionId: number }
+  > = (props) => {
+    const { connectionId } = props ?? {};
+
+    return declineUserConnection(connectionId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeclineUserConnectionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof declineUserConnection>>
+>;
+
+export type DeclineUserConnectionMutationError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Decline an incoming connection request
+ */
+export const useDeclineUserConnection = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof declineUserConnection>>,
+    TError,
+    { connectionId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof declineUserConnection>>,
+  TError,
+  { connectionId: number },
+  TContext
+> => {
+  return useMutation(getDeclineUserConnectionMutationOptions(options));
+};
+
+/**
+ * @summary Cancel an outgoing request or disconnect from an existing connection
+ */
+export const getRemoveUserConnectionUrl = (connectionId: number) => {
+  return `/api/user-connections/${connectionId}`;
+};
+
+export const removeUserConnection = async (
+  connectionId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getRemoveUserConnectionUrl(connectionId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getRemoveUserConnectionMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof removeUserConnection>>,
+    TError,
+    { connectionId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof removeUserConnection>>,
+  TError,
+  { connectionId: number },
+  TContext
+> => {
+  const mutationKey = ["removeUserConnection"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof removeUserConnection>>,
+    { connectionId: number }
+  > = (props) => {
+    const { connectionId } = props ?? {};
+
+    return removeUserConnection(connectionId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RemoveUserConnectionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof removeUserConnection>>
+>;
+
+export type RemoveUserConnectionMutationError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Cancel an outgoing request or disconnect from an existing connection
+ */
+export const useRemoveUserConnection = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof removeUserConnection>>,
+    TError,
+    { connectionId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof removeUserConnection>>,
+  TError,
+  { connectionId: number },
+  TContext
+> => {
+  return useMutation(getRemoveUserConnectionMutationOptions(options));
+};
+
+/**
+ * @summary List users the caller has blocked
+ */
+export const getListMyUserBlocksUrl = () => {
+  return `/api/user-blocks`;
+};
+
+export const listMyUserBlocks = async (
+  options?: RequestInit,
+): Promise<UserBlock[]> => {
+  return customFetch<UserBlock[]>(getListMyUserBlocksUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListMyUserBlocksQueryKey = () => {
+  return [`/api/user-blocks`] as const;
+};
+
+export const getListMyUserBlocksQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMyUserBlocks>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMyUserBlocks>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListMyUserBlocksQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listMyUserBlocks>>
+  > = ({ signal }) => listMyUserBlocks({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMyUserBlocks>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListMyUserBlocksQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMyUserBlocks>>
+>;
+export type ListMyUserBlocksQueryError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary List users the caller has blocked
+ */
+
+export function useListMyUserBlocks<
+  TData = Awaited<ReturnType<typeof listMyUserBlocks>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMyUserBlocks>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListMyUserBlocksQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Block another user (severs any existing connection)
+ */
+export const getBlockUserUrl = (userId: number) => {
+  return `/api/user-blocks/${userId}`;
+};
+
+export const blockUser = async (
+  userId: number,
+  options?: RequestInit,
+): Promise<UserBlock> => {
+  return customFetch<UserBlock>(getBlockUserUrl(userId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getBlockUserMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof blockUser>>,
+    TError,
+    { userId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof blockUser>>,
+  TError,
+  { userId: number },
+  TContext
+> => {
+  const mutationKey = ["blockUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof blockUser>>,
+    { userId: number }
+  > = (props) => {
+    const { userId } = props ?? {};
+
+    return blockUser(userId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type BlockUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof blockUser>>
+>;
+
+export type BlockUserMutationError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Block another user (severs any existing connection)
+ */
+export const useBlockUser = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof blockUser>>,
+    TError,
+    { userId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof blockUser>>,
+  TError,
+  { userId: number },
+  TContext
+> => {
+  return useMutation(getBlockUserMutationOptions(options));
+};
+
+/**
+ * @summary Unblock a previously blocked user
+ */
+export const getUnblockUserUrl = (userId: number) => {
+  return `/api/user-blocks/${userId}`;
+};
+
+export const unblockUser = async (
+  userId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getUnblockUserUrl(userId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getUnblockUserMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unblockUser>>,
+    TError,
+    { userId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof unblockUser>>,
+  TError,
+  { userId: number },
+  TContext
+> => {
+  const mutationKey = ["unblockUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof unblockUser>>,
+    { userId: number }
+  > = (props) => {
+    const { userId } = props ?? {};
+
+    return unblockUser(userId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UnblockUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof unblockUser>>
+>;
+
+export type UnblockUserMutationError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary Unblock a previously blocked user
+ */
+export const useUnblockUser = <
+  TError = ErrorType<UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unblockUser>>,
+    TError,
+    { userId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof unblockUser>>,
+  TError,
+  { userId: number },
+  TContext
+> => {
+  return useMutation(getUnblockUserMutationOptions(options));
 };
 
 /**

@@ -26,6 +26,20 @@ export const GetMeResponse = zod.object({
   lastName: zod.string().nullish(),
   email: zod.string(),
   timezone: zod.string().nullish(),
+  bio: zod.string().nullish(),
+  location: zod.string().nullish(),
+  pronouns: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  phoneDiscoverable: zod
+    .boolean()
+    .describe(
+      "When true, others can find this user by exact phone match in search.",
+    ),
+  profileShowCirclesDefault: zod
+    .boolean()
+    .describe(
+      "When true (default) the user's circles flagged showOnProfile appear on their public profile.",
+    ),
   avatarObjectPath: zod.string().nullish(),
   planKind: zod
     .enum(["solo", "family"])
@@ -49,6 +63,13 @@ export const UpdateMeBody = zod.object({
   firstName: zod.string().optional(),
   lastName: zod.string().optional(),
   timezone: zod.string().optional(),
+  bio: zod.string().optional(),
+  location: zod.string().optional(),
+  avatarObjectPath: zod.string().optional(),
+  pronouns: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  phoneDiscoverable: zod.boolean().optional(),
+  profileShowCirclesDefault: zod.boolean().optional(),
 });
 
 export const UpdateMeResponse = zod.object({
@@ -59,6 +80,20 @@ export const UpdateMeResponse = zod.object({
   lastName: zod.string().nullish(),
   email: zod.string(),
   timezone: zod.string().nullish(),
+  bio: zod.string().nullish(),
+  location: zod.string().nullish(),
+  pronouns: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  phoneDiscoverable: zod
+    .boolean()
+    .describe(
+      "When true, others can find this user by exact phone match in search.",
+    ),
+  profileShowCirclesDefault: zod
+    .boolean()
+    .describe(
+      "When true (default) the user's circles flagged showOnProfile appear on their public profile.",
+    ),
   avatarObjectPath: zod.string().nullish(),
   planKind: zod
     .enum(["solo", "family"])
@@ -72,6 +107,241 @@ export const UpdateMeResponse = zod.object({
       'When `planKind` is \"family\", the circle whose first 6 active\nmembers receive derived Plus while the subscription is active.\n',
     ),
   createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List the caller's per-circle "show on profile" overrides
+ */
+export const ListMyCircleVisibilityResponseItem = zod.object({
+  circleId: zod.number(),
+  circleName: zod.string(),
+  showOnProfile: zod.boolean(),
+});
+export const ListMyCircleVisibilityResponse = zod.array(
+  ListMyCircleVisibilityResponseItem,
+);
+
+/**
+ * @summary Toggle whether one of the caller's circles appears on their public profile
+ */
+export const UpdateMyCircleVisibilityParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const UpdateMyCircleVisibilityBody = zod.object({
+  showOnProfile: zod.boolean(),
+});
+
+export const UpdateMyCircleVisibilityResponse = zod.object({
+  circleId: zod.number(),
+  showOnProfile: zod.boolean(),
+});
+
+/**
+ * @summary Find people by name, exact email, or exact phone (when discoverable)
+ */
+export const searchUsersQueryQMin = 2;
+
+export const searchUsersQueryLimitDefault = 20;
+export const searchUsersQueryLimitMax = 50;
+
+export const SearchUsersQueryParams = zod.object({
+  q: zod.coerce.string().min(searchUsersQueryQMin),
+  limit: zod.coerce
+    .number()
+    .min(1)
+    .max(searchUsersQueryLimitMax)
+    .default(searchUsersQueryLimitDefault),
+});
+
+export const SearchUsersResponseItem = zod.object({
+  id: zod.number(),
+  displayName: zod.string(),
+  firstName: zod.string().nullish(),
+  avatarObjectPath: zod.string().nullish(),
+  location: zod.string().nullish(),
+  pronouns: zod.string().nullish(),
+  connection: zod
+    .union([
+      zod.null(),
+      zod.object({
+        id: zod.number(),
+        status: zod.enum(["pending", "accepted", "declined"]),
+        direction: zod.enum(["incoming", "outgoing"]),
+      }),
+    ])
+    .optional(),
+});
+export const SearchUsersResponse = zod.array(SearchUsersResponseItem);
+
+/**
+ * @summary Public profile of any signed-in user (block-aware)
+ */
+export const GetUserPublicProfileParams = zod.object({
+  userId: zod.coerce.number(),
+});
+
+export const GetUserPublicProfileResponse = zod
+  .object({
+    id: zod.number(),
+    displayName: zod.string(),
+    firstName: zod.string().nullish(),
+    pronouns: zod.string().nullish(),
+    bio: zod.string().nullish(),
+    location: zod.string().nullish(),
+    avatarObjectPath: zod.string().nullish(),
+    commonCircleCount: zod.number(),
+    sharedCircles: zod
+      .array(
+        zod.object({
+          id: zod.number(),
+          name: zod.string(),
+          isShared: zod
+            .boolean()
+            .describe("True when the viewer is also an active member."),
+        }),
+      )
+      .describe(
+        "Union of circles the viewer shares with this user and circles\nthe user has chosen to make public on their profile.\n",
+      ),
+    connection: zod
+      .union([
+        zod.null(),
+        zod.object({
+          id: zod.number(),
+          status: zod.enum(["pending", "accepted", "declined"]),
+          direction: zod.enum(["incoming", "outgoing"]),
+        }),
+      ])
+      .optional(),
+    canMessage: zod.boolean(),
+    memberSince: zod.coerce.date().optional(),
+  })
+  .describe("Profile information visible to other signed-in users.");
+
+/**
+ * @summary List the caller's user-to-user connections
+ */
+export const listMyUserConnectionsQueryStatusDefault = `accepted`;
+export const listMyUserConnectionsQueryDirectionDefault = `both`;
+
+export const ListMyUserConnectionsQueryParams = zod.object({
+  status: zod
+    .enum(["pending", "accepted", "declined", "all"])
+    .default(listMyUserConnectionsQueryStatusDefault),
+  direction: zod
+    .enum(["incoming", "outgoing", "both"])
+    .default(listMyUserConnectionsQueryDirectionDefault),
+});
+
+export const ListMyUserConnectionsResponseItem = zod.object({
+  id: zod.number(),
+  status: zod.enum(["pending", "accepted", "declined"]),
+  direction: zod.enum(["incoming", "outgoing"]),
+  message: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  respondedAt: zod.coerce.date().nullish(),
+  otherUser: zod.object({
+    id: zod.number(),
+    displayName: zod.string(),
+    firstName: zod.string().nullish(),
+    avatarObjectPath: zod.string().nullish(),
+    pronouns: zod.string().nullish(),
+  }),
+});
+export const ListMyUserConnectionsResponse = zod.array(
+  ListMyUserConnectionsResponseItem,
+);
+
+/**
+ * @summary Send a connection request to another user
+ */
+export const requestUserConnectionBodyMessageMax = 280;
+
+export const RequestUserConnectionBody = zod.object({
+  receiverUserId: zod.number(),
+  message: zod.string().max(requestUserConnectionBodyMessageMax).optional(),
+});
+
+/**
+ * @summary Accept an incoming connection request
+ */
+export const AcceptUserConnectionParams = zod.object({
+  connectionId: zod.coerce.number(),
+});
+
+export const AcceptUserConnectionResponse = zod.object({
+  id: zod.number(),
+  status: zod.enum(["pending", "accepted", "declined"]),
+  direction: zod.enum(["incoming", "outgoing"]),
+  message: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  respondedAt: zod.coerce.date().nullish(),
+  otherUser: zod.object({
+    id: zod.number(),
+    displayName: zod.string(),
+    firstName: zod.string().nullish(),
+    avatarObjectPath: zod.string().nullish(),
+    pronouns: zod.string().nullish(),
+  }),
+});
+
+/**
+ * @summary Decline an incoming connection request
+ */
+export const DeclineUserConnectionParams = zod.object({
+  connectionId: zod.coerce.number(),
+});
+
+export const DeclineUserConnectionResponse = zod.object({
+  id: zod.number(),
+  status: zod.enum(["pending", "accepted", "declined"]),
+  direction: zod.enum(["incoming", "outgoing"]),
+  message: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  respondedAt: zod.coerce.date().nullish(),
+  otherUser: zod.object({
+    id: zod.number(),
+    displayName: zod.string(),
+    firstName: zod.string().nullish(),
+    avatarObjectPath: zod.string().nullish(),
+    pronouns: zod.string().nullish(),
+  }),
+});
+
+/**
+ * @summary Cancel an outgoing request or disconnect from an existing connection
+ */
+export const RemoveUserConnectionParams = zod.object({
+  connectionId: zod.coerce.number(),
+});
+
+/**
+ * @summary List users the caller has blocked
+ */
+export const ListMyUserBlocksResponseItem = zod.object({
+  id: zod.number(),
+  blockedUser: zod.object({
+    id: zod.number(),
+    displayName: zod.string(),
+    avatarObjectPath: zod.string().nullish(),
+  }),
+  createdAt: zod.coerce.date(),
+});
+export const ListMyUserBlocksResponse = zod.array(ListMyUserBlocksResponseItem);
+
+/**
+ * @summary Block another user (severs any existing connection)
+ */
+export const BlockUserParams = zod.object({
+  userId: zod.coerce.number(),
+});
+
+/**
+ * @summary Unblock a previously blocked user
+ */
+export const UnblockUserParams = zod.object({
+  userId: zod.coerce.number(),
 });
 
 /**
@@ -2472,6 +2742,8 @@ export const UpdateNotificationPreferencesBody = zod.object({
         "wrapup_weekly",
         "wrapup_monthly",
         "ledger_export_ready",
+        "connection_request_received",
+        "connection_request_accepted",
       ]),
       enabled: zod.boolean(),
     }),

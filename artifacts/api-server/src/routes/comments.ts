@@ -15,7 +15,7 @@ import {
   circlePostsTable,
 } from "@workspace/db";
 import { eq, and, desc, isNull, count, inArray, sql } from "drizzle-orm";
-import { assertCircleMember, createNotification, notifyMentions, resolveActingFor } from "../lib/helpers";
+import { assertCircleMember, createNotification, notifyMentions, resolveActingFor, getBlockedUserIdSet } from "../lib/helpers";
 
 const router = Router();
 
@@ -580,6 +580,19 @@ router.post(
     const invalidRecipients = recipientUserIds.filter((id: number) => !memberUserIds.has(id));
     if (invalidRecipients.length > 0) {
       res.status(400).json({ error: "All recipients must be active members of this circle" });
+      return;
+    }
+
+    // Block check: filter out anyone the sender has a mutual block with.
+    // We refuse the whole request when any recipient is blocked so the
+    // sender knows something is wrong instead of silently dropping people.
+    const blocked = await getBlockedUserIdSet(userId);
+    const blockedRecipients = recipientUserIds.filter((id: number) => blocked.has(id));
+    if (blockedRecipients.length > 0) {
+      res.status(403).json({
+        error: "user_blocked",
+        message: "One or more recipients can't receive this note.",
+      });
       return;
     }
 

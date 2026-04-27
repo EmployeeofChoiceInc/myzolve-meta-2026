@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, boolean, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -60,6 +60,12 @@ export const circleMembersTable = pgTable("circle_members", {
   // When the member dismissed the one-time custom-look welcome card.
   // Null means they haven't seen / dismissed it yet.
   welcomeDismissedAt: timestamp("welcome_dismissed_at", { withTimezone: true }),
+  // Per-membership override of "include this circle in the public-profile
+  // 'circles I'm in' list". When true (default) the user's own
+  // `profileShowCirclesDefault` decides whether the public profile lists
+  // any circles at all; when false, this specific circle is hidden even if
+  // the global toggle is on.
+  showOnProfile: boolean("show_on_profile").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

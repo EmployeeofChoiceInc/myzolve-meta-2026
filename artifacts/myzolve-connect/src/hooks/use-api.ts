@@ -452,15 +452,24 @@ export interface CirclePost {
   updatedAt: string;
 }
 
+export interface ConnectionSummary {
+  id: number;
+  status: "pending" | "accepted" | "declined";
+  direction: "incoming" | "outgoing";
+}
+
 export interface UserProfile {
   id: number;
   displayName: string;
   firstName: string | null;
+  pronouns: string | null;
   bio: string | null;
   location: string | null;
   avatarObjectPath: string | null;
   commonCircleCount: number;
-  sharedCircles: Array<{ id: number; name: string }>;
+  sharedCircles: Array<{ id: number; name: string; isShared: boolean }>;
+  connection: ConnectionSummary | null;
+  canMessage: boolean;
   memberSince: string;
 }
 
@@ -516,6 +525,10 @@ export interface MeProfile {
   timezone: string | null;
   bio: string | null;
   location: string | null;
+  pronouns: string | null;
+  phone: string | null;
+  phoneDiscoverable: boolean;
+  profileShowCirclesDefault: boolean;
   avatarObjectPath: string | null;
   createdAt: string;
 }
@@ -530,7 +543,24 @@ export function useMe() {
 export function useUpdateMe() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: Partial<Pick<MeProfile, "displayName" | "firstName" | "lastName" | "timezone" | "bio" | "location" | "avatarObjectPath">>) =>
+    mutationFn: (
+      data: Partial<
+        Pick<
+          MeProfile,
+          | "displayName"
+          | "firstName"
+          | "lastName"
+          | "timezone"
+          | "bio"
+          | "location"
+          | "avatarObjectPath"
+          | "pronouns"
+          | "phone"
+          | "phoneDiscoverable"
+          | "profileShowCirclesDefault"
+        >
+      >,
+    ) =>
       customFetch<MeProfile>("/api/me", {
         method: "PATCH",
         body: JSON.stringify(data),
@@ -852,4 +882,177 @@ export interface MyOwnedCircle {
   id: number;
   name: string;
   ownerId: number;
+}
+
+// ── User search / connections / blocks (Task #95) ───────────────────────────
+
+export interface UserSearchResult {
+  id: number;
+  displayName: string;
+  firstName: string | null;
+  avatarObjectPath: string | null;
+  location: string | null;
+  pronouns: string | null;
+  connection: ConnectionSummary | null;
+}
+
+export interface UserConnection {
+  id: number;
+  status: "pending" | "accepted" | "declined";
+  direction: "incoming" | "outgoing";
+  message: string | null;
+  createdAt: string;
+  respondedAt: string | null;
+  otherUser: {
+    id: number;
+    displayName: string;
+    firstName: string | null;
+    avatarObjectPath: string | null;
+    pronouns: string | null;
+  };
+}
+
+export interface UserBlock {
+  id: number;
+  blockedUser: {
+    id: number;
+    displayName: string;
+    avatarObjectPath: string | null;
+  };
+  createdAt: string;
+}
+
+export interface CircleVisibilityEntry {
+  circleId: number;
+  circleName: string;
+  showOnProfile: boolean;
+}
+
+export function useSearchUsers(query: string, opts?: { enabled?: boolean }) {
+  const trimmed = query.trim();
+  return useQuery({
+    queryKey: ["users-search", trimmed],
+    queryFn: () =>
+      customFetch<UserSearchResult[]>(
+        `/api/users/search?q=${encodeURIComponent(trimmed)}`,
+      ),
+    enabled: trimmed.length >= 2 && opts?.enabled !== false,
+  });
+}
+
+export function useMyConnections(
+  status: "pending" | "accepted" | "declined" | "all" = "accepted",
+  direction: "incoming" | "outgoing" | "both" = "both",
+) {
+  return useQuery({
+    queryKey: ["user-connections", status, direction],
+    queryFn: () =>
+      customFetch<UserConnection[]>(
+        `/api/user-connections?status=${status}&direction=${direction}`,
+      ),
+  });
+}
+
+function invalidateConnectionRelated(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ["user-connections"] });
+  qc.invalidateQueries({ queryKey: ["user-profile"] });
+  qc.invalidateQueries({ queryKey: ["users-search"] });
+  qc.invalidateQueries({ queryKey: ["/api/notifications"] });
+}
+
+export function useRequestConnection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ receiverUserId, message }: { receiverUserId: number; message?: string }) =>
+      customFetch<UserConnection>("/api/user-connections", {
+        method: "POST",
+        body: JSON.stringify({ receiverUserId, ...(message ? { message } : {}) }),
+      }),
+    onSuccess: () => invalidateConnectionRelated(qc),
+  });
+}
+
+export function useAcceptConnection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (connectionId: number) =>
+      customFetch<UserConnection>(`/api/user-connections/${connectionId}/accept`, {
+        method: "POST",
+      }),
+    onSuccess: () => invalidateConnectionRelated(qc),
+  });
+}
+
+export function useDeclineConnection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (connectionId: number) =>
+      customFetch<UserConnection>(`/api/user-connections/${connectionId}/decline`, {
+        method: "POST",
+      }),
+    onSuccess: () => invalidateConnectionRelated(qc),
+  });
+}
+
+export function useRemoveConnection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (connectionId: number) =>
+      customFetch(`/api/user-connections/${connectionId}`, { method: "DELETE" }),
+    onSuccess: () => invalidateConnectionRelated(qc),
+  });
+}
+
+export function useMyBlocks() {
+  return useQuery({
+    queryKey: ["user-blocks"],
+    queryFn: () => customFetch<UserBlock[]>("/api/user-blocks"),
+  });
+}
+
+export function useBlockUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: number) =>
+      customFetch<UserBlock>(`/api/user-blocks/${userId}`, { method: "POST" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["user-blocks"] });
+      invalidateConnectionRelated(qc);
+    },
+  });
+}
+
+export function useUnblockUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: number) =>
+      customFetch(`/api/user-blocks/${userId}`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["user-blocks"] });
+      invalidateConnectionRelated(qc);
+    },
+  });
+}
+
+export function useMyCircleVisibility() {
+  return useQuery({
+    queryKey: ["my-circle-visibility"],
+    queryFn: () =>
+      customFetch<CircleVisibilityEntry[]>("/api/me/circle-visibility"),
+  });
+}
+
+export function useUpdateCircleVisibility() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ circleId, showOnProfile }: { circleId: number; showOnProfile: boolean }) =>
+      customFetch<{ circleId: number; showOnProfile: boolean }>(
+        `/api/me/circles/${circleId}/visibility`,
+        { method: "PATCH", body: JSON.stringify({ showOnProfile }) },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["my-circle-visibility"] });
+      qc.invalidateQueries({ queryKey: ["user-profile"] });
+    },
+  });
 }

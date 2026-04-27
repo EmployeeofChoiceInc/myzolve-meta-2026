@@ -62,6 +62,18 @@ export interface UserProfile {
   /** @nullable */
   timezone?: string | null;
   /** @nullable */
+  bio?: string | null;
+  /** @nullable */
+  location?: string | null;
+  /** @nullable */
+  pronouns?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** When true, others can find this user by exact phone match in search. */
+  phoneDiscoverable: boolean;
+  /** When true (default) the user's circles flagged showOnProfile appear on their public profile. */
+  profileShowCirclesDefault: boolean;
+  /** @nullable */
   avatarObjectPath?: string | null;
   /** Plus plan kind. "solo" gives the entitlement only to this user;
 "family" extends derived Plus to up to 6 members of `familyCircleId`.
@@ -82,6 +94,133 @@ export interface UpdateMeBody {
   firstName?: string;
   lastName?: string;
   timezone?: string;
+  bio?: string;
+  location?: string;
+  avatarObjectPath?: string;
+  /** @nullable */
+  pronouns?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  phoneDiscoverable?: boolean;
+  profileShowCirclesDefault?: boolean;
+}
+
+export type PublicUserProfileSharedCirclesItem = {
+  id: number;
+  name: string;
+  /** True when the viewer is also an active member. */
+  isShared: boolean;
+};
+
+export type PublicUserProfileConnection = null | {
+  id: number;
+  status: "pending" | "accepted" | "declined";
+  direction: "incoming" | "outgoing";
+};
+
+/**
+ * Profile information visible to other signed-in users.
+ */
+export interface PublicUserProfile {
+  id: number;
+  displayName: string;
+  /** @nullable */
+  firstName?: string | null;
+  /** @nullable */
+  pronouns?: string | null;
+  /** @nullable */
+  bio?: string | null;
+  /** @nullable */
+  location?: string | null;
+  /** @nullable */
+  avatarObjectPath?: string | null;
+  commonCircleCount: number;
+  /** Union of circles the viewer shares with this user and circles
+the user has chosen to make public on their profile.
+ */
+  sharedCircles: PublicUserProfileSharedCirclesItem[];
+  connection?: PublicUserProfileConnection;
+  canMessage: boolean;
+  memberSince?: string;
+}
+
+export type UserSearchResultConnection = null | {
+  id: number;
+  status: "pending" | "accepted" | "declined";
+  direction: "incoming" | "outgoing";
+};
+
+export interface UserSearchResult {
+  id: number;
+  displayName: string;
+  /** @nullable */
+  firstName?: string | null;
+  /** @nullable */
+  avatarObjectPath?: string | null;
+  /** @nullable */
+  location?: string | null;
+  /** @nullable */
+  pronouns?: string | null;
+  connection?: UserSearchResultConnection;
+}
+
+export type UserConnectionStatus =
+  (typeof UserConnectionStatus)[keyof typeof UserConnectionStatus];
+
+export const UserConnectionStatus = {
+  pending: "pending",
+  accepted: "accepted",
+  declined: "declined",
+} as const;
+
+export type UserConnectionDirection =
+  (typeof UserConnectionDirection)[keyof typeof UserConnectionDirection];
+
+export const UserConnectionDirection = {
+  incoming: "incoming",
+  outgoing: "outgoing",
+} as const;
+
+export type UserConnectionOtherUser = {
+  id: number;
+  displayName: string;
+  /** @nullable */
+  firstName?: string | null;
+  /** @nullable */
+  avatarObjectPath?: string | null;
+  /** @nullable */
+  pronouns?: string | null;
+};
+
+export interface UserConnection {
+  id: number;
+  status: UserConnectionStatus;
+  direction: UserConnectionDirection;
+  /** @nullable */
+  message?: string | null;
+  createdAt: string;
+  /** @nullable */
+  respondedAt?: string | null;
+  otherUser: UserConnectionOtherUser;
+}
+
+export type UserBlockBlockedUser = {
+  id: number;
+  displayName: string;
+  /** @nullable */
+  avatarObjectPath?: string | null;
+};
+
+export interface UserBlock {
+  id: number;
+  blockedUser: UserBlockBlockedUser;
+  createdAt: string;
+}
+
+export interface CircleVisibilityEntry {
+  circleId: number;
+  circleName: string;
+  showOnProfile: boolean;
 }
 
 /**
@@ -1565,6 +1704,8 @@ export const UpdateNotificationPreferencesBodyPreferencesItemNotificationType =
     wrapup_weekly: "wrapup_weekly",
     wrapup_monthly: "wrapup_monthly",
     ledger_export_ready: "ledger_export_ready",
+    connection_request_received: "connection_request_received",
+    connection_request_accepted: "connection_request_accepted",
   } as const;
 
 export type UpdateNotificationPreferencesBodyPreferencesItem = {
@@ -2228,6 +2369,57 @@ export type NotFoundResponse = ErrorResponse;
 
  */
 export type PaymentRequiredResponse = PaywallError;
+
+export type UpdateMyCircleVisibilityBody = {
+  showOnProfile: boolean;
+};
+
+export type UpdateMyCircleVisibility200 = {
+  circleId: number;
+  showOnProfile: boolean;
+};
+
+export type SearchUsersParams = {
+  /**
+   * @minLength 2
+   */
+  q: string;
+  /**
+   * @minimum 1
+   * @maximum 50
+   */
+  limit?: number;
+};
+
+export type ListMyUserConnectionsParams = {
+  status?: ListMyUserConnectionsStatus;
+  direction?: ListMyUserConnectionsDirection;
+};
+
+export type ListMyUserConnectionsStatus =
+  (typeof ListMyUserConnectionsStatus)[keyof typeof ListMyUserConnectionsStatus];
+
+export const ListMyUserConnectionsStatus = {
+  pending: "pending",
+  accepted: "accepted",
+  declined: "declined",
+  all: "all",
+} as const;
+
+export type ListMyUserConnectionsDirection =
+  (typeof ListMyUserConnectionsDirection)[keyof typeof ListMyUserConnectionsDirection];
+
+export const ListMyUserConnectionsDirection = {
+  incoming: "incoming",
+  outgoing: "outgoing",
+  both: "both",
+} as const;
+
+export type RequestUserConnectionBody = {
+  receiverUserId: number;
+  /** @maxLength 280 */
+  message?: string;
+};
 
 export type ListSupportRequestsParams = {
   status?: string;

@@ -31,6 +31,13 @@ const updateProfileSchema = z.object({
   bio: z.string().max(500).optional(),
   location: z.string().max(200).optional(),
   avatarObjectPath: z.string().max(1000).optional(),
+  // Public profile additions (Task #95):
+  pronouns: z.string().max(50).nullable().optional(),
+  // Phone is freeform; we don't validate beyond a sane length cap.
+  // Empty-string is treated as "clear" by trimming below.
+  phone: z.string().max(40).nullable().optional(),
+  phoneDiscoverable: z.boolean().optional(),
+  profileShowCirclesDefault: z.boolean().optional(),
 });
 
 function userToApi(user: typeof usersTable.$inferSelect) {
@@ -44,6 +51,10 @@ function userToApi(user: typeof usersTable.$inferSelect) {
     timezone: user.timezone,
     bio: user.bio,
     location: user.location,
+    pronouns: user.pronouns ?? null,
+    phone: user.phone ?? null,
+    phoneDiscoverable: !!user.phoneDiscoverable,
+    profileShowCirclesDefault: user.profileShowCirclesDefault !== false,
     avatarObjectPath: user.avatarObjectPath ?? null,
     planKind: user.planKind === "family" ? "family" : "solo",
     familyCircleId: user.familyCircleId ?? null,
@@ -57,7 +68,31 @@ router.get("/me", requireAuth, async (req, res) => {
 
 router.patch("/me", requireAuth, validateBody(updateProfileSchema), async (req, res) => {
   const user = req.dbUser!;
-  const { displayName, firstName, lastName, timezone, bio, location, avatarObjectPath } = req.body;
+  const {
+    displayName,
+    firstName,
+    lastName,
+    timezone,
+    bio,
+    location,
+    avatarObjectPath,
+    pronouns,
+    phone,
+    phoneDiscoverable,
+    profileShowCirclesDefault,
+  } = req.body as {
+    displayName?: string;
+    firstName?: string;
+    lastName?: string;
+    timezone?: string;
+    bio?: string;
+    location?: string;
+    avatarObjectPath?: string;
+    pronouns?: string | null;
+    phone?: string | null;
+    phoneDiscoverable?: boolean;
+    profileShowCirclesDefault?: boolean;
+  };
 
   if (
     avatarObjectPath !== undefined &&
@@ -72,6 +107,20 @@ router.patch("/me", requireAuth, validateBody(updateProfileSchema), async (req, 
     }
   }
 
+  // Normalize pronouns / phone: trim whitespace, treat empty string as null
+  // so the column actually clears when the user wipes the field.
+  const normalizedPronouns =
+    pronouns === undefined ? undefined : pronouns === null ? null : pronouns.trim() || null;
+  const normalizedPhone =
+    phone === undefined ? undefined : phone === null ? null : phone.trim() || null;
+
+  // If the user clears their phone, also force phoneDiscoverable off so we
+  // don't leave a "discoverable null phone" in a confusing state.
+  const effectiveDiscoverable =
+    normalizedPhone === null
+      ? false
+      : phoneDiscoverable;
+
   const [updated] = await db
     .update(usersTable)
     .set({
@@ -82,11 +131,92 @@ router.patch("/me", requireAuth, validateBody(updateProfileSchema), async (req, 
       ...(bio !== undefined && { bio }),
       ...(location !== undefined && { location }),
       ...(avatarObjectPath !== undefined && { avatarObjectPath }),
+      ...(normalizedPronouns !== undefined && { pronouns: normalizedPronouns }),
+      ...(normalizedPhone !== undefined && { phone: normalizedPhone }),
+      ...(effectiveDiscoverable !== undefined && {
+        phoneDiscoverable: effectiveDiscoverable,
+      }),
+      ...(profileShowCirclesDefault !== undefined && {
+        profileShowCirclesDefault,
+      }),
     })
     .where(eq(usersTable.id, user.id))
     .returning();
 
   res.json(userToApi(updated));
+});
+
+// PATCH /me/circles/:circleId/visibility — per-membership "show on profile"
+// override. Only affects the public profile listing of circles, not access.
+const visibilityParam = z.object({
+  circleId: z.coerce.number().int().positive(),
+});
+const visibilityBody = z.object({
+  showOnProfile: z.boolean(),
+});
+
+router.patch(
+  "/me/circles/:circleId/visibility",
+  requireAuth,
+  validateBody(visibilityBody),
+  async (req, res) => {
+    const user = req.dbUser!;
+    const parsed = visibilityParam.safeParse(req.params);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid circle id" });
+      return;
+    }
+    const { circleId } = parsed.data;
+    const { showOnProfile } = req.body as { showOnProfile: boolean };
+
+    const member = await db
+      .select({ id: circleMembersTable.id })
+      .from(circleMembersTable)
+      .where(
+        and(
+          eq(circleMembersTable.circleId, circleId),
+          eq(circleMembersTable.userId, user.id),
+          eq(circleMembersTable.status, "active"),
+        ),
+      )
+      .limit(1)
+      .then((r) => r[0] ?? null);
+    if (!member) {
+      res.status(404).json({ error: "You are not a member of this circle" });
+      return;
+    }
+    await db
+      .update(circleMembersTable)
+      .set({ showOnProfile })
+      .where(eq(circleMembersTable.id, member.id));
+    res.json({ circleId, showOnProfile });
+  },
+);
+
+// GET /me/circle-visibility — returns each of my active memberships with
+// their `showOnProfile` flag and circle name, so Settings can render a
+// per-circle override list.
+router.get("/me/circle-visibility", requireAuth, async (req, res) => {
+  const userId = req.dbUser!.id;
+  const rows = await db
+    .select({
+      circleId: circleMembersTable.circleId,
+      showOnProfile: circleMembersTable.showOnProfile,
+      circleName: circlesTable.name,
+    })
+    .from(circleMembersTable)
+    .innerJoin(circlesTable, eq(circleMembersTable.circleId, circlesTable.id))
+    .where(
+      and(
+        eq(circleMembersTable.userId, userId),
+        eq(circleMembersTable.status, "active"),
+      ),
+    );
+  res.json(rows.map((r) => ({
+    circleId: r.circleId,
+    circleName: r.circleName,
+    showOnProfile: r.showOnProfile !== false,
+  })));
 });
 
 router.delete("/me", requireAuth, async (req, res) => {

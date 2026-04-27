@@ -35,6 +35,8 @@ const updatePrefsSchema = z.object({
         "wrapup_weekly",
         "wrapup_monthly",
         "ledger_export_ready",
+        "connection_request_received",
+        "connection_request_accepted",
       ]),
       enabled: z.boolean(),
     }),
@@ -166,6 +168,8 @@ const ALL_PREFERENCE_TYPES = [
   "wrapup_weekly",
   "wrapup_monthly",
   "ledger_export_ready",
+  "connection_request_received",
+  "connection_request_accepted",
 ] as const;
 
 router.get("/notifications/preferences", requireAuth, async (req, res) => {
