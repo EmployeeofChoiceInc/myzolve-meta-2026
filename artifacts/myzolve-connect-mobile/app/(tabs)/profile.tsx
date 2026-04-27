@@ -45,6 +45,8 @@ export default function ProfileScreen() {
     danger?: boolean;
   }[] = [
     { icon: "compass", label: "Discover", onPress: () => router.push("/discover") },
+    { icon: "users", label: "Connections", onPress: () => router.push("/connections") },
+    { icon: "user-plus", label: "Find people", onPress: () => router.push("/find-people") },
     { icon: "settings", label: "Settings", onPress: () => router.push("/settings") },
     {
       icon: "user",

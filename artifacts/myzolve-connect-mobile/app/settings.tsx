@@ -7,6 +7,8 @@ import { useTranslation } from "react-i18next";
 import {
   getGetNotificationPreferencesQueryKey,
   getListCopilotGrantsQueryKey,
+  getListMyCircleVisibilityQueryKey,
+  getListMyUserBlocksQueryKey,
   useAcceptCopilotGrant,
   useDeclineCopilotGrant,
   useDeleteMe,
@@ -16,7 +18,11 @@ import {
   useListCircleMembers,
   useListCircles,
   useListCopilotGrants,
+  useListMyCircleVisibility,
+  useListMyUserBlocks,
   useRevokeCopilotGrant,
+  useUnblockUser,
+  useUpdateMyCircleVisibility,
   useUpdateNotificationPreferences,
   type CopilotGrant,
 } from "@workspace/api-client-react";
@@ -53,6 +59,59 @@ export default function SettingsScreen() {
 
   const copilotInvalidate = () =>
     qc.invalidateQueries({ queryKey: getListCopilotGrantsQueryKey() });
+
+  const visibility = useListMyCircleVisibility();
+  const updateVisibility = useUpdateMyCircleVisibility();
+  const blocks = useListMyUserBlocks();
+  const unblock = useUnblockUser();
+  const [busyVisibilityId, setBusyVisibilityId] = useState<number | null>(null);
+  const [busyUnblockId, setBusyUnblockId] = useState<number | null>(null);
+
+  function toggleVisibility(circleId: number, next: boolean) {
+    setBusyVisibilityId(circleId);
+    updateVisibility.mutate(
+      { circleId, data: { showOnProfile: next } },
+      {
+        onSuccess: () => {
+          qc.invalidateQueries({ queryKey: getListMyCircleVisibilityQueryKey() });
+          setBusyVisibilityId(null);
+        },
+        onError: () => {
+          setBusyVisibilityId(null);
+          Alert.alert("Couldn't update", "Please try again.");
+        },
+      },
+    );
+  }
+
+  function unblockUser(userId: number, name: string) {
+    Alert.alert(
+      `Unblock ${name}?`,
+      "They'll be able to find your profile and contact you again.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Unblock",
+          onPress: () => {
+            setBusyUnblockId(userId);
+            unblock.mutate(
+              { userId },
+              {
+                onSuccess: () => {
+                  qc.invalidateQueries({ queryKey: getListMyUserBlocksQueryKey() });
+                  setBusyUnblockId(null);
+                },
+                onError: () => {
+                  setBusyUnblockId(null);
+                  Alert.alert("Couldn't unblock", "Please try again.");
+                },
+              },
+            );
+          },
+        },
+      ],
+    );
+  }
 
   function toggle(notificationType: string, enabled: boolean) {
     update.mutate(
@@ -439,6 +498,116 @@ export default function SettingsScreen() {
                       importantForAccessibility="no-hide-descendants"
                     />
                   </Pressable>
+                </Row>
+              </Card>
+            ))}
+          </View>
+        )}
+
+        <AppText
+          variant="title"
+          accessibilityRole="header"
+          style={{ marginBottom: 4 }}
+          testID="settings-profile-visibility"
+        >
+          Profile visibility
+        </AppText>
+        <AppText
+          variant="caption"
+          color={c.mutedForeground}
+          style={{ marginBottom: 12 }}
+        >
+          Choose which circles appear on your public profile. People not in those circles will only see what you allow.
+        </AppText>
+
+        {visibility.isLoading ? (
+          <Skeleton height={120} />
+        ) : !visibility.data || visibility.data.length === 0 ? (
+          <Card style={{ marginBottom: 24 }}>
+            <AppText color={c.mutedForeground}>
+              You're not in any circles yet.
+            </AppText>
+          </Card>
+        ) : (
+          <Card style={{ padding: 0, marginBottom: 24 }}>
+            {visibility.data.map((row, idx) => (
+              <View
+                key={row.circleId}
+                testID={`circle-visibility-row-${row.circleId}`}
+                style={{
+                  padding: 16,
+                  borderBottomWidth: idx === visibility.data!.length - 1 ? 0 : 1,
+                  borderBottomColor: c.border,
+                }}
+              >
+                <Row justify="space-between" align="center">
+                  <View style={{ flex: 1, marginRight: 12 }}>
+                    <AppText weight="medium">{row.circleName}</AppText>
+                  </View>
+                  <Switch
+                    value={row.showOnProfile}
+                    disabled={busyVisibilityId === row.circleId}
+                    onValueChange={(v) => toggleVisibility(row.circleId, v)}
+                    accessibilityLabel={`Show ${row.circleName} on my profile`}
+                    trackColor={{ true: c.primary, false: c.muted }}
+                    testID={`circle-visibility-toggle-${row.circleId}`}
+                  />
+                </Row>
+              </View>
+            ))}
+          </Card>
+        )}
+
+        <AppText
+          variant="title"
+          accessibilityRole="header"
+          style={{ marginBottom: 4 }}
+          testID="settings-blocked-users"
+        >
+          Blocked people
+        </AppText>
+        <AppText
+          variant="caption"
+          color={c.mutedForeground}
+          style={{ marginBottom: 12 }}
+        >
+          Blocked people can't see your profile, message you, or comment on your posts.
+        </AppText>
+
+        {blocks.isLoading ? (
+          <Skeleton height={80} />
+        ) : !blocks.data || blocks.data.length === 0 ? (
+          <Card style={{ marginBottom: 24 }}>
+            <AppText color={c.mutedForeground}>
+              You haven't blocked anyone.
+            </AppText>
+          </Card>
+        ) : (
+          <View style={{ gap: 10, marginBottom: 24 }}>
+            {blocks.data.map((b) => (
+              <Card key={b.id} testID={`blocked-row-${b.blockedUser.id}`}>
+                <Row gap={12} align="center">
+                  <Avatar
+                    name={b.blockedUser.displayName}
+                    objectPath={b.blockedUser.avatarObjectPath}
+                    size={40}
+                  />
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <AppText weight="semibold" numberOfLines={1}>
+                      {b.blockedUser.displayName}
+                    </AppText>
+                  </View>
+                  <Button
+                    title="Unblock"
+                    variant="outline"
+                    size="sm"
+                    onPress={() =>
+                      unblockUser(b.blockedUser.id, b.blockedUser.displayName)
+                    }
+                    loading={busyUnblockId === b.blockedUser.id}
+                    disabled={busyUnblockId === b.blockedUser.id}
+                    testID={`button-unblock-${b.blockedUser.id}`}
+                  />
                 </Row>
               </Card>
             ))}

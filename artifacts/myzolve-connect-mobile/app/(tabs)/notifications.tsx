@@ -4,7 +4,10 @@ import React, { useState } from "react";
 import { Alert, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
+  getListMyUserConnectionsQueryKey,
   getListNotificationsQueryKey,
+  useAcceptUserConnection,
+  useDeclineUserConnection,
   useListNotifications,
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
@@ -32,6 +35,8 @@ const ICONS: Record<string, keyof typeof Feather.glyphMap> = {
   dispute_resolved: "check",
   copilot_invite_received: "user-plus",
   copilot_post_made: "user-check",
+  connection_request_received: "user-plus",
+  connection_request_accepted: "user-check",
   wrapup_weekly: "sun",
   wrapup_monthly: "calendar",
 };
@@ -58,10 +63,43 @@ export default function NotificationsScreen() {
   const markRead = useMarkNotificationRead();
   const markAll = useMarkAllNotificationsRead();
   const review = useReviewCopilotPost();
+  const acceptConn = useAcceptUserConnection();
+  const declineConn = useDeclineUserConnection();
   const [reviewing, setReviewing] = useState<{
     id: number;
     decision: "approved" | "flagged";
   } | null>(null);
+  const [respondingConn, setRespondingConn] = useState<{
+    notificationId: number;
+    action: "accept" | "decline";
+  } | null>(null);
+
+  function respondToConnection(
+    notificationId: number,
+    connectionId: number,
+    action: "accept" | "decline",
+  ) {
+    setRespondingConn({ notificationId, action });
+    const mut = action === "accept" ? acceptConn : declineConn;
+    mut.mutate(
+      { connectionId },
+      {
+        onSuccess: () => {
+          markRead.mutate({ notificationId });
+          qc.invalidateQueries({ queryKey: getListNotificationsQueryKey() });
+          qc.invalidateQueries({ queryKey: getListMyUserConnectionsQueryKey() });
+          setRespondingConn(null);
+        },
+        onError: () => {
+          setRespondingConn(null);
+          Alert.alert(
+            action === "accept" ? "Couldn't accept" : "Couldn't decline",
+            "Please try again in a moment.",
+          );
+        },
+      },
+    );
+  }
 
   function handleTap(n: {
     id: number;
@@ -77,6 +115,13 @@ export default function NotificationsScreen() {
     );
     if (n.notificationType === "copilot_invite_received") {
       router.push("/settings");
+      return;
+    }
+    if (
+      n.notificationType === "connection_request_received" ||
+      n.notificationType === "connection_request_accepted"
+    ) {
+      router.push("/connections");
       return;
     }
     if (
@@ -178,7 +223,12 @@ export default function NotificationsScreen() {
               !!n.targetEntityType &&
               COPILOT_ENTITY_TYPES.has(n.targetEntityType) &&
               !!n.targetEntityId;
+            const isConnectionRequest =
+              n.notificationType === "connection_request_received" &&
+              n.targetEntityType === "user_connection" &&
+              !!n.targetEntityId;
             const isReviewing = reviewing?.id === n.id;
+            const isResponding = respondingConn?.notificationId === n.id;
             return (
               <Pressable
                 key={n.id}
@@ -221,6 +271,33 @@ export default function NotificationsScreen() {
                     <AppText variant="caption" color={c.mutedForeground} style={{ marginTop: 6 }}>
                       {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
                     </AppText>
+                    {isConnectionRequest ? (
+                      <Row gap={8} style={{ marginTop: 12 }}>
+                        <Button
+                          title="Accept"
+                          icon="check"
+                          size="sm"
+                          loading={isResponding && respondingConn?.action === "accept"}
+                          disabled={isResponding}
+                          testID={`connection-accept-${n.id}`}
+                          onPress={() =>
+                            respondToConnection(n.id, n.targetEntityId!, "accept")
+                          }
+                        />
+                        <Button
+                          title="Decline"
+                          icon="x"
+                          variant="outline"
+                          size="sm"
+                          loading={isResponding && respondingConn?.action === "decline"}
+                          disabled={isResponding}
+                          testID={`connection-decline-${n.id}`}
+                          onPress={() =>
+                            respondToConnection(n.id, n.targetEntityId!, "decline")
+                          }
+                        />
+                      </Row>
+                    ) : null}
                     {isCopilotPost ? (
                       <Row gap={8} style={{ marginTop: 12 }}>
                         <Button

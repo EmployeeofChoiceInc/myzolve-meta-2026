@@ -189,6 +189,8 @@ function RootLayoutNav() {
       <Stack.Screen name="request/[id]" options={{ title: t("navigation.request") }} />
       <Stack.Screen name="service/[id]" options={{ title: t("navigation.service") }} />
       <Stack.Screen name="profile/[userId]" options={{ title: t("tabs.profile") }} />
+      <Stack.Screen name="find-people" options={{ headerShown: false }} />
+      <Stack.Screen name="connections" options={{ headerShown: false }} />
       <Stack.Screen name="messages/[userId]" options={{ title: "" }} />
       <Stack.Screen name="invite/[token]" options={{ title: t("navigation.joinCircle") }} />
       <Stack.Screen name="wrapup/index" options={{ title: t("navigation.yourWeek") }} />

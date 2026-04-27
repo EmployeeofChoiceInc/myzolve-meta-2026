@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, Switch, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
@@ -45,6 +45,10 @@ type ProfileUpdatePayload = {
   timezone?: string;
   bio?: string;
   location?: string;
+  pronouns?: string;
+  phone?: string;
+  phoneDiscoverable?: boolean;
+  profileShowCirclesDefault?: boolean;
 };
 
 type MeResponse = {
@@ -56,6 +60,10 @@ type MeResponse = {
   bio?: string | null;
   location?: string | null;
   avatarObjectPath?: string | null;
+  pronouns?: string | null;
+  phone?: string | null;
+  phoneDiscoverable?: boolean;
+  profileShowCirclesDefault?: boolean;
 };
 
 function inferContentType(asset: ImagePicker.ImagePickerAsset): string {
@@ -97,16 +105,25 @@ export default function EditProfileScreen() {
   const [timezone, setTimezone] = useState("UTC");
   const [bio, setBio] = useState("");
   const [location, setLocation] = useState("");
+  const [pronouns, setPronouns] = useState("");
+  const [phone, setPhone] = useState("");
+  const [phoneDiscoverable, setPhoneDiscoverable] = useState(false);
+  const [profileShowCirclesDefault, setProfileShowCirclesDefault] = useState(true);
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
     if (me && !initialized) {
+      const m = me as MeResponse;
       setFirstName(me.firstName ?? "");
       setLastName(me.lastName ?? "");
       setDisplayName(me.displayName ?? "");
       setTimezone(me.timezone ?? "UTC");
-      setBio((me as MeResponse).bio ?? "");
-      setLocation((me as MeResponse).location ?? "");
+      setBio(m.bio ?? "");
+      setLocation(m.location ?? "");
+      setPronouns(m.pronouns ?? "");
+      setPhone(m.phone ?? "");
+      setPhoneDiscoverable(!!m.phoneDiscoverable);
+      setProfileShowCirclesDefault(m.profileShowCirclesDefault ?? true);
       setInitialized(true);
     }
   }, [me, initialized]);
@@ -196,6 +213,10 @@ export default function EditProfileScreen() {
       lastName: lastName.trim() || undefined,
       bio: bio.trim() || undefined,
       location: location.trim() || undefined,
+      pronouns: pronouns.trim() || undefined,
+      phone: phone.trim() || undefined,
+      phoneDiscoverable,
+      profileShowCirclesDefault,
     };
     updateMe.mutate(payload, {
       onSuccess: () => {
@@ -383,6 +404,102 @@ export default function EditProfileScreen() {
                   testID="input-location"
                 />
               </Field>
+
+              <Field label="Pronouns (optional)">
+                <Input
+                  value={pronouns}
+                  onChangeText={setPronouns}
+                  placeholder="she/her, he/him, they/them…"
+                  maxLength={50}
+                  testID="input-pronouns"
+                />
+              </Field>
+
+              <Field label="Phone number (optional)">
+                <Input
+                  value={phone}
+                  onChangeText={setPhone}
+                  placeholder="+1 555 123 4567"
+                  keyboardType="phone-pad"
+                  maxLength={32}
+                  testID="input-phone"
+                />
+                <AppText
+                  variant="caption"
+                  color={c.mutedForeground}
+                  style={{ marginTop: 6 }}
+                >
+                  We never share your phone number. It's only used if you choose to be findable by it below.
+                </AppText>
+              </Field>
+
+              <Pressable
+                onPress={() => setPhoneDiscoverable((v) => !v)}
+                testID="row-phone-discoverable"
+                style={({ pressed }) => ({
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: c.border,
+                  padding: 14,
+                  marginBottom: 16,
+                  opacity: pressed ? 0.85 : 1,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                })}
+              >
+                <View style={{ flex: 1 }}>
+                  <AppText weight="medium">Let people find me by my phone</AppText>
+                  <AppText
+                    variant="caption"
+                    color={c.mutedForeground}
+                    style={{ marginTop: 2 }}
+                  >
+                    When on, others can search for you using your exact phone number.
+                  </AppText>
+                </View>
+                <Switch
+                  value={phoneDiscoverable}
+                  onValueChange={setPhoneDiscoverable}
+                  trackColor={{ true: c.primary, false: c.muted }}
+                  testID="switch-phone-discoverable"
+                />
+              </Pressable>
+
+              <Pressable
+                onPress={() => setProfileShowCirclesDefault((v) => !v)}
+                testID="row-profile-show-circles-default"
+                style={({ pressed }) => ({
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: c.border,
+                  padding: 14,
+                  marginBottom: 16,
+                  opacity: pressed ? 0.85 : 1,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                })}
+              >
+                <View style={{ flex: 1 }}>
+                  <AppText weight="medium">Show my circles on my profile</AppText>
+                  <AppText
+                    variant="caption"
+                    color={c.mutedForeground}
+                    style={{ marginTop: 2 }}
+                  >
+                    Default for new circles. You can fine-tune each circle in Settings.
+                  </AppText>
+                </View>
+                <Switch
+                  value={profileShowCirclesDefault}
+                  onValueChange={setProfileShowCirclesDefault}
+                  trackColor={{ true: c.primary, false: c.muted }}
+                  testID="switch-profile-show-circles-default"
+                />
+              </Pressable>
 
               <Button
                 title="Save changes"
