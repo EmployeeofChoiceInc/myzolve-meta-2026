@@ -37,6 +37,7 @@ MyZolve Connect is built as a pnpm workspace monorepo using TypeScript, designed
 - **Co-pilot for elders**: Allows trusted helpers to post on behalf of other circle members with an approval workflow.
 - **Gratitude Wrap-ups**: Weekly and monthly summaries of member contributions, generated server-side and surfaced via mobile screens and push notifications, gated by user preferences.
 - **Animated App Open**: A "peach reveal" animation on cold mobile app launches, respecting reduced motion settings.
+- **iOS Architecture**: New Architecture (Fabric / TurboModules) is intentionally disabled (`newArchEnabled: false` in `app.json`) because enabling it caused a UIView lifecycle crash (`EXC_BAD_ACCESS` calling `[UIView alpha]` on a freed view) on cold launch in TestFlight 1.0.6 (16). Re-evaluate once `react-native-screens`, `react-native-reanimated`, and `expo-glass-effect` are confirmed Fabric-stable.
 - **Clerk Integration**: Special handling for Clerk on Expo web target to ensure proper API proxy URL resolution.
 - **Mobile Over-the-Air Updates (EAS Update)**: Configured for seamless JS-only updates via `expo-updates`, with `app.config.ts` dynamically managing `runtimeVersion` for compatibility with Expo Go and EAS builds.
 
