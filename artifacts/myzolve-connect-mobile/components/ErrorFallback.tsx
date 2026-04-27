@@ -48,9 +48,16 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
     default: "monospace",
   });
 
+  // Always surface the error details (in dev AND in TestFlight production
+  // builds).  We were debugging a TestFlight cold-launch crash where the
+  // error was swallowed silently — exposing it inline + via the modal lets
+  // us read the actual message without needing remote logging.  Safe to
+  // revert (re-add `__DEV__ ? ... : null` gates) before App Store submit.
+  const showErrorDetails = true;
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {__DEV__ ? (
+      {showErrorDetails ? (
         <Pressable
           onPress={() => setIsModalVisible(true)}
           accessibilityLabel="View error details"
@@ -77,6 +84,37 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
           Please reload the app to continue.
         </Text>
 
+        {showErrorDetails ? (
+          <View
+            style={[
+              styles.inlineErrorBox,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <Text
+              selectable
+              style={[
+                styles.inlineErrorText,
+                { color: colors.foreground, fontFamily: monoFont },
+              ]}
+            >
+              {error.message || "(no message)"}
+            </Text>
+            {error.stack ? (
+              <Text
+                selectable
+                numberOfLines={8}
+                style={[
+                  styles.inlineErrorStack,
+                  { color: colors.mutedForeground, fontFamily: monoFont },
+                ]}
+              >
+                {error.stack.split("\n").slice(0, 8).join("\n")}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+
         <Pressable
           onPress={handleRestart}
           style={({ pressed }) => [
@@ -99,7 +137,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
         </Pressable>
       </View>
 
-      {__DEV__ ? (
+      {showErrorDetails ? (
         <Modal
           visible={isModalVisible}
           animationType="slide"
@@ -274,5 +312,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     width: "100%",
+  },
+  inlineErrorBox: {
+    width: "100%",
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    marginTop: 8,
+  },
+  inlineErrorText: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  inlineErrorStack: {
+    fontSize: 10,
+    lineHeight: 14,
+    marginTop: 8,
   },
 });
