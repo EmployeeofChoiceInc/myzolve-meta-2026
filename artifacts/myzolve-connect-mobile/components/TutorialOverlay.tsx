@@ -1,10 +1,12 @@
 import { Feather } from "@expo/vector-icons";
 import { TUTORIAL_STEPS } from "@workspace/tutorial-content";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, type ComponentProps } from "react";
 import { Modal, Pressable, View } from "react-native";
 
 import { AppText, Button, Row } from "@/components/UI";
 import { useColors } from "@/hooks/useColors";
+
+type FeatherIconName = ComponentProps<typeof Feather>["name"];
 
 // Full-screen guided tutorial for mobile.  Renders one step at a time as a
 // modal card with a big icon, title, body, and Next/Skip controls.  The last
@@ -119,9 +121,7 @@ export function TutorialOverlay({ visible, onClose }: Props) {
             }}
           >
             <Feather
-              // Feather icon names are validated upstream in tutorial-content.
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              name={step.featherIcon as any}
+              name={step.featherIcon as FeatherIconName}
               size={32}
               color={c.primary}
             />

@@ -212,7 +212,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          <section>
+          <section data-tutorial-target="dashboard-card-wall">
             <h2 className="text-lg font-semibold mb-4">Your Circles</h2>
             {isLoading ? (
               <div className="h-32 bg-muted/50 rounded-3xl animate-pulse" />
