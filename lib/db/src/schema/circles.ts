@@ -60,11 +60,11 @@ export const circleMembersTable = pgTable("circle_members", {
   // When the member dismissed the one-time custom-look welcome card.
   // Null means they haven't seen / dismissed it yet.
   welcomeDismissedAt: timestamp("welcome_dismissed_at", { withTimezone: true }),
-  // Per-membership override of "include this circle in the public-profile
-  // 'circles I'm in' list". When true (default) the user's own
-  // `profileShowCirclesDefault` decides whether the public profile lists
-  // any circles at all; when false, this specific circle is hidden even if
-  // the global toggle is on.
+  // Per-membership flag deciding whether this circle appears on the
+  // member's public profile. This is the source of truth at view time;
+  // the user's `profileShowCirclesDefault` is only used as the initial
+  // value when a new membership is created so the user can subsequently
+  // override visibility for any individual circle.
   showOnProfile: boolean("show_on_profile").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

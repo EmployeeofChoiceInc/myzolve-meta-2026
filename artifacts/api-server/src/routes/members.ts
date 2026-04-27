@@ -590,6 +590,7 @@ router.post("/invitations/:token/accept", requireAuth, validateParams(invitation
         role: invitation.role,
         status: "active",
         joinedAt: now,
+        showOnProfile: user.profileShowCirclesDefault !== false,
       })
       .returning();
     return inserted;
@@ -929,6 +930,13 @@ router.post(
         return reactivated;
       }
 
+      const joiner = await tx
+        .select({ profileShowCirclesDefault: usersTable.profileShowCirclesDefault })
+        .from(usersTable)
+        .where(eq(usersTable.id, joinRequest.userId))
+        .limit(1)
+        .then((r) => r[0] ?? null);
+
       const [inserted] = await tx
         .insert(circleMembersTable)
         .values({
@@ -937,6 +945,7 @@ router.post(
           role: "member",
           status: "active",
           joinedAt: now,
+          showOnProfile: joiner?.profileShowCirclesDefault !== false,
         })
         .returning();
       return inserted;

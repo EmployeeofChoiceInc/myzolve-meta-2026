@@ -268,6 +268,7 @@ router.post(
         role: "member",
         status: "active",
         joinedAt: new Date(),
+        showOnProfile: req.dbUser!.profileShowCirclesDefault !== false,
       });
     }
 

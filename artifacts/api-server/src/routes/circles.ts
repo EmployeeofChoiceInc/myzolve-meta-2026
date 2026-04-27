@@ -361,6 +361,7 @@ router.post("/circles", requireAuth, validateBody(createCircleSchema), async (re
     role: "owner",
     status: "active",
     joinedAt: new Date(),
+    showOnProfile: req.dbUser!.profileShowCirclesDefault !== false,
   });
 
   res.status(201).json(circleToApi(circle, 1, "owner"));

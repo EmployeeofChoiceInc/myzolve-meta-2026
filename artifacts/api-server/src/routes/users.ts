@@ -189,13 +189,14 @@ router.get(
       .filter((m) => myCircleIds.has(m.circleId))
       .map((m) => m.circleId);
 
-    // Public circles = the target's circles whose membership row is marked
-    // showOnProfile, gated by their own profileShowCirclesDefault toggle.
-    // When the global toggle is off, we surface NO circles at all (other
-    // than the ones we share with the viewer, which are common knowledge).
-    const publicCircleIds = targetUser.profileShowCirclesDefault
-      ? theirCircles.filter((m) => m.showOnProfile).map((m) => m.circleId)
-      : [];
+    // Public circles = the target's circles whose per-membership
+    // showOnProfile flag is true. The user's profileShowCirclesDefault
+    // is only applied as the default when a new membership is created;
+    // the per-membership flag is the source of truth at view time, so
+    // users can override the global default for any individual circle.
+    const publicCircleIds = theirCircles
+      .filter((m) => m.showOnProfile)
+      .map((m) => m.circleId);
 
     // Union (shared ∪ public) so the viewer always sees the circles they
     // already know about, plus any extras the target chose to publicize.
