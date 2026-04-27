@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, View, type LayoutChangeEvent } from "react-native";
 import Animated, {
   Easing,
@@ -36,9 +36,18 @@ export function AnimatedSplash({ onComplete, onLayout }: Props) {
   // Guard so onComplete fires at most once even if both the timed
   // fade-out and the tap-to-skip both reach completion.
   const completedRef = useRef(false);
+  // Drives `pointerEvents` so the (now-invisible) overlay stops swallowing
+  // taps once the animation is done.  We deliberately do NOT unmount the
+  // overlay on completion: under the New Architecture (Fabric), unmounting
+  // the splash while a Reanimated worklet is mid-tick on its views causes
+  // an EXC_BAD_ACCESS crash on `[UIView alpha]` during cold launch on iOS
+  // (TestFlight 1.0.6 build 16).  Leaving the view mounted at opacity 0
+  // costs nothing and removes the race entirely.
+  const [animationDone, setAnimationDone] = useState(false);
   const finishOnce = useCallback(() => {
     if (completedRef.current) return;
     completedRef.current = true;
+    setAnimationDone(true);
     onComplete();
   }, [onComplete]);
 
@@ -171,10 +180,10 @@ export function AnimatedSplash({ onComplete, onLayout }: Props) {
 
   return (
     <Animated.View
-      pointerEvents="auto"
+      pointerEvents={animationDone ? "none" : "auto"}
       style={[StyleSheet.absoluteFill, styles.overlay, overlayStyle]}
       onLayout={handleLayout}
-      accessible
+      accessible={!animationDone}
       accessibilityRole="image"
       accessibilityLabel="MyZolve Connect"
     >

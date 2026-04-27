@@ -209,8 +209,14 @@ export default function RootLayout() {
 
   // Cold-launch only: first mount captures the flag, then flips it so
   // future re-mounts within the same process won't re-play the animation.
+  // Note: we deliberately do NOT track a "splashFinished" flag that would
+  // cause the splash to unmount when its animation completes.  Under the
+  // New Architecture (Fabric), unmounting AnimatedSplash while a Reanimated
+  // worklet is mid-tick on its views causes an EXC_BAD_ACCESS crash on
+  // `[UIView alpha]` during cold launch on iOS.  Instead, AnimatedSplash
+  // fades to opacity 0 and disables its own pointer events when done — it
+  // stays mounted for the life of the process, which is essentially free.
   const [showAnimatedSplash] = useState(() => isColdLaunch);
-  const [splashFinished, setSplashFinished] = useState(!isColdLaunch);
   useEffect(() => {
     isColdLaunch = false;
   }, []);
@@ -264,7 +270,9 @@ export default function RootLayout() {
   }, [hideNativeSplashSafely]);
 
   const handleSplashComplete = useCallback(() => {
-    setSplashFinished(true);
+    // Intentional no-op.  The animated overlay fades to opacity 0 and
+    // disables its own pointer events when done; we keep it mounted to
+    // avoid an unmount-during-worklet race that crashes under Fabric.
   }, []);
 
   if (!fontsLoaded && !fontError) return null;
@@ -287,7 +295,7 @@ export default function RootLayout() {
                         <KeyboardProvider>
                           <StatusBar style="dark" />
                           <RootLayoutNav />
-                          {showAnimatedSplash && !splashFinished ? (
+                          {showAnimatedSplash ? (
                             <AnimatedSplash
                               onComplete={handleSplashComplete}
                               onLayout={handleAnimatedSplashLayout}

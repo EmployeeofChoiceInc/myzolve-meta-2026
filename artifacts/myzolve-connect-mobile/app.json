@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "myzolve-connect-mobile",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "updates": {
       "url": "https://u.expo.dev/43260551-a6ad-4de0-8b5a-c883e9282a6b",
       "fallbackToCacheTimeout": 0
