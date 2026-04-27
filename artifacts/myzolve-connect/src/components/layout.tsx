@@ -444,6 +444,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
             data-testid={`nav-${item.href.replace(/\//g, "")}`}
+            data-tutorial-target={
+              item.href === "/dashboard" ? "nav-dashboard" : undefined
+            }
           >
             <div className="relative">
               <item.icon className={`w-5 h-5 ${item.plus ? "text-[#B47A2A]" : ""}`} />
@@ -510,7 +513,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <NotificationDrawer />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                <Button
+                  variant="ghost"
+                  className="relative h-10 w-10 rounded-full"
+                  data-tutorial-target="nav-settings"
+                >
                   <Avatar className="h-10 w-10 border border-muted">
                     <AvatarImage src={user?.imageUrl} alt={user?.fullName || "User"} />
                     <AvatarFallback className="bg-primary/10 text-primary">{user?.firstName?.charAt(0) || "U"}</AvatarFallback>

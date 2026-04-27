@@ -35,6 +35,7 @@ import { PlusBadge } from "@/components/PlusBadge";
 import { Screen } from "@/components/Screen";
 import { useColors } from "@/hooks/useColors";
 import { useSubscription } from "@/lib/revenuecat";
+import { useTutorial } from "@/lib/tutorialContext";
 import type { LanguagePreference } from "@/lib/i18n";
 
 export default function SettingsScreen() {
@@ -56,6 +57,7 @@ export default function SettingsScreen() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const { isPlus, isAvailable, initError } = useSubscription();
+  const { start: startTutorial } = useTutorial();
 
   const copilotInvalidate = () =>
     qc.invalidateQueries({ queryKey: getListCopilotGrantsQueryKey() });
@@ -666,6 +668,51 @@ export default function SettingsScreen() {
             </AppText>
           </Row>
         </Card>
+
+        <View style={{ height: 24 }} />
+        <Pressable
+          testID="settings-show-tour-row"
+          accessibilityRole="button"
+          accessibilityLabel="Show me around again"
+          onPress={startTutorial}
+          style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+        >
+          <Card>
+            <Row gap={12} align="center">
+              <View
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: c.primarySoft,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Feather name="compass" size={18} color={c.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <AppText weight="semibold">Show me around again</AppText>
+                <AppText
+                  variant="caption"
+                  color={c.mutedForeground}
+                  style={{ marginTop: 2 }}
+                >
+                  Replay the quick walkthrough.
+                </AppText>
+              </View>
+              <Feather
+                name="chevron-right"
+                size={20}
+                color={c.mutedForeground}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              />
+            </Row>
+          </Card>
+        </Pressable>
 
         <View style={{ height: 32 }} />
         <AppText variant="title" accessibilityRole="header" style={{ marginBottom: 12, color: c.destructive ?? "#b91c1c" }}>

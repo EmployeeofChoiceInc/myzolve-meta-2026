@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useEffect } from "react";
+import { useTutorial } from "@/lib/tutorial-context";
 import { Plus, HandHeart, CalendarClock, ArrowRight, AlertCircle, Cake, Stethoscope, Heart, Sparkles, Bell } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -169,12 +170,22 @@ export default function DashboardPage() {
   const { data: circles, isLoading } = useListCircles();
   const [, navigate] = useLocation();
   const firstCircleId = circles?.[0]?.id;
+  const { maybeAutoStart } = useTutorial();
 
   useEffect(() => {
     if (!isLoading && circles && circles.length === 0) {
       navigate("/onboarding");
     }
   }, [isLoading, circles, navigate]);
+
+  // First-time visitors see the guided tour automatically.  We wait until
+  // circle data has loaded so we don't fire it for users who'll be redirected
+  // back to onboarding immediately.
+  useEffect(() => {
+    if (!isLoading && circles && circles.length > 0) {
+      maybeAutoStart();
+    }
+  }, [isLoading, circles, maybeAutoStart]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -240,7 +251,7 @@ export default function DashboardPage() {
           </section>
 
           {firstCircleId && (
-            <section>
+            <section data-tutorial-target="dashboard-card-requests">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold">Open Requests</h2>
                 <Link href={`/circles/${firstCircleId}/requests`} className="text-sm text-primary hover:underline flex items-center gap-1">
@@ -267,7 +278,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="space-y-8">
-          <section>
+          <section data-tutorial-target="dashboard-card-calendar">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Coming up this week</h2>
               {firstCircleId && (

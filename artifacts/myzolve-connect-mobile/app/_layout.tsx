@@ -24,6 +24,7 @@ import { I18nProvider } from "@/components/I18nProvider";
 import { useColors } from "@/hooks/useColors";
 import { useTranslation } from "react-i18next";
 import { CopilotProvider } from "@/lib/copilot";
+import { TutorialProvider } from "@/lib/tutorialContext";
 import {
   configureNotificationHandler,
   registerForPushNotificationsAsync,
@@ -281,18 +282,20 @@ export default function RootLayout() {
               <AuthBridge>
                 <SubscriptionProvider>
                   <CopilotProvider>
-                    <GestureHandlerRootView style={{ flex: 1 }}>
-                      <KeyboardProvider>
-                        <StatusBar style="dark" />
-                        <RootLayoutNav />
-                        {showAnimatedSplash && !splashFinished ? (
-                          <AnimatedSplash
-                            onComplete={handleSplashComplete}
-                            onLayout={handleAnimatedSplashLayout}
-                          />
-                        ) : null}
-                      </KeyboardProvider>
-                    </GestureHandlerRootView>
+                    <TutorialProvider>
+                      <GestureHandlerRootView style={{ flex: 1 }}>
+                        <KeyboardProvider>
+                          <StatusBar style="dark" />
+                          <RootLayoutNav />
+                          {showAnimatedSplash && !splashFinished ? (
+                            <AnimatedSplash
+                              onComplete={handleSplashComplete}
+                              onLayout={handleAnimatedSplashLayout}
+                            />
+                          ) : null}
+                        </KeyboardProvider>
+                      </GestureHandlerRootView>
+                    </TutorialProvider>
                   </CopilotProvider>
                 </SubscriptionProvider>
               </AuthBridge>

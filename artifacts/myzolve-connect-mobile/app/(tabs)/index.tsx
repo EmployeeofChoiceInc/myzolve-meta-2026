@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { hasAcknowledgedOnboarding } from "@/lib/onboardingFlag";
+import { useTutorial } from "@/lib/tutorialContext";
 import { hasSeenYearRecap } from "@/lib/yearRecapFlag";
 import { useSubscription } from "@/lib/revenuecat";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -104,6 +105,21 @@ export default function HomeScreen() {
       router.replace("/onboarding");
     }
   }, [isLoading, circles, router, onboardingAck]);
+
+  // Auto-launch the guided tour the first time a returning user lands on
+  // Home with at least one circle.  We only attempt it once onboarding has
+  // been acknowledged so we don't fight the redirect to /onboarding above.
+  const { maybeAutoStart } = useTutorial();
+  useEffect(() => {
+    if (
+      onboardingAck === true &&
+      !isLoading &&
+      circles &&
+      circles.length > 0
+    ) {
+      maybeAutoStart();
+    }
+  }, [onboardingAck, isLoading, circles, maybeAutoStart]);
 
   const { isPlus } = useSubscription();
   useEffect(() => {

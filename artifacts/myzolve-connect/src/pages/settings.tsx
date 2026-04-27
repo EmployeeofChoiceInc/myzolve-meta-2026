@@ -30,6 +30,7 @@ import { PlusBadge } from "@/components/plus-badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useCopilot } from "@/lib/copilot";
+import { useTutorial as useTutorialHook } from "@/lib/tutorial-context";
 import {
   useListCircles,
   useListCircleMembers,
@@ -498,7 +499,38 @@ export default function SettingsPage() {
       <CopilotSection />
 
       <NotificationPreferencesCard />
+
+      <ShowTourAgainCard />
     </div>
+  );
+}
+
+function ShowTourAgainCard() {
+  // Lazy import to keep this file self-contained at the bottom; the provider
+  // is mounted at the app root so `useTutorial()` is always available here.
+  const { start } = useTutorialHook();
+  return (
+    <Card className="rounded-3xl border-border/50 shadow-sm">
+      <CardContent className="p-5">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <p className="font-medium">Show me around again</p>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Replay the quick walkthrough of the main parts of the app.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-full shrink-0"
+            onClick={start}
+            data-testid="button-replay-tutorial"
+          >
+            Replay tour
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

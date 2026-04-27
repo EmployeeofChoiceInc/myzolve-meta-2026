@@ -36,6 +36,7 @@ import CircleCalendarPage from "@/pages/circle-calendar";
 import WrapupPage from "@/pages/wrapup";
 import { PaywallProvider } from "@/components/paywall-dialog";
 import { CopilotProvider } from "@/lib/copilot";
+import { TutorialProvider } from "@/lib/tutorial-context";
 
 const queryClient = new QueryClient();
 
@@ -155,6 +156,7 @@ function ClerkProviderWithRoutes() {
         <AnalyticsTracker />
         <CopilotProvider>
         <PaywallProvider>
+        <TutorialProvider>
         <Switch>
           <Route path="/" component={HomeRedirect} />
           <Route path="/sign-in/*?" component={SignInPage} />
@@ -187,6 +189,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/invite/:token" component={InviteAcceptPage} />
           <Route component={NotFound} />
         </Switch>
+        </TutorialProvider>
         </PaywallProvider>
         </CopilotProvider>
       </QueryClientProvider>
