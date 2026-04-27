@@ -9,6 +9,7 @@ import {
   getGetUserPublicProfileQueryKey,
   getListMyUserConnectionsQueryKey,
   getListMyUserBlocksQueryKey,
+  useListMyUserBlocks,
   getListNotificationsQueryKey,
   useAcceptUserConnection,
   useBlockUser,
@@ -42,7 +43,9 @@ export default function ProfileDetailScreen() {
   const userId = Number(params.userId);
   const { data: me } = useGetMe();
   const { data: profile, isLoading } = useGetUserPublicProfile(userId);
+  const { data: blocksList } = useListMyUserBlocks();
   const isMe = me?.id === userId;
+  const isBlockedByMe = !!blocksList?.some((b) => b.blockedUser.id === userId);
 
   const requestConn = useRequestUserConnection();
   const acceptConn = useAcceptUserConnection();
@@ -214,12 +217,22 @@ export default function ProfileDetailScreen() {
   }
 
   function showMoreMenu() {
+    const name = profile?.displayName ?? "Profile";
     Alert.alert(
-      profile?.displayName ?? "Profile",
+      name,
       undefined,
       [
-        { text: "Block", style: "destructive", onPress: handleBlock },
-        { text: "Cancel", style: "cancel" },
+        isBlockedByMe
+          ? {
+              text: `Unblock ${name}`,
+              onPress: handleUnblock,
+            }
+          : {
+              text: `Block ${name}`,
+              style: "destructive" as const,
+              onPress: handleBlock,
+            },
+        { text: "Cancel", style: "cancel" as const },
       ],
     );
   }
@@ -401,18 +414,6 @@ export default function ProfileDetailScreen() {
                 </Card>
               ) : null}
 
-              {!isMe ? (
-                <Pressable
-                  onPress={handleUnblock}
-                  testID={`button-unblock-from-profile-${userId}`}
-                  style={{ alignItems: "center", marginTop: 4, padding: 10, opacity: 0 }}
-                  pointerEvents="none"
-                >
-                  <AppText variant="caption" color={c.mutedForeground}>
-                    Hidden unblock anchor
-                  </AppText>
-                </Pressable>
-              ) : null}
             </>
           )}
         </View>

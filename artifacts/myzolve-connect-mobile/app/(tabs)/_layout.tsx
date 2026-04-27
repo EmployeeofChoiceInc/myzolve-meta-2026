@@ -58,6 +58,14 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="find-people"
+        options={{
+          title: "Find",
+          tabBarIcon: ({ color, size }) => <Feather name="user-plus" size={size} color={color} />,
+          tabBarAccessibilityLabel: "Find people",
+        }}
+      />
+      <Tabs.Screen
         name="notifications"
         options={{
           title: t("tabs.alerts"),
