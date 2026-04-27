@@ -15,7 +15,7 @@ import {
   circlePostsTable,
 } from "@workspace/db";
 import { eq, and, desc, isNull, count, inArray, sql } from "drizzle-orm";
-import { assertCircleMember, createNotification, notifyMentions, resolveActingFor, getBlockedUserIdSet } from "../lib/helpers";
+import { assertCircleMember, createNotification, notifyMentions, resolveActingFor, getBlockedUserIdSet, isBlockedEitherWay } from "../lib/helpers";
 
 const router = Router();
 
@@ -274,6 +274,15 @@ router.post(
       return;
     }
 
+    if (entity.ownerId && entity.ownerId !== userId) {
+      if (await isBlockedEitherWay(userId, entity.ownerId)) {
+        res
+          .status(403)
+          .json({ error: "You can't comment on this post." });
+        return;
+      }
+    }
+
     if (parentCommentId != null) {
       const parentComment = await db
         .select({ id: commentsTable.id })
@@ -336,6 +345,7 @@ router.post(
       });
     }
 
+    const blockedFromAuthor = await getBlockedUserIdSet(userId);
     await notifyMentions({
       circleId,
       body,
@@ -343,7 +353,10 @@ router.post(
       actorName: attribution,
       targetEntityType: entityType,
       targetEntityId: entityId,
-      excludeUserIds: entity.ownerId ? [entity.ownerId] : [],
+      excludeUserIds: [
+        ...(entity.ownerId ? [entity.ownerId] : []),
+        ...Array.from(blockedFromAuthor),
+      ],
       context: entityType === "circle_post" ? "in a wall comment" : "in a comment",
     });
 

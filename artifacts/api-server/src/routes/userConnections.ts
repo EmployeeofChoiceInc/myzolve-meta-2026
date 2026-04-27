@@ -8,8 +8,8 @@ import {
   userBlocksTable,
   usersTable,
 } from "@workspace/db";
-import { eq, and, or, inArray, ne } from "drizzle-orm";
-import { createNotification, getUserName } from "../lib/helpers";
+import { eq, and, or, inArray } from "drizzle-orm";
+import { createNotification } from "../lib/helpers";
 
 const router = Router();
 
@@ -601,9 +601,5 @@ router.delete(
     res.status(204).end();
   },
 );
-
-// Suppress unused import warning while exposing the helper for siblings.
-void getUserName;
-void ne;
 
 export default router;

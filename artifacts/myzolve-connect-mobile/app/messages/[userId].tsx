@@ -1,11 +1,19 @@
 import { Feather } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, TextInput, View } from "react-native";
+import { Alert, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { format } from "date-fns";
-import { useGetMe } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  getGetUserPublicProfileQueryKey,
+  getListMyUserBlocksQueryKey,
+  useBlockUser,
+  useGetMe,
+  useListMyUserBlocks,
+  useUnblockUser,
+} from "@workspace/api-client-react";
 
 import { AppText, Avatar, IconButton, Row, Skeleton } from "@/components/UI";
 import { useColors } from "@/hooks/useColors";
@@ -22,14 +30,25 @@ export default function MessageThreadScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ userId: string }>();
   const partnerId = Number(params.userId);
+  const qc = useQueryClient();
 
   const { data: me } = useGetMe();
   const { data, isLoading } = useMessageThread(partnerId);
+  const { data: blocksList } = useListMyUserBlocks();
   const send = useSendMessage(partnerId);
   const markRead = useMarkThreadRead();
+  const blockMut = useBlockUser();
+  const unblockMut = useUnblockUser();
+
+  const isBlockedByMe = !!blocksList?.some(
+    (b) => b.blockedUser.id === partnerId,
+  );
 
   const [text, setText] = useState("");
   const scrollRef = useRef<ScrollView>(null);
+
+  const partner = data?.partner;
+  const messages = data?.messages ?? [];
 
   useEffect(() => {
     if (partnerId) markRead.mutate(partnerId);
@@ -48,8 +67,66 @@ export default function MessageThreadScreen() {
     });
   }
 
-  const partner = data?.partner;
-  const messages = data?.messages ?? [];
+  function invalidateBlockState() {
+    qc.invalidateQueries({ queryKey: getListMyUserBlocksQueryKey() });
+    qc.invalidateQueries({ queryKey: getGetUserPublicProfileQueryKey(partnerId) });
+  }
+
+  function handleBlock() {
+    if (!partner) return;
+    Alert.alert(
+      `Block ${partner.displayName}?`,
+      "They won't be able to message or comment on your posts.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Block",
+          style: "destructive",
+          onPress: () =>
+            blockMut.mutate(
+              { userId: partnerId },
+              {
+                onSuccess: invalidateBlockState,
+                onError: () =>
+                  Alert.alert("Couldn't block", "Please try again."),
+              },
+            ),
+        },
+      ],
+    );
+  }
+
+  function handleUnblock() {
+    if (!partner) return;
+    unblockMut.mutate(
+      { userId: partnerId },
+      {
+        onSuccess: invalidateBlockState,
+        onError: () => Alert.alert("Couldn't unblock", "Please try again."),
+      },
+    );
+  }
+
+  function openMenu() {
+    if (!partner) return;
+    Alert.alert(
+      partner.displayName,
+      undefined,
+      [
+        isBlockedByMe
+          ? {
+              text: `Unblock ${partner.displayName}`,
+              onPress: handleUnblock,
+            }
+          : {
+              text: `Block ${partner.displayName}`,
+              style: "destructive" as const,
+              onPress: handleBlock,
+            },
+        { text: "Cancel", style: "cancel" as const },
+      ],
+    );
+  }
 
   return (
     <>
@@ -88,6 +165,13 @@ export default function MessageThreadScreen() {
                 </View>
               </Row>
             </Pressable>
+          )}
+          {partner && (
+            <IconButton
+              icon="more-vertical"
+              onPress={openMenu}
+              testID="button-thread-menu"
+            />
           )}
         </Row>
 

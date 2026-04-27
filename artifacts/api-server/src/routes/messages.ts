@@ -6,7 +6,6 @@ import { db } from "@workspace/db";
 import {
   directMessagesTable,
   circleMembersTable,
-  circlesTable,
   usersTable,
   notificationsTable,
 } from "@workspace/db";
@@ -34,15 +33,11 @@ const sendMessageSchema = z.object({
  *   1. A block in either direction always returns false.
  *   2. Otherwise, allow if they share at least one active circle.
  *   3. Otherwise, allow if they have an accepted user-to-user connection.
- *   4. Otherwise, fall back to the legacy "both are circle creators"
- *      grandfather rule (kept so onboarding owners can still reach each
- *      other through the Find People page before either has invited
- *      anyone).
+ *   4. Otherwise, deny.
  */
 async function canMessage(senderId: number, recipientId: number): Promise<boolean> {
   if (await isBlockedEitherWay(senderId, recipientId)) return false;
 
-  // Get circles where sender is an active member
   const senderCircles = await db
     .select({ circleId: circleMembersTable.circleId })
     .from(circleMembersTable)
@@ -64,23 +59,7 @@ async function canMessage(senderId: number, recipientId: number): Promise<boolea
     if (shared.length > 0) return true;
   }
 
-  if (await hasAcceptedUserConnection(senderId, recipientId)) return true;
-
-  // Both are circle creators?
-  const [senderCircle, recipientCircle] = await Promise.all([
-    db
-      .select({ id: circlesTable.id })
-      .from(circlesTable)
-      .where(eq(circlesTable.ownerId, senderId))
-      .limit(1),
-    db
-      .select({ id: circlesTable.id })
-      .from(circlesTable)
-      .where(eq(circlesTable.ownerId, recipientId))
-      .limit(1),
-  ]);
-
-  return senderCircle.length > 0 && recipientCircle.length > 0;
+  return await hasAcceptedUserConnection(senderId, recipientId);
 }
 
 /**
@@ -209,7 +188,7 @@ router.get("/messages/:userId", requireAuth, validateParams(userIdParam), async 
 
   const allowed = await canMessage(myId, partnerId);
   if (!allowed) {
-    res.status(403).json({ error: "You can only message people who share a circle with you or fellow circle creators." });
+    res.status(403).json({ error: "You can only message people who share a circle with you or who you've connected with." });
     return;
   }
 
@@ -269,7 +248,7 @@ router.post("/messages/:userId", requireAuth, validateParams(userIdParam), valid
 
   const allowed = await canMessage(myId, recipientId);
   if (!allowed) {
-    res.status(403).json({ error: "You can only message people who share a circle with you or fellow circle creators." });
+    res.status(403).json({ error: "You can only message people who share a circle with you or who you've connected with." });
     return;
   }
 

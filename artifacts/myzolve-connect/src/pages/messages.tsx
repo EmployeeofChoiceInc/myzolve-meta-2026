@@ -6,16 +6,24 @@ import {
   useSendMessage,
   useMarkThreadRead,
   useMe,
+  useMyBlocks,
+  useBlockUser,
+  useUnblockUser,
   objectPathToUrl,
 } from "@/hooks/use-api";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { format, formatDistanceToNow, isToday } from "date-fns";
-import { Send, ArrowLeft, MessageCircle } from "lucide-react";
+import { Send, ArrowLeft, MessageCircle, MoreVertical, ShieldOff, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 function formatMsgTime(dateStr: string) {
@@ -64,6 +72,10 @@ function ThreadView({ partnerId, myId }: { partnerId: number; myId: number }) {
   const { data, isLoading } = useMessageThread(partnerId);
   const sendMessage = useSendMessage(partnerId);
   const markRead = useMarkThreadRead(partnerId);
+  const { data: myBlocks } = useMyBlocks();
+  const blockMut = useBlockUser();
+  const unblockMut = useUnblockUser();
+  const isBlockedByMe = !!myBlocks?.some((b) => b.blockedUser.id === partnerId);
   const [body, setBody] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -130,6 +142,67 @@ function ThreadView({ partnerId, myId }: { partnerId: number; myId: number }) {
         <Link href={`/profile/${partner.id}`}>
           <span className="font-semibold hover:underline cursor-pointer">{partner.displayName}</span>
         </Link>
+        <div className="ml-auto">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full w-8 h-8"
+                data-testid="button-thread-menu"
+                aria-label="Conversation options"
+              >
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {isBlockedByMe ? (
+                <DropdownMenuItem
+                  data-testid={`button-unblock-${partner.id}`}
+                  onClick={() =>
+                    unblockMut.mutate(partner.id, {
+                      onSuccess: () =>
+                        toast({ title: `${partner.displayName} unblocked` }),
+                      onError: () =>
+                        toast({
+                          title: "Could not unblock. Please try again.",
+                          variant: "destructive",
+                        }),
+                    })
+                  }
+                >
+                  <ShieldOff className="w-4 h-4 mr-2" />
+                  Unblock {partner.displayName}
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  data-testid={`button-block-${partner.id}`}
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => {
+                    if (
+                      !window.confirm(
+                        `Block ${partner.displayName}? They won't be able to message or comment on your posts.`,
+                      )
+                    )
+                      return;
+                    blockMut.mutate(partner.id, {
+                      onSuccess: () =>
+                        toast({ title: `${partner.displayName} blocked` }),
+                      onError: () =>
+                        toast({
+                          title: "Could not block. Please try again.",
+                          variant: "destructive",
+                        }),
+                    });
+                  }}
+                >
+                  <Shield className="w-4 h-4 mr-2" />
+                  Block {partner.displayName}
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Messages */}
