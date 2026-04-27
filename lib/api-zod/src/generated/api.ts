@@ -263,6 +263,22 @@ export const RequestUserConnectionBody = zod.object({
   message: zod.string().max(requestUserConnectionBodyMessageMax).optional(),
 });
 
+export const RequestUserConnectionResponse = zod.object({
+  id: zod.number(),
+  status: zod.enum(["pending", "accepted", "declined"]),
+  direction: zod.enum(["incoming", "outgoing"]),
+  message: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  respondedAt: zod.coerce.date().nullish(),
+  otherUser: zod.object({
+    id: zod.number(),
+    displayName: zod.string(),
+    firstName: zod.string().nullish(),
+    avatarObjectPath: zod.string().nullish(),
+    pronouns: zod.string().nullish(),
+  }),
+});
+
 /**
  * @summary Accept an incoming connection request
  */

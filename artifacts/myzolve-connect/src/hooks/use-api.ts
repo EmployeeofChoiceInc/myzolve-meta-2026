@@ -957,7 +957,7 @@ function invalidateConnectionRelated(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["user-connections"] });
   qc.invalidateQueries({ queryKey: ["user-profile"] });
   qc.invalidateQueries({ queryKey: ["users-search"] });
-  qc.invalidateQueries({ queryKey: ["/api/notifications"] });
+  qc.invalidateQueries({ queryKey: ["notifications"] });
 }
 
 export function useRequestConnection() {

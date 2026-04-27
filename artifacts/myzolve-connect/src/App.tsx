@@ -27,6 +27,8 @@ import OnboardingPage from "@/pages/onboarding";
 import NotificationsPage from "@/pages/notifications";
 import DiscoverPage from "@/pages/discover";
 import ProfilePage from "@/pages/profile";
+import FindPeoplePage from "@/pages/find-people";
+import ConnectionsPage from "@/pages/connections";
 import WallPage from "@/pages/wall";
 import MessagesPage from "@/pages/messages";
 import PlusPage from "@/pages/plus";
@@ -176,6 +178,8 @@ function ClerkProviderWithRoutes() {
           <Route path="/discover"><ProtectedRoute component={DiscoverPage} /></Route>
           <Route path="/circles/:id/wall"><ProtectedRoute component={WallPage} /></Route>
           <Route path="/profile/:userId"><ProtectedRoute component={ProfilePage} /></Route>
+          <Route path="/find-people"><ProtectedRoute component={FindPeoplePage} /></Route>
+          <Route path="/connections"><ProtectedRoute component={ConnectionsPage} /></Route>
           <Route path="/messages/:userId"><ProtectedRoute component={MessagesPage} /></Route>
           <Route path="/messages"><ProtectedRoute component={MessagesPage} /></Route>
           <Route path="/plus"><ProtectedRoute component={PlusPage} /></Route>

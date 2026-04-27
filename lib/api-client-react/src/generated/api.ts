@@ -929,7 +929,7 @@ export const requestUserConnection = async (
 };
 
 export const getRequestUserConnectionMutationOptions = <
-  TError = ErrorType<ErrorResponse | UnauthorizedResponse>,
+  TError = ErrorType<ErrorResponse | UnauthorizedResponse | NotFoundResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -972,14 +972,14 @@ export type RequestUserConnectionMutationResult = NonNullable<
 export type RequestUserConnectionMutationBody =
   BodyType<RequestUserConnectionBody>;
 export type RequestUserConnectionMutationError = ErrorType<
-  ErrorResponse | UnauthorizedResponse
+  ErrorResponse | UnauthorizedResponse | NotFoundResponse
 >;
 
 /**
  * @summary Send a connection request to another user
  */
 export const useRequestUserConnection = <
-  TError = ErrorType<ErrorResponse | UnauthorizedResponse>,
+  TError = ErrorType<ErrorResponse | UnauthorizedResponse | NotFoundResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1016,7 +1016,7 @@ export const acceptUserConnection = async (
 };
 
 export const getAcceptUserConnectionMutationOptions = <
-  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TError = ErrorType<ErrorResponse | UnauthorizedResponse | NotFoundResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1058,14 +1058,14 @@ export type AcceptUserConnectionMutationResult = NonNullable<
 >;
 
 export type AcceptUserConnectionMutationError = ErrorType<
-  UnauthorizedResponse | NotFoundResponse
+  ErrorResponse | UnauthorizedResponse | NotFoundResponse
 >;
 
 /**
  * @summary Accept an incoming connection request
  */
 export const useAcceptUserConnection = <
-  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TError = ErrorType<ErrorResponse | UnauthorizedResponse | NotFoundResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1105,7 +1105,7 @@ export const declineUserConnection = async (
 };
 
 export const getDeclineUserConnectionMutationOptions = <
-  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TError = ErrorType<ErrorResponse | UnauthorizedResponse | NotFoundResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1147,14 +1147,14 @@ export type DeclineUserConnectionMutationResult = NonNullable<
 >;
 
 export type DeclineUserConnectionMutationError = ErrorType<
-  UnauthorizedResponse | NotFoundResponse
+  ErrorResponse | UnauthorizedResponse | NotFoundResponse
 >;
 
 /**
  * @summary Decline an incoming connection request
  */
 export const useDeclineUserConnection = <
-  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TError = ErrorType<ErrorResponse | UnauthorizedResponse | NotFoundResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1191,7 +1191,7 @@ export const removeUserConnection = async (
 };
 
 export const getRemoveUserConnectionMutationOptions = <
-  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TError = ErrorType<UnauthorizedResponse | ErrorResponse | NotFoundResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1233,14 +1233,14 @@ export type RemoveUserConnectionMutationResult = NonNullable<
 >;
 
 export type RemoveUserConnectionMutationError = ErrorType<
-  UnauthorizedResponse | NotFoundResponse
+  UnauthorizedResponse | ErrorResponse | NotFoundResponse
 >;
 
 /**
  * @summary Cancel an outgoing request or disconnect from an existing connection
  */
 export const useRemoveUserConnection = <
-  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TError = ErrorType<UnauthorizedResponse | ErrorResponse | NotFoundResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<

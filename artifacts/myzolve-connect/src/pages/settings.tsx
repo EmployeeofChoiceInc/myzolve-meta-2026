@@ -18,9 +18,13 @@ import {
   useNotificationPreferences,
   useUpdateNotificationPreferences,
   useMyPlusStatus,
+  useMyCircleVisibility,
+  useUpdateCircleVisibility,
+  useMyBlocks,
+  useUnblockUser,
   objectPathToUrl,
 } from "@/hooks/use-api";
-import { Camera, Star, ChevronRight, UserCheck, UserPlus, Trash2, Users, Sparkles, Check, X as XIcon, Inbox } from "lucide-react";
+import { Camera, Star, ChevronRight, UserCheck, UserPlus, Trash2, Users, Sparkles, Check, X as XIcon, Inbox, ShieldOff, Eye, EyeOff } from "lucide-react";
 import { Link } from "wouter";
 import { PlusBadge } from "@/components/plus-badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -46,6 +50,10 @@ const profileFormSchema = z.object({
   timezone: z.string().min(1, "Please pick a timezone"),
   bio: z.string().max(500).optional(),
   location: z.string().max(200).optional(),
+  pronouns: z.string().max(50).optional(),
+  phone: z.string().max(40).optional(),
+  phoneDiscoverable: z.boolean().optional(),
+  profileShowCirclesDefault: z.boolean().optional(),
 });
 
 const NOTIFICATION_TYPES = [
@@ -137,6 +145,10 @@ export default function SettingsPage() {
       timezone: "UTC",
       bio: "",
       location: "",
+      pronouns: "",
+      phone: "",
+      phoneDiscoverable: false,
+      profileShowCirclesDefault: true,
     },
   });
 
@@ -149,6 +161,10 @@ export default function SettingsPage() {
         timezone: profile.timezone ?? "UTC",
         bio: profile.bio ?? "",
         location: profile.location ?? "",
+        pronouns: profile.pronouns ?? "",
+        phone: profile.phone ?? "",
+        phoneDiscoverable: profile.phoneDiscoverable ?? false,
+        profileShowCirclesDefault: profile.profileShowCirclesDefault ?? true,
       });
       initialized.current = true;
     }
@@ -189,6 +205,10 @@ export default function SettingsPage() {
       ...(values.lastName ? { lastName: values.lastName } : {}),
       ...(values.bio !== undefined ? { bio: values.bio } : {}),
       ...(values.location !== undefined ? { location: values.location } : {}),
+      ...(values.pronouns !== undefined ? { pronouns: values.pronouns } : {}),
+      ...(values.phone !== undefined ? { phone: values.phone } : {}),
+      ...(values.phoneDiscoverable !== undefined ? { phoneDiscoverable: values.phoneDiscoverable } : {}),
+      ...(values.profileShowCirclesDefault !== undefined ? { profileShowCirclesDefault: values.profileShowCirclesDefault } : {}),
     };
     updateMe.mutate(payload, {
       onSuccess: () => {
@@ -372,6 +392,93 @@ export default function SettingsPage() {
                 )}
               />
 
+              <FormField
+                control={form.control}
+                name="pronouns"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Pronouns <span className="text-muted-foreground font-normal">(optional)</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="she/her, he/him, they/them..." {...field} className="rounded-xl" data-testid="input-pronouns" />
+                    </FormControl>
+                    <CardDescription className="text-xs mt-1">Shown on your profile so people know how to refer to you.</CardDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="space-y-3 rounded-2xl border border-border/40 p-4 bg-muted/20">
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Phone number <span className="text-muted-foreground font-normal">(optional)</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="tel"
+                          placeholder="+1 555 123 4567"
+                          {...field}
+                          className="rounded-xl"
+                          data-testid="input-phone"
+                        />
+                      </FormControl>
+                      <CardDescription className="text-xs mt-1">
+                        We never share your phone number. It's only used if you choose to be findable by it below.
+                      </CardDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="phoneDiscoverable"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between gap-4 pt-2">
+                      <div className="flex-1">
+                        <FormLabel className="text-sm">Let people find me by my phone number</FormLabel>
+                        <CardDescription className="text-xs mt-0.5">
+                          When on, others can search for you using your exact phone number.
+                        </CardDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={!!field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-phone-discoverable"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="profileShowCirclesDefault"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between gap-4 rounded-2xl border border-border/40 p-4">
+                    <div className="flex-1">
+                      <FormLabel className="text-sm">Show my circles on my profile by default</FormLabel>
+                      <CardDescription className="text-xs mt-0.5">
+                        You can fine-tune which circles show below.
+                      </CardDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={!!field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="switch-profile-show-circles-default"
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
               <div className="pt-4 border-t border-border/50 flex justify-end">
                 <Button type="submit" disabled={updateMe.isPending} className="rounded-full">
                   {updateMe.isPending ? "Saving..." : "Save Changes"}
@@ -383,6 +490,10 @@ export default function SettingsPage() {
       </Card>
 
       <PlusSummaryCard />
+
+      <ProfileVisibilitySection />
+
+      <BlockedUsersSection />
 
       <CopilotSection />
 
@@ -776,5 +887,152 @@ function PlusSummaryCard() {
         </CardContent>
       </Card>
     </Link>
+  );
+}
+
+function ProfileVisibilitySection() {
+  const { data: visibility, isLoading } = useMyCircleVisibility();
+  const update = useUpdateCircleVisibility();
+  const { toast } = useToast();
+
+  function handleToggle(circleId: number, showOnProfile: boolean) {
+    update.mutate(
+      { circleId, showOnProfile },
+      {
+        onError: () =>
+          toast({ title: "Could not update visibility", variant: "destructive" }),
+      },
+    );
+  }
+
+  return (
+    <Card className="rounded-3xl border-border/50 shadow-sm" data-testid="settings-profile-visibility">
+      <CardHeader className="pb-4">
+        <CardTitle className="flex items-center gap-2">
+          <Eye className="w-5 h-5 text-primary" />
+          Which circles show on my profile
+        </CardTitle>
+        <CardDescription>
+          Choose which circles people can see on your public profile. Hidden circles still work as
+          normal — only their badge is removed from your profile.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-2">
+            <div className="h-12 bg-muted/40 rounded-xl animate-pulse" />
+            <div className="h-12 bg-muted/40 rounded-xl animate-pulse" />
+          </div>
+        ) : !visibility || visibility.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            You're not in any circles yet. Once you join one, you can choose whether to show it here.
+          </p>
+        ) : (
+          <div className="space-y-1">
+            {visibility.map((entry) => (
+              <div
+                key={entry.circleId}
+                className="flex items-center justify-between py-3 border-b border-border/40 last:border-0"
+                data-testid={`circle-visibility-row-${entry.circleId}`}
+              >
+                <div className="flex items-center gap-2 min-w-0 pr-4">
+                  {entry.showOnProfile ? (
+                    <Eye className="w-4 h-4 text-muted-foreground shrink-0" />
+                  ) : (
+                    <EyeOff className="w-4 h-4 text-muted-foreground shrink-0" />
+                  )}
+                  <p className="font-medium text-sm truncate">{entry.circleName}</p>
+                </div>
+                <Switch
+                  checked={entry.showOnProfile}
+                  onCheckedChange={(checked) => handleToggle(entry.circleId, checked)}
+                  disabled={update.isPending}
+                  data-testid={`circle-visibility-toggle-${entry.circleId}`}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function BlockedUsersSection() {
+  const { data: blocks, isLoading } = useMyBlocks();
+  const unblock = useUnblockUser();
+  const { toast } = useToast();
+
+  function handleUnblock(userId: number) {
+    if (!confirm("Unblock this person? They'll be able to see your profile and contact you again.")) return;
+    unblock.mutate(userId, {
+      onSuccess: () => toast({ title: "Unblocked" }),
+      onError: () => toast({ title: "Could not unblock", variant: "destructive" }),
+    });
+  }
+
+  return (
+    <Card className="rounded-3xl border-border/50 shadow-sm" data-testid="settings-blocked-users">
+      <CardHeader className="pb-4">
+        <CardTitle className="flex items-center gap-2">
+          <ShieldOff className="w-5 h-5 text-primary" />
+          Blocked people
+        </CardTitle>
+        <CardDescription>
+          Blocked people can't message you, comment on your posts, or find your profile.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-2">
+            <div className="h-12 bg-muted/40 rounded-xl animate-pulse" />
+            <div className="h-12 bg-muted/40 rounded-xl animate-pulse" />
+          </div>
+        ) : !blocks || blocks.length === 0 ? (
+          <p className="text-sm text-muted-foreground">You haven't blocked anyone.</p>
+        ) : (
+          <div className="space-y-2">
+            {blocks.map((b) => {
+              const name = b.blockedUser.displayName;
+              const initials = name
+                .split(" ")
+                .map((n: string) => n[0])
+                .join("")
+                .toUpperCase()
+                .slice(0, 2);
+              return (
+                <div
+                  key={b.id}
+                  className="flex items-center justify-between gap-3 p-3 rounded-2xl border border-border/40"
+                  data-testid={`blocked-row-${b.blockedUser.id}`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar className="w-9 h-9 border border-border/60">
+                      {b.blockedUser.avatarObjectPath && (
+                        <AvatarImage src={objectPathToUrl(b.blockedUser.avatarObjectPath) ?? undefined} />
+                      )}
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <p className="text-sm font-medium truncate">{name}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="rounded-full"
+                    disabled={unblock.isPending}
+                    onClick={() => handleUnblock(b.blockedUser.id)}
+                    data-testid={`button-unblock-${b.blockedUser.id}`}
+                  >
+                    Unblock
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

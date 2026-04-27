@@ -18,22 +18,32 @@ const connectionIdParam = z.object({
 });
 
 const requestSchema = z.object({
-  userId: z.number().int().positive(),
+  receiverUserId: z.number().int().positive(),
   message: z.string().max(280).optional(),
 });
 
+const listQuerySchema = z.object({
+  status: z.enum(["pending", "accepted", "declined", "all"]).optional(),
+  direction: z.enum(["incoming", "outgoing", "both"]).optional(),
+});
+
+type ConnectionStatus = "pending" | "accepted" | "declined";
+type ConnectionDirection = "incoming" | "outgoing";
+
 type EnrichedConnection = {
   id: number;
-  status: "pending" | "accepted" | "declined";
-  direction: "incoming" | "outgoing";
-  initiatorUserId: number;
-  receiverUserId: number;
-  otherUserId: number;
-  otherUserName: string | null;
-  otherUserAvatarObjectPath: string | null;
+  status: ConnectionStatus;
+  direction: ConnectionDirection;
   message: string | null;
   createdAt: Date;
   respondedAt: Date | null;
+  otherUser: {
+    id: number;
+    displayName: string;
+    firstName: string | null;
+    avatarObjectPath: string | null;
+    pronouns: string | null;
+  };
 };
 
 async function enrichConnections(
@@ -48,7 +58,9 @@ async function enrichConnections(
     .select({
       id: usersTable.id,
       displayName: usersTable.displayName,
+      firstName: usersTable.firstName,
       avatarObjectPath: usersTable.avatarObjectPath,
+      pronouns: usersTable.pronouns,
     })
     .from(usersTable)
     .where(inArray(usersTable.id, otherIds));
@@ -58,16 +70,18 @@ async function enrichConnections(
     const u = userMap.get(otherId);
     return {
       id: r.id,
-      status: r.status as "pending" | "accepted" | "declined",
-      direction: r.initiatorUserId === meId ? "outgoing" : "incoming",
-      initiatorUserId: r.initiatorUserId,
-      receiverUserId: r.receiverUserId,
-      otherUserId: otherId,
-      otherUserName: u?.displayName ?? null,
-      otherUserAvatarObjectPath: u?.avatarObjectPath ?? null,
+      status: r.status as ConnectionStatus,
+      direction: r.initiatorUserId === meId ? ("outgoing" as ConnectionDirection) : ("incoming" as ConnectionDirection),
       message: r.message ?? null,
       createdAt: r.createdAt,
       respondedAt: r.respondedAt ?? null,
+      otherUser: {
+        id: otherId,
+        displayName: u?.displayName ?? "Member",
+        firstName: u?.firstName ?? null,
+        avatarObjectPath: u?.avatarObjectPath ?? null,
+        pronouns: u?.pronouns ?? null,
+      },
     };
   });
 }
@@ -89,12 +103,20 @@ async function isBlockedEitherWay(a: number, b: number): Promise<boolean> {
 }
 
 /**
- * GET /user-connections
- * Lists all of my user-to-user connections, grouped by status/direction.
- * Used by the Connections page and to power the "Pending" badge.
+ * GET /user-connections?status=&direction=
+ * Lists my user-to-user connections as a flat array, optionally filtered by
+ * status and/or direction. Default: status=accepted, direction=both.
  */
 router.get("/user-connections", requireAuth, async (req, res) => {
   const meId = req.dbUser!.id;
+  const parsed = listQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid query parameters" });
+    return;
+  }
+  const status = parsed.data.status ?? "accepted";
+  const direction = parsed.data.direction ?? "both";
+
   const rows = await db
     .select()
     .from(userConnectionsTable)
@@ -104,12 +126,15 @@ router.get("/user-connections", requireAuth, async (req, res) => {
         eq(userConnectionsTable.receiverUserId, meId),
       ),
     );
-  const enriched = await enrichConnections(rows, meId);
-  res.json({
-    accepted: enriched.filter((c) => c.status === "accepted"),
-    incoming: enriched.filter((c) => c.status === "pending" && c.direction === "incoming"),
-    outgoing: enriched.filter((c) => c.status === "pending" && c.direction === "outgoing"),
-  });
+  let enriched = await enrichConnections(rows, meId);
+  if (status !== "all") {
+    enriched = enriched.filter((c) => c.status === status);
+  }
+  if (direction !== "both") {
+    enriched = enriched.filter((c) => c.direction === direction);
+  }
+  enriched.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  res.json(enriched);
 });
 
 /**
@@ -117,9 +142,17 @@ router.get("/user-connections", requireAuth, async (req, res) => {
  * Send a connection request (or re-open a previously-declined one).
  * Refuses with 403 if either party has blocked the other.
  */
+// Anti-abuse: after a decline, the same initiator cannot re-send to the
+// same receiver for this many hours. Receiver may still re-open the
+// conversation by sending their own request.
+const RESEND_COOLDOWN_HOURS = 24;
+
 router.post("/user-connections", requireAuth, validateBody(requestSchema), async (req, res) => {
   const meId = req.dbUser!.id;
-  const { userId: targetId, message } = req.body as { userId: number; message?: string };
+  const { receiverUserId: targetId, message } = req.body as {
+    receiverUserId: number;
+    message?: string;
+  };
 
   if (targetId === meId) {
     res.status(400).json({ error: "You cannot connect with yourself" });
@@ -196,6 +229,23 @@ router.post("/user-connections", requireAuth, validateBody(requestSchema), async
       const [enriched] = await enrichConnections([existing], meId);
       res.status(200).json(enriched);
       return;
+    }
+    // declined → enforce cooldown when the same initiator tries again.
+    // The other party can always re-open by sending their own request.
+    if (
+      existing.status === "declined" &&
+      existing.initiatorUserId === meId &&
+      existing.respondedAt
+    ) {
+      const elapsedMs = Date.now() - existing.respondedAt.getTime();
+      const cooldownMs = RESEND_COOLDOWN_HOURS * 60 * 60 * 1000;
+      if (elapsedMs < cooldownMs) {
+        res.status(429).json({
+          error: "resend_cooldown",
+          retryAfterHours: Math.ceil((cooldownMs - elapsedMs) / (60 * 60 * 1000)),
+        });
+        return;
+      }
     }
     // declined → reset to pending, keep me as initiator (flip direction
     // if the previous initiator was the other user, so the "incoming"
@@ -360,6 +410,15 @@ router.delete(
       res.status(403).json({ error: "Not your connection" });
       return;
     }
+    // Anti-abuse: don't let the original initiator delete a declined row to
+    // dodge the resend cooldown. The receiver may always delete it (which
+    // also clears the cooldown — they're explicitly opting back in).
+    if (row.status === "declined" && row.initiatorUserId === meId) {
+      res
+        .status(403)
+        .json({ error: "cannot_delete_declined_as_initiator" });
+      return;
+    }
     await db.delete(userConnectionsTable).where(eq(userConnectionsTable.id, id));
     res.status(204).end();
   },
@@ -370,9 +429,44 @@ const userIdParam = z.object({
   userId: z.coerce.number().int().positive(),
 });
 
+type BlockResponse = {
+  id: number;
+  blockedUser: {
+    id: number;
+    displayName: string;
+    avatarObjectPath: string | null;
+  };
+  createdAt: Date;
+};
+
+async function buildBlockResponse(
+  blockId: number,
+  blockedUserId: number,
+  createdAt: Date,
+): Promise<BlockResponse> {
+  const [u] = await db
+    .select({
+      id: usersTable.id,
+      displayName: usersTable.displayName,
+      avatarObjectPath: usersTable.avatarObjectPath,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, blockedUserId))
+    .limit(1);
+  return {
+    id: blockId,
+    blockedUser: {
+      id: blockedUserId,
+      displayName: u?.displayName ?? "Member",
+      avatarObjectPath: u?.avatarObjectPath ?? null,
+    },
+    createdAt,
+  };
+}
+
 /**
  * GET /user-blocks
- * Returns the list of users I have blocked, with display info.
+ * Returns the list of users I have blocked, with nested user info.
  */
 router.get("/user-blocks", requireAuth, async (req, res) => {
   const meId = req.dbUser!.id;
@@ -399,13 +493,18 @@ router.get("/user-blocks", requireAuth, async (req, res) => {
     .where(inArray(usersTable.id, ids));
   const userMap = new Map(users.map((u) => [u.id, u]));
   res.json(
-    rows.map((r) => ({
-      id: r.id,
-      blockedUserId: r.blockedUserId,
-      blockedUserName: userMap.get(r.blockedUserId)?.displayName ?? null,
-      blockedUserAvatarObjectPath: userMap.get(r.blockedUserId)?.avatarObjectPath ?? null,
-      createdAt: r.createdAt,
-    })),
+    rows.map((r) => {
+      const u = userMap.get(r.blockedUserId);
+      return {
+        id: r.id,
+        blockedUser: {
+          id: r.blockedUserId,
+          displayName: u?.displayName ?? "Member",
+          avatarObjectPath: u?.avatarObjectPath ?? null,
+        },
+        createdAt: r.createdAt,
+      };
+    }),
   );
 });
 
@@ -448,7 +547,9 @@ router.post(
       .limit(1)
       .then((r) => r[0] ?? null);
     if (existing) {
-      res.status(200).json({ id: existing.id, blockedUserId: targetId });
+      res.status(200).json(
+        await buildBlockResponse(existing.id, targetId, existing.createdAt),
+      );
       return;
     }
     const [inserted] = await db
@@ -471,7 +572,9 @@ router.post(
           ),
         ),
       );
-    res.status(201).json({ id: inserted.id, blockedUserId: targetId });
+    res
+      .status(201)
+      .json(await buildBlockResponse(inserted.id, targetId, inserted.createdAt));
   },
 );
 

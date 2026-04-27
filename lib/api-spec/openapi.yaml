@@ -293,6 +293,12 @@ paths:
                   maxLength: 280
               required: [receiverUserId]
       responses:
+        "200":
+          description: Existing pending/accepted connection (idempotent)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserConnection"
         "201":
           description: Created (or auto-accepted if a reverse request was pending)
           content:
@@ -300,13 +306,27 @@ paths:
               schema:
                 $ref: "#/components/schemas/UserConnection"
         "400":
-          description: Already connected, blocked, or invalid recipient
+          description: Cannot connect to yourself or invalid recipient
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: One party has blocked the other (user_blocked)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          description: Cooldown active after a recent decline (resend_cooldown)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /user-connections/{connectionId}/accept:
     post:
@@ -327,8 +347,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserConnection"
+        "400":
+          description: Request is no longer pending
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Caller is not the recipient or parties are blocked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -351,8 +383,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserConnection"
+        "400":
+          description: Request is no longer pending
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Caller is not the recipient
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -373,6 +417,12 @@ paths:
           description: Removed
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Caller is not part of this connection, or initiator cannot delete a declined row (cooldown protection)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
           $ref: "#/components/responses/NotFound"
 

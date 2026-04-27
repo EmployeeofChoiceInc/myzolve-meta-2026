@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Heart, Home, Users, Bell, Settings, LogOut, Menu, Check, Compass, MessageCircle, Star, Flag, X as XIcon } from "lucide-react";
+import { Heart, Home, Users, Bell, Settings, LogOut, Menu, Check, Compass, MessageCircle, Star, Flag, X as XIcon, UserPlus2, Search } from "lucide-react";
 import { useClerk, useUser } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -7,7 +7,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useUnreadCount, useMessageInbox, useNotifications, useMarkNotificationRead, useMyPlusStatus, type Notification } from "@/hooks/use-api";
+import {
+  useUnreadCount,
+  useMessageInbox,
+  useNotifications,
+  useMarkNotificationRead,
+  useMyPlusStatus,
+  useAcceptConnection,
+  useDeclineConnection,
+  type Notification,
+} from "@/hooks/use-api";
 import { PlusBadge } from "@/components/plus-badge";
 import { displayEmail } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -40,6 +49,8 @@ const notificationTypeLabel: Record<string, string> = {
   copilot_post_made: "Posted on your behalf",
   wrapup_weekly: "Weekly wrap-up",
   wrapup_monthly: "Monthly wrap-up",
+  connection_request_received: "Connection request",
+  connection_request_accepted: "Connected",
 };
 
 const COPILOT_ENTITY_TYPES = new Set([
@@ -63,6 +74,8 @@ function NotificationDrawer() {
   const review = useReviewCopilotPost();
   const acceptGrant = useAcceptCopilotGrant();
   const declineGrant = useDeclineCopilotGrant();
+  const acceptConnection = useAcceptConnection();
+  const declineConnection = useDeclineConnection();
   const qc = useQueryClient();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -71,6 +84,7 @@ function NotificationDrawer() {
     decision: "approved" | "flagged";
   } | null>(null);
   const [respondingGrantNotifId, setRespondingGrantNotifId] = useState<number | null>(null);
+  const [respondingConnNotifId, setRespondingConnNotifId] = useState<number | null>(null);
 
   function invalidateAll() {
     qc.invalidateQueries({ queryKey: getListNotificationsQueryKey() });
@@ -120,6 +134,13 @@ function NotificationDrawer() {
     }
     if (n.notificationType === "copilot_invite_received") {
       setLocation("/settings");
+      return;
+    }
+    if (
+      n.notificationType === "connection_request_received" ||
+      n.notificationType === "connection_request_accepted"
+    ) {
+      setLocation("/connections");
       return;
     }
     if (n.notificationType === "wrapup_weekly") {
@@ -213,8 +234,12 @@ function NotificationDrawer() {
                 const isCopilotInvite =
                   n.notificationType === "copilot_invite_received" &&
                   !!n.targetEntityId;
+                const isConnectionRequest =
+                  n.notificationType === "connection_request_received" &&
+                  !!n.targetEntityId;
                 const isReviewing = reviewing?.id === n.id;
                 const isRespondingInvite = respondingGrantNotifId === n.id;
+                const isRespondingConn = respondingConnNotifId === n.id;
                 return (
                   <div
                     key={n.id}
@@ -303,6 +328,57 @@ function NotificationDrawer() {
                             </Button>
                           </div>
                         )}
+                        {isConnectionRequest && (
+                          <div className="flex gap-2 mt-3">
+                            <Button
+                              size="sm"
+                              className="rounded-full h-8 text-xs gap-1"
+                              disabled={isRespondingConn}
+                              onClick={() => {
+                                setRespondingConnNotifId(n.id);
+                                acceptConnection.mutate(n.targetEntityId!, {
+                                  onSuccess: () => {
+                                    markRead.mutate(n.id, { onSuccess: invalidateAll });
+                                    setRespondingConnNotifId(null);
+                                    toast({ title: "You're now connected" });
+                                  },
+                                  onError: () => {
+                                    setRespondingConnNotifId(null);
+                                    toast({ title: "Could not accept", variant: "destructive" });
+                                  },
+                                });
+                              }}
+                              data-testid={`connection-accept-${n.id}`}
+                            >
+                              <Check className="w-3 h-3" />
+                              Accept
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="rounded-full h-8 text-xs gap-1 text-muted-foreground"
+                              disabled={isRespondingConn}
+                              onClick={() => {
+                                setRespondingConnNotifId(n.id);
+                                declineConnection.mutate(n.targetEntityId!, {
+                                  onSuccess: () => {
+                                    markRead.mutate(n.id, { onSuccess: invalidateAll });
+                                    setRespondingConnNotifId(null);
+                                    toast({ title: "Request declined" });
+                                  },
+                                  onError: () => {
+                                    setRespondingConnNotifId(null);
+                                    toast({ title: "Could not decline", variant: "destructive" });
+                                  },
+                                });
+                              }}
+                              data-testid={`connection-decline-${n.id}`}
+                            >
+                              <XIcon className="w-3 h-3" />
+                              Decline
+                            </Button>
+                          </div>
+                        )}
                       </div>
                       {!n.isRead && (
                         <button
@@ -346,6 +422,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { icon: Home, label: "Home", href: "/dashboard" },
     { icon: Users, label: "My Circles", href: "/circles" },
     { icon: Compass, label: "Find a Circle", href: "/discover" },
+    { icon: Search, label: "Find People", href: "/find-people" },
+    { icon: UserPlus2, label: "Connections", href: "/connections" },
     { icon: MessageCircle, label: "Messages", href: "/messages", badge: unreadMessages },
     { icon: Star, label: "Plus", href: "/plus", plus: true },
   ];
