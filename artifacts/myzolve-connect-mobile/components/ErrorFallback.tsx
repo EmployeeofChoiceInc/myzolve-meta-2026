@@ -48,11 +48,12 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
     default: "monospace",
   });
 
-  // Only surface raw error details in development.  Production builds
-  // (TestFlight + App Store) must NOT expose stack traces or internal
-  // error messages to end users — that's an information-disclosure risk
-  // and Apple reviewers reject apps that show raw stack traces.
-  const showErrorDetails = __DEV__;
+  // DIAGNOSTIC OVERRIDE — TestFlight build 21 (cold-launch error capture).
+  // Temporarily forced ON so an OTA update can surface the actual error
+  // text on a private TestFlight build. MUST be reverted to `__DEV__`
+  // before App Store submission — Apple reviewers reject apps that expose
+  // raw stack traces, and it's an information-disclosure risk.
+  const showErrorDetails = true;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
