@@ -279,6 +279,16 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
+      {/*
+        AnimatedSplash MUST be a sibling of ErrorBoundary, not a child.
+        If a render error inside the provider tree throws, ErrorBoundary
+        catches and unmounts its entire children tree.  Were AnimatedSplash
+        below ErrorBoundary, that unmount would tear down the splash view
+        while a Reanimated worklet is mid-tick on it, causing an
+        EXC_BAD_ACCESS native crash on iOS Fabric (TestFlight 1.0.6 build
+        18 reproduced this on cold launch).  Lifting it here keeps the
+        overlay alive regardless of any error in the tree below.
+      */}
       <ErrorBoundary>
         <I18nProvider>
           <ClerkProvider
@@ -295,12 +305,6 @@ export default function RootLayout() {
                         <KeyboardProvider>
                           <StatusBar style="dark" />
                           <RootLayoutNav />
-                          {showAnimatedSplash ? (
-                            <AnimatedSplash
-                              onComplete={handleSplashComplete}
-                              onLayout={handleAnimatedSplashLayout}
-                            />
-                          ) : null}
                         </KeyboardProvider>
                       </GestureHandlerRootView>
                     </TutorialProvider>
@@ -311,6 +315,12 @@ export default function RootLayout() {
           </ClerkProvider>
         </I18nProvider>
       </ErrorBoundary>
+      {showAnimatedSplash ? (
+        <AnimatedSplash
+          onComplete={handleSplashComplete}
+          onLayout={handleAnimatedSplashLayout}
+        />
+      ) : null}
     </SafeAreaProvider>
   );
 }
