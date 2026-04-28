@@ -72,10 +72,10 @@ export const TUTORIAL_STEPS: ReadonlyArray<TutorialStep> = [
     id: "wrapup",
     title: "Your weekly wrap-up",
     body:
-      "Once a week we put together a kind summary of the care that flowed through your circles. It's a quiet way to feel the love.",
+      "Once a week we put together a kind summary of the care that flowed through your circles. We'll quietly let you know it's ready right here in your notifications.",
     featherIcon: "star",
     lucideIcon: "Sparkles",
-    webAnchorId: "nav-wrapup",
+    webAnchorId: "nav-notifications",
   },
   {
     id: "profile",

@@ -203,7 +203,7 @@ function NotificationDrawer() {
           variant="ghost"
           size="icon"
           className="relative rounded-full text-muted-foreground hover:text-foreground"
-          data-tutorial-target="nav-wrapup"
+          data-tutorial-target="nav-notifications"
         >
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (

@@ -48,12 +48,11 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
     default: "monospace",
   });
 
-  // Always surface the error details (in dev AND in TestFlight production
-  // builds).  We were debugging a TestFlight cold-launch crash where the
-  // error was swallowed silently — exposing it inline + via the modal lets
-  // us read the actual message without needing remote logging.  Safe to
-  // revert (re-add `__DEV__ ? ... : null` gates) before App Store submit.
-  const showErrorDetails = true;
+  // Only surface raw error details in development.  Production builds
+  // (TestFlight + App Store) must NOT expose stack traces or internal
+  // error messages to end users — that's an information-disclosure risk
+  // and Apple reviewers reject apps that show raw stack traces.
+  const showErrorDetails = __DEV__;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
