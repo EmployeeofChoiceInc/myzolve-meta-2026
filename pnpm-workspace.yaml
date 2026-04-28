@@ -45,6 +45,23 @@ onlyBuiltDependencies:
   - unrs-resolver
 
 overrides:
+  # Pin Expo SDK 54 packages to versions >24h old so EAS Build's pnpm
+  # release-age gate (1440min) cannot pull yesterday's batch of patches
+  # (published 2026-04-27) which would otherwise be selected via tilde
+  # ranges or transitive `^` ranges (e.g. expo-router → expo-linking).
+  # These overrides can be removed once the new patches age out.
+  expo: 54.0.33
+  expo-asset: 12.0.12
+  expo-auth-session: 7.0.10
+  expo-crypto: 15.0.8
+  expo-file-system: 19.0.21
+  expo-glass-effect: 0.1.9
+  expo-image-picker: 17.0.10
+  expo-linking: 8.0.11
+  expo-localization: 17.0.8
+  expo-notifications: 0.32.16
+  expo-updates: 29.0.16
+  expo-web-browser: 15.0.10
   '@esbuild-kit/esm-loader': npm:tsx@^4.21.0
   '@expo/ngrok-bin>@expo/ngrok-bin-darwin-arm64': '-'
   '@expo/ngrok-bin>@expo/ngrok-bin-darwin-x64': '-'
