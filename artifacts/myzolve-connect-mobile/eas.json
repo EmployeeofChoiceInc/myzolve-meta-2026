@@ -13,14 +13,20 @@
       "distribution": "internal",
       "channel": "preview",
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "connect.myzolve.com"
+        "EXPO_PUBLIC_DOMAIN": "connect.myzolve.com",
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_aW50ZW5zZS1yYWJiaXQtNDguY2xlcmsuYWNjb3VudHMuZGV2JA",
+        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_NnYviUJBCHhmsfKNYIQMYlHoosn",
+        "EXPO_PUBLIC_REVENUECAT_TEST_API_KEY": "test_cHKCkztolVOInNDcZmvseCXIvku"
       }
     },
     "production": {
       "autoIncrement": true,
       "channel": "production",
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "connect.myzolve.com"
+        "EXPO_PUBLIC_DOMAIN": "connect.myzolve.com",
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_aW50ZW5zZS1yYWJiaXQtNDguY2xlcmsuYWNjb3VudHMuZGV2JA",
+        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_NnYviUJBCHhmsfKNYIQMYlHoosn",
+        "EXPO_PUBLIC_REVENUECAT_TEST_API_KEY": "test_cHKCkztolVOInNDcZmvseCXIvku"
       }
     }
   },
