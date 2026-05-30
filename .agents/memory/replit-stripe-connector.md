@@ -37,4 +37,19 @@ the `stripe` schema + seeds products in the PROD db).
 publish-time drizzle schema diff — so an empty `stripe` schema in the prod
 read-replica means init was skipped (no prod connection resolved).
 **How to verify:** query the prod replica for `information_schema.schemata`
-where name='stripe'; absent ⇒ prod Stripe never initialized.
+where name='stripe'; absent ⇒ prod Stripe never initialized. Also confirm via
+deployment logs: "Stripe production connection not found ... skipping Stripe init".
+
+## development connection = Stripe TEST/sandbox; production = LIVE (separate)
+
+The default Stripe connector connects to **Stripe sandbox** (test mode) and is
+stored as the `development` connection. The published app queries
+`environment=production` and needs a **separate live-mode connection**. To
+create it: Publish pane → **Install Stripe app** → choose your **LIVE** Stripe
+account (NOT sandbox/test) → complete Stripe **KYB** activation if prompted →
+then republish. A generic "toggle" on the publish page is NOT the same as
+installing the app / selecting the live account. If the user's Stripe account
+isn't KYB-activated for live payments, no production connection can be created.
+**Why:** our code (matching Replit's official snippet exactly) hard-requires
+`environment=production`, so a test-only/sandbox connection never satisfies the
+live deployment.
