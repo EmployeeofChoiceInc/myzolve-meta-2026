@@ -223,6 +223,65 @@ router.patch(
       return;
     }
 
+    // Let the applicant know the outcome. Best-effort: a failure here must
+    // never block the admin's PATCH response (mirrors the team-notification
+    // email on the public submission endpoint).
+    if (status === "approved" || status === "declined") {
+      const note = reviewNote?.trim();
+      const firstName = updated.name.trim().split(/\s+/)[0] || updated.name;
+      const escape = (s: string) =>
+        s
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+
+      let subject: string;
+      let lines: string[];
+      if (status === "approved") {
+        subject = "Your Circle Builder application has been approved";
+        lines = [
+          `Hi ${firstName},`,
+          "",
+          "Great news \u2014 your application to the MyZolve Circle Builder Program has been approved! We're excited to have you help grow your community.",
+          ...(note ? ["", "A note from our team:", note] : []),
+          "",
+          "We'll be in touch soon with next steps. In the meantime, welcome aboard!",
+          "",
+          "\u2014 The MyZolve Team",
+        ];
+      } else {
+        subject = "An update on your Circle Builder application";
+        lines = [
+          `Hi ${firstName},`,
+          "",
+          "Thank you for your interest in the MyZolve Circle Builder Program and for taking the time to apply. After careful review, we're not able to move forward with your application at this time.",
+          ...(note ? ["", "A note from our team:", note] : []),
+          "",
+          "We truly appreciate the work you're doing in your community, and we'd welcome you to apply again in the future.",
+          "",
+          "\u2014 The MyZolve Team",
+        ];
+      }
+
+      const text = lines.join("\n");
+      const html = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.5;">${lines
+        .map((line) => (line === "" ? "<br>" : `<p>${escape(line)}</p>`))
+        .join("")}</div>`;
+
+      const { sendEmail } = await import("../lib/email");
+      void sendEmail({
+        to: updated.email,
+        subject,
+        text,
+        html,
+      }).catch((err) => {
+        logger.warn(
+          { err, applicationId: updated.id, status },
+          "Circle Builder decision email failed",
+        );
+      });
+    }
+
     res.json(applicationToApi(updated, req.dbUser!.displayName ?? null));
   },
 );
