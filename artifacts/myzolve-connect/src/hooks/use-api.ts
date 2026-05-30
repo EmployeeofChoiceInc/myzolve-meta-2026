@@ -1074,6 +1074,7 @@ export interface CircleBuilderApplication extends CircleBuilderApplicationInput 
   id: number;
   status: "pending" | "approved" | "declined";
   reviewedByUserId: number | null;
+  reviewedByName: string | null;
   reviewedAt: string | null;
   reviewNote: string | null;
   createdAt: string;

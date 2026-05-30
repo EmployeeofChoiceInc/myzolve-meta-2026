@@ -1,8 +1,17 @@
 import { useState } from "react";
-import { ShieldAlert, Inbox, Mail, MapPin, Users, Calendar } from "lucide-react";
+import {
+  ShieldAlert,
+  Inbox,
+  Mail,
+  MapPin,
+  Users,
+  Calendar,
+  StickyNote,
+} from "lucide-react";
 import { ApiError } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -38,14 +47,39 @@ function formatDate(iso: string): string {
 function ApplicationCard({ app }: { app: CircleBuilderApplication }) {
   const review = useReviewCircleBuilderApplication();
   const { toast } = useToast();
+  const [note, setNote] = useState(app.reviewNote ?? "");
+
+  const trimmedNote = note.trim();
+  const noteChanged = trimmedNote !== (app.reviewNote ?? "");
 
   async function setStatus(status: CircleBuilderApplication["status"]) {
     try {
-      await review.mutateAsync({ id: app.id, status });
+      await review.mutateAsync({
+        id: app.id,
+        status,
+        reviewNote: trimmedNote || null,
+      });
       toast({ title: `Marked ${status}` });
     } catch (err) {
       toast({
         title: "Update failed",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    }
+  }
+
+  async function saveNote() {
+    try {
+      await review.mutateAsync({
+        id: app.id,
+        status: app.status,
+        reviewNote: trimmedNote || null,
+      });
+      toast({ title: "Review note saved" });
+    } catch (err) {
+      toast({
+        title: "Couldn't save note",
         description: err instanceof Error ? err.message : "Please try again.",
         variant: "destructive",
       });
@@ -96,6 +130,36 @@ function ApplicationCard({ app }: { app: CircleBuilderApplication }) {
         <Field label="Desired impact" value={app.desiredImpact} />
       </div>
 
+      <div className="pt-2 border-t border-card-border space-y-2">
+        <label
+          htmlFor={`review-note-${app.id}`}
+          className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground"
+        >
+          <StickyNote className="w-3.5 h-3.5" />
+          Review note
+        </label>
+        <Textarea
+          id={`review-note-${app.id}`}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Record why this application was approved or declined…"
+          maxLength={2000}
+          rows={3}
+          disabled={review.isPending}
+          data-testid={`input-review-note-${app.id}`}
+        />
+        {(app.reviewedByName || app.reviewedAt) && (
+          <p
+            className="text-xs text-muted-foreground"
+            data-testid={`text-reviewed-by-${app.id}`}
+          >
+            Last reviewed
+            {app.reviewedByName ? ` by ${app.reviewedByName}` : ""}
+            {app.reviewedAt ? ` on ${formatDate(app.reviewedAt)}` : ""}
+          </p>
+        )}
+      </div>
+
       <div className="flex flex-wrap gap-2 pt-2 border-t border-card-border">
         <Button
           size="sm"
@@ -113,6 +177,15 @@ function ApplicationCard({ app }: { app: CircleBuilderApplication }) {
           data-testid={`button-decline-${app.id}`}
         >
           Decline
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={saveNote}
+          disabled={review.isPending || !noteChanged}
+          data-testid={`button-save-note-${app.id}`}
+        >
+          Save note
         </Button>
         {app.status !== "pending" && (
           <Button

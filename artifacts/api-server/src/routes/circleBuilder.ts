@@ -5,6 +5,7 @@ import { validateBody, validateParams } from "../middlewares/validate";
 import { db } from "@workspace/db";
 import {
   circleBuilderApplicationsTable,
+  usersTable,
   type CircleBuilderApplication,
 } from "@workspace/db";
 import { desc, eq } from "drizzle-orm";
@@ -48,7 +49,10 @@ const reviewApplicationSchema = z.object({
   reviewNote: z.string().trim().max(2000).nullable().optional(),
 });
 
-function applicationToApi(app: CircleBuilderApplication) {
+function applicationToApi(
+  app: CircleBuilderApplication,
+  reviewedByName: string | null = null,
+) {
   return {
     id: app.id,
     name: app.name,
@@ -61,6 +65,7 @@ function applicationToApi(app: CircleBuilderApplication) {
     willingToHost: app.willingToHost,
     status: app.status,
     reviewedByUserId: app.reviewedByUserId,
+    reviewedByName: app.reviewedByUserId ? reviewedByName : null,
     reviewedAt: app.reviewedAt,
     reviewNote: app.reviewNote,
     createdAt: app.createdAt,
@@ -170,11 +175,19 @@ router.get("/circle-builder/applications", requireAuth, async (req, res) => {
   }
 
   const applications = await db
-    .select()
+    .select({ application: circleBuilderApplicationsTable, reviewer: usersTable })
     .from(circleBuilderApplicationsTable)
+    .leftJoin(
+      usersTable,
+      eq(circleBuilderApplicationsTable.reviewedByUserId, usersTable.id),
+    )
     .orderBy(desc(circleBuilderApplicationsTable.createdAt));
 
-  res.json(applications.map(applicationToApi));
+  res.json(
+    applications.map((row) =>
+      applicationToApi(row.application, row.reviewer?.displayName ?? null),
+    ),
+  );
 });
 
 // Admin: update an application's review status.
@@ -210,7 +223,7 @@ router.patch(
       return;
     }
 
-    res.json(applicationToApi(updated));
+    res.json(applicationToApi(updated, req.dbUser!.displayName ?? null));
   },
 );
 
