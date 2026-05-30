@@ -8,8 +8,12 @@ import {
   getListCirclesQueryKey,
   useListCircleConnections,
   useCreateCircleConnection,
+  useListCircleMembers,
+  useTransferCircleOwnership,
+  getListCircleMembersQueryKey,
 } from "@workspace/api-client-react";
-import { Heart, HandHeart, Sparkles, BookOpen, Users, Settings, Trash2, UserPlus, Link2, AlertTriangle, ClipboardList, Shield, ChevronDown, ChevronRight, PenSquare, CalendarDays, Building2 } from "lucide-react";
+import { TransferOwnershipDialog, type TransferMember } from "@/components/transfer-ownership-dialog";
+import { Heart, HandHeart, Sparkles, BookOpen, Users, Settings, Trash2, UserPlus, Link2, AlertTriangle, ClipboardList, Shield, ChevronDown, ChevronRight, PenSquare, CalendarDays, Building2, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -102,6 +106,7 @@ export default function CircleDetailPage() {
   const [connectionOpen, setConnectionOpen] = useState(false);
   const [adminExpanded, setAdminExpanded] = useState(false);
   const [applyVerifyOpen, setApplyVerifyOpen] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
   const { data: plusStatus } = useMyPlusStatus();
   const ownerHasPlus = !!plusStatus?.isPlus;
   const initialized = useRef(false);
@@ -120,12 +125,16 @@ export default function CircleDetailPage() {
   const { data: connections } = useListCircleConnections(circleId, {
     query: { enabled: !!circleId, queryKey: ["circle-connections", circleId] as const }
   });
+  const { data: members } = useListCircleMembers(circleId, {
+    query: { enabled: !!circleId, queryKey: getListCircleMembersQueryKey(circleId) }
+  });
 
   const updateCircle = useUpdateCircle();
   const deleteCircle = useDeleteCircle();
   const createPlaceholder = useCreatePlaceholderMember(circleId);
   const resolveDispute = useResolveDispute(circleId);
   const createConnection = useCreateCircleConnection();
+  const transferOwnership = useTransferCircleOwnership();
 
   const form = useForm<z.infer<typeof circleSettingsSchema>>({
     resolver: zodResolver(circleSettingsSchema),
@@ -181,6 +190,33 @@ export default function CircleDetailPage() {
         },
         onError: () => {
           toast({ title: "Could not remove circle", variant: "destructive" });
+        },
+      }
+    );
+  }
+
+  function handleTransferOwnership(newOwnerUserId: number, demoteToRole: "admin" | "member") {
+    transferOwnership.mutate(
+      { circleId, data: { newOwnerUserId, demoteToRole } },
+      {
+        onSuccess: () => {
+          setTransferOpen(false);
+          setSettingsOpen(false);
+          queryClient.invalidateQueries({ queryKey: getGetCircleQueryKey(circleId) });
+          queryClient.invalidateQueries({ queryKey: getListCircleMembersQueryKey(circleId) });
+          queryClient.invalidateQueries({ queryKey: getListCirclesQueryKey() });
+          toast({ title: "Ownership transferred", description: "This circle now belongs to its new owner." });
+        },
+        onError: (err: unknown) => {
+          const status =
+            typeof err === "object" && err !== null && "status" in err
+              ? (err as { status?: number }).status
+              : undefined;
+          if (status === 404) {
+            toast({ title: "Member not found", description: "That person is no longer an active member of this circle.", variant: "destructive" });
+            return;
+          }
+          toast({ title: "Could not transfer ownership", variant: "destructive" });
         },
       }
     );
@@ -278,6 +314,15 @@ export default function CircleDetailPage() {
   const verificationStatus = (circle as { verificationStatus?: string }).verificationStatus ?? "none";
 
   const openDisputes = disputes?.filter((d) => d.status === "open") ?? [];
+
+  const transferableMembers: TransferMember[] = (members ?? [])
+    .filter((m) => m.status === "active" && m.role !== "owner" && m.userId != null)
+    .map((m) => ({
+      id: m.id,
+      userId: m.userId ?? null,
+      displayName: m.displayName,
+      email: m.email ?? null,
+    }));
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -820,6 +865,28 @@ export default function CircleDetailPage() {
                   </FormItem>
                 )}
               />
+              {isOwner && (
+                <div className="rounded-2xl border border-border/50 p-4 space-y-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium">Transfer ownership</p>
+                      <p className="text-xs text-muted-foreground">
+                        Hand this circle over to another member.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full gap-1.5 shrink-0"
+                      onClick={() => setTransferOpen(true)}
+                      data-testid="button-transfer-ownership"
+                    >
+                      <Crown className="w-3.5 h-3.5" /> Transfer
+                    </Button>
+                  </div>
+                </div>
+              )}
               <div className="flex justify-between items-center pt-2">
                 {isOwner && (
                   <Button
@@ -869,6 +936,14 @@ export default function CircleDetailPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <TransferOwnershipDialog
+        open={transferOpen}
+        onOpenChange={setTransferOpen}
+        members={transferableMembers}
+        saving={transferOwnership.isPending}
+        onConfirm={handleTransferOwnership}
+      />
 
       <ApplyVerificationDialog
         circleId={circleId}
