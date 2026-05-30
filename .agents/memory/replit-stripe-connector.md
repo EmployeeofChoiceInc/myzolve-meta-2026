@@ -53,3 +53,20 @@ isn't KYB-activated for live payments, no production connection can be created.
 **Why:** our code (matching Replit's official snippet exactly) hard-requires
 `environment=production`, so a test-only/sandbox connection never satisfies the
 live deployment.
+
+## Fallback when the production connector can't be created: STRIPE_SECRET_KEY env var
+
+When the Publish-pane "Install Stripe app" flow won't surface (or the user can't
+complete it), bypass the managed connector entirely with an explicit live key.
+`getStripeCredentials()` tries `getCredentialsFromConnector()` first, then —
+**only when `REPLIT_DEPLOYMENT === "1"`** — falls back to
+`process.env.STRIPE_SECRET_KEY` (a global Replit secret holding the `sk_live_…`
+key). Publishable key is optional (`getStripePublishableKey` is never called).
+**Why production-gated:** dev must always use the connector's test keys; gating
+the fallback to the deployment means a transient connector failure in dev can
+never reach the live key and create real charges. **How to apply:** paste the
+live secret via `requestEnvVar` (global secret), then republish so `initStripe`
+runs with it — confirmed working: prod logs then show "Stripe schema ready" +
+"Stripe org products seeded" + products/prices CREATED in the live account +
+managed webhook on the `.replit.app` domain, and the "connection not found"
+warning disappears.
