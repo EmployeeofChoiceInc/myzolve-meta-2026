@@ -1,29 +1,23 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Nunito+Sans:wght@300;400;600;700;800&display=swap');
 
 @import "tailwindcss";
 
-/* REPLACE THESE -- define your own palette and fonts for each video */
 :root {
-  --color-primary: #f59e0b; /* Golden/orange */
-  --color-secondary: #3f3f46;
-  --color-accent: #e11d48;
+  --color-primary: #D9744A;
+  --color-secondary: #8AA17A;
+  --color-accent: #E9A23B;
 
-  --color-bg-light: #ffffff;
-  --color-bg-dark: #09090b;
-  --color-bg-muted: #18181b;
+  --color-bg-light: #FBF5EA;
+  --color-bg-dark: #FAF3E7;
+  --color-bg-muted: #F3E7D3;
 
-  --color-text-primary: #f8fafc;
-  --color-text-secondary: #94a3b8;
-  --color-text-muted: #64748b;
-  --color-text-inverse: #0f172a;
-
-  --color-success: #10B981;
-  --color-warning: #F59E0B;
-  --color-error: #EF4444;
+  --color-text-primary: #3B2D22;
+  --color-text-secondary: #4A3A2E;
+  --color-text-muted: #8AA17A;
+  --color-text-inverse: #FBF5EA;
 
   --font-display: 'Playfair Display', serif;
-  --font-body: 'Inter', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-body: 'Nunito Sans', sans-serif;
 }
 
 @theme inline {
@@ -37,22 +31,12 @@
   --color-text-secondary: var(--color-text-secondary);
   --color-text-muted: var(--color-text-muted);
   --color-text-inverse: var(--color-text-inverse);
-  --color-success: var(--color-success);
-  --color-warning: var(--color-warning);
-  --color-error: var(--color-error);
   --font-display: var(--font-display);
   --font-body: var(--font-body);
-  --font-mono: var(--font-mono);
 }
 
 body {
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-.text-gradient {
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
 }

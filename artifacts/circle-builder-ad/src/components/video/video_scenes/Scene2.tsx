@@ -14,26 +14,26 @@ export function Scene2() {
 
   return (
     <motion.div 
-      className="absolute inset-0 flex items-center justify-center bg-black overflow-hidden"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0, scale: 1.1 }}
-      transition={{ duration: 1 }}
+      className="absolute inset-0 flex items-center justify-center overflow-hidden"
+      initial={{ opacity: 0, clipPath: 'circle(0% at 50% 50%)' }}
+      animate={{ opacity: 1, clipPath: 'circle(150% at 50% 50%)' }}
+      exit={{ opacity: 0, filter: 'blur(10px)', scale: 1.05 }}
+      transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
     >
       <motion.div 
-        className="absolute inset-0 opacity-60 bg-cover bg-center"
-        style={{ backgroundImage: `url(${import.meta.env.BASE_URL}images/community.png)` }}
+        className="absolute inset-0 opacity-40 mix-blend-multiply bg-cover bg-center"
+        style={{ backgroundImage: `url(${import.meta.env.BASE_URL}images/gathering_1.jpg)` }}
         animate={{ scale: [1.1, 1], filter: ['blur(10px)', 'blur(0px)'] }}
         transition={{ duration: 5, ease: "easeOut" }}
       />
       
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/80" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-bg-light)]/80 via-transparent to-[var(--color-bg-light)]/80" />
 
       <div className="z-10 text-center px-12 w-full max-w-6xl">
         <motion.h1 
-          className="text-[6vw] font-display text-[var(--color-accent)] leading-tight italic mb-12"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={phase >= 1 ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
+          className="text-[6vw] font-display text-[var(--color-text-primary)] leading-tight italic mb-12"
+          initial={{ opacity: 0, scale: 0.9, rotateX: 20 }}
+          animate={phase >= 1 ? { opacity: 1, scale: 1, rotateX: 0 } : { opacity: 0, scale: 0.9, rotateX: 20 }}
           transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
         >
           They were meant to be people.
@@ -48,12 +48,12 @@ export function Scene2() {
         />
 
         <motion.p 
-          className="text-[2.5vw] font-body text-white font-light"
+          className="text-[2.5vw] font-body text-[var(--color-text-primary)] font-medium"
           initial={{ opacity: 0, y: 30 }}
           animate={phase >= 2 ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
           transition={{ duration: 1, delay: 0.3 }}
         >
-          Help us build <strong className="font-semibold text-white">100 real-world support circles</strong>.
+          Help us build <strong className="font-bold text-[var(--color-primary)]">100 real-world support circles</strong>.
           <br/>
           Gather in person, not just scroll.
         </motion.p>

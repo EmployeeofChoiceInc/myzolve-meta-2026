@@ -22,21 +22,23 @@ export function Scene2() {
     >
       <motion.div
         className="absolute inset-0 z-[-1]"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.6 }}
-        transition={{ duration: 2 }}
+        initial={{ opacity: 0, scale: 1.1 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 3, ease: "easeOut" }}
       >
         <img 
-          src={`${import.meta.env.BASE_URL}images/community.png`} 
+          src={`${import.meta.env.BASE_URL}images/gathering-1.jpg`} 
           className="w-full h-full object-cover" 
-          alt="community" 
+          alt="community gathering" 
         />
-        <div className="absolute inset-0 bg-[#09090b]/40 mix-blend-overlay" />
+        <div className="absolute inset-0 bg-[#FBF5EA]/40 mix-blend-soft-light" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#D9744A]/80 via-[#E9A23B]/30 to-transparent mix-blend-multiply" />
       </motion.div>
 
-      <div className="text-center bg-[#09090b]/60 backdrop-blur-md p-8 rounded-3xl border border-white/10 w-full">
+      <div className="text-center bg-[#FBF5EA]/90 backdrop-blur-md p-8 rounded-3xl border border-[#D9744A]/20 w-full shadow-2xl">
         <motion.p
-          className="text-[6vw] text-[#94a3b8] font-light tracking-wide uppercase mb-4"
+          className="text-[6vw] font-bold tracking-wide uppercase mb-4"
+          style={{ color: 'var(--color-primary)' }}
           initial={{ opacity: 0, y: 20 }}
           animate={phase >= 1 ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
           transition={{ duration: 0.8 }}
@@ -45,8 +47,8 @@ export function Scene2() {
         </motion.p>
         
         <motion.h2 
-          className="text-[14vw] font-black text-white leading-none tracking-tight"
-          style={{ fontFamily: 'var(--font-display)' }}
+          className="text-[14vw] font-black leading-none tracking-tight"
+          style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text-primary)' }}
           initial={{ opacity: 0, scale: 0.9 }}
           animate={phase >= 1 ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
           transition={{ duration: 0.8, delay: 0.4, type: 'spring', bounce: 0.4 }}

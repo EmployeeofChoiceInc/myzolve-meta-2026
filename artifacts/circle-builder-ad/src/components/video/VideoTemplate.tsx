@@ -69,26 +69,26 @@ export default function VideoTemplate({
   }, [currentSceneKey, baseSceneKey, muted]);
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-[var(--color-bg-dark)]">
-      {/* Persistent subtle background motion to keep it alive */}
+    <div className="relative w-full h-screen overflow-hidden bg-[var(--color-bg-light)] text-[var(--color-text-primary)]">
+      {/* Persistent warm bokeh and sun flares to keep it alive */}
       <motion.div
-        className="absolute w-[80vw] h-[80vw] rounded-full blur-[100px] opacity-10"
-        style={{ background: 'var(--color-primary)' }}
-        animate={{
-          x: ['-20%', '30%', '-10%', '-20%'],
-          y: ['-20%', '-10%', '20%', '-20%'],
-          scale: [1, 1.2, 0.8, 1]
-        }}
-        transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-      />
-      <motion.div
-        className="absolute right-0 bottom-0 w-[60vw] h-[60vw] rounded-full blur-[100px] opacity-10"
+        className="absolute w-[80vw] h-[80vw] rounded-full blur-[120px] opacity-30 mix-blend-multiply"
         style={{ background: 'var(--color-accent)' }}
         animate={{
-          x: ['20%', '-10%', '10%', '20%'],
-          y: ['20%', '10%', '-20%', '20%'],
+          x: ['-10%', '40%', '-10%', '-20%'],
+          y: ['-20%', '10%', '30%', '-20%'],
+          scale: [1, 1.3, 0.9, 1]
         }}
-        transition={{ duration: 15, repeat: Infinity, ease: 'linear' }}
+        transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
+      />
+      <motion.div
+        className="absolute right-0 bottom-0 w-[70vw] h-[70vw] rounded-full blur-[100px] opacity-20 mix-blend-multiply"
+        style={{ background: 'var(--color-primary)' }}
+        animate={{
+          x: ['10%', '-20%', '10%', '20%'],
+          y: ['20%', '-10%', '-20%', '20%'],
+        }}
+        transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
       />
 
       <AnimatePresence mode="popLayout">

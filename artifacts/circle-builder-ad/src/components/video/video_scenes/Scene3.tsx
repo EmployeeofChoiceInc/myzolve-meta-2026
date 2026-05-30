@@ -16,7 +16,7 @@ export function Scene3() {
 
   return (
     <motion.div 
-      className="absolute inset-0 flex flex-col justify-center bg-[var(--color-bg-dark)] pl-[10vw]"
+      className="absolute inset-0 flex flex-col justify-center pl-[10vw] overflow-hidden"
       initial={{ opacity: 0, x: 100 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -100 }}
@@ -24,19 +24,13 @@ export function Scene3() {
     >
       {/* Background graphic */}
       <motion.div 
-        className="absolute right-[-20%] top-[-20%] w-[80vw] h-[80vw] rounded-full border border-[var(--color-primary)]/20"
-        animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0] }}
-        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-      />
-      <motion.div 
-        className="absolute right-[-10%] top-[-10%] w-[60vw] h-[60vw] rounded-full border border-[var(--color-accent)]/10"
-        animate={{ scale: [1.2, 1, 1.2], rotate: [0, -90, 0] }}
-        transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+        className="absolute inset-0 opacity-10 mix-blend-multiply bg-cover bg-center"
+        style={{ backgroundImage: `url(${import.meta.env.BASE_URL}images/gathering_2.jpg)` }}
       />
 
       <div className="relative z-10 w-full max-w-4xl">
         <motion.p 
-          className="text-[var(--color-primary)] text-[1.5vw] font-body tracking-widest uppercase mb-4"
+          className="text-[var(--color-secondary)] text-[1.5vw] font-body tracking-widest uppercase mb-4 font-bold"
           initial={{ opacity: 0, x: -20 }}
           animate={phase >= 1 ? { opacity: 1, x: 0 } : { opacity: 0, x: -20 }}
           transition={{ duration: 0.8 }}
@@ -45,7 +39,7 @@ export function Scene3() {
         </motion.p>
         
         <motion.h2 
-          className="text-[6vw] font-display text-white leading-none mb-12"
+          className="text-[6vw] font-display text-[var(--color-text-primary)] leading-none mb-12"
           initial={{ opacity: 0, y: 40 }}
           animate={phase >= 1 ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
           transition={{ duration: 1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
@@ -57,7 +51,7 @@ export function Scene3() {
           {roles.map((role, i) => (
             <motion.div
               key={role}
-              className="px-6 py-3 border border-white/20 rounded-full text-white/80 text-[1.5vw] font-body"
+              className="px-6 py-3 bg-white/60 border border-[var(--color-primary)]/20 shadow-sm rounded-full text-[var(--color-text-primary)] font-medium text-[1.5vw] font-body"
               initial={{ opacity: 0, scale: 0.8, y: 20 }}
               animate={phase >= 2 ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.8, y: 20 }}
               transition={{ 

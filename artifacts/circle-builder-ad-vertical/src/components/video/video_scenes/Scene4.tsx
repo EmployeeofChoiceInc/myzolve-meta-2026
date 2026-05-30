@@ -29,40 +29,54 @@ export function Scene4() {
       exit={{ opacity: 0, scale: 1.05 }}
       transition={{ duration: 0.8 }}
     >
+      <motion.div
+        className="absolute inset-0 z-[-1]"
+        initial={{ opacity: 0, scale: 1.1 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 4, ease: "easeOut" }}
+      >
+        <img 
+          src={`${import.meta.env.BASE_URL}images/gathering-2.jpg`} 
+          className="w-full h-full object-cover" 
+          alt="community gathering" 
+        />
+        <div className="absolute inset-0 bg-[#FBF5EA]/70" />
+      </motion.div>
+
       <motion.div 
-        className="absolute right-[-20vw] top-[10vh] w-[70vw] opacity-40 mix-blend-screen"
+        className="absolute right-[-20vw] top-[5vh] w-[70vw] opacity-40 mix-blend-multiply drop-shadow-lg"
         initial={{ opacity: 0, rotate: -20, scale: 0.8 }}
-        animate={phase >= 1 ? { opacity: 0.5, rotate: 0, scale: 1 } : { opacity: 0, rotate: -20, scale: 0.8 }}
+        animate={phase >= 1 ? { opacity: 0.3, rotate: 0, scale: 1 } : { opacity: 0, rotate: -20, scale: 0.8 }}
         transition={{ duration: 1.5, ease: 'easeOut' }}
       >
         <img src={`${import.meta.env.BASE_URL}images/founder-badge.png`} className="w-full h-auto drop-shadow-2xl" alt="badge" />
       </motion.div>
 
       <motion.h3
-        className="text-[8vw] font-bold text-white mb-10 leading-tight"
-        style={{ fontFamily: 'var(--font-display)' }}
+        className="text-[8vw] font-bold mb-10 leading-tight relative z-10"
+        style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text-primary)' }}
         initial={{ opacity: 0, y: 20 }}
         animate={phase >= 1 ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
       >
         Become a<br/>
-        <span className="text-[#f59e0b] text-[12vw] block mt-2">Founding Ambassador</span>
+        <span className="text-[var(--color-primary)] text-[12vw] block mt-2">Founding Ambassador</span>
       </motion.h3>
 
       <div className="space-y-6 z-10">
         {steps.map((step, idx) => (
           <motion.div
             key={idx}
-            className="flex items-start gap-4 bg-[#09090b]/80 backdrop-blur-sm p-5 rounded-2xl border border-white/5"
+            className="flex items-start gap-4 bg-[#FBF5EA]/90 backdrop-blur-md p-5 rounded-2xl border border-[var(--color-primary)]/20 shadow-xl"
             initial={{ opacity: 0, x: -30 }}
             animate={phase >= idx + 2 ? { opacity: 1, x: 0 } : { opacity: 0, x: -30 }}
             transition={{ duration: 0.5, type: 'spring', bounce: 0.2 }}
           >
-            <div className="w-10 h-10 rounded-full bg-[#f59e0b]/20 flex items-center justify-center shrink-0 border border-[#f59e0b]/50">
-              <span className="text-[#f59e0b] font-bold">{idx + 1}</span>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 border-2 border-[var(--color-primary)]" style={{ backgroundColor: 'var(--color-bg-muted)' }}>
+              <span className="text-[var(--color-primary)] font-bold">{idx + 1}</span>
             </div>
             <div>
-              <h4 className="text-[5vw] font-bold text-white tracking-wide">{step.title}</h4>
-              <p className="text-[4vw] text-[#94a3b8]">{step.desc}</p>
+              <h4 className="text-[5vw] font-black tracking-wide" style={{ color: 'var(--color-text-primary)' }}>{step.title}</h4>
+              <p className="text-[4vw] font-medium" style={{ color: 'var(--color-text-muted)' }}>{step.desc}</p>
             </div>
           </motion.div>
         ))}

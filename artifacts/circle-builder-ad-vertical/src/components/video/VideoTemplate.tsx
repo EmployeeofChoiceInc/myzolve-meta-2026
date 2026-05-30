@@ -71,18 +71,18 @@ export default function VideoTemplate({
   return (
     <div
       className="w-full h-screen overflow-hidden relative"
-      style={{ backgroundColor: 'var(--color-bg-dark)' }}
+      style={{ backgroundColor: 'var(--color-bg-light)' }}
     >
       <div className="absolute inset-0 z-0">
         <video
           src={`${import.meta.env.BASE_URL}videos/bg-connections.mp4`}
-          className="w-full h-full object-cover opacity-30"
+          className="w-full h-full object-cover opacity-80"
           autoPlay
           muted
           loop
           playsInline
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-transparent to-[#09090b]/80" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#FBF5EA] via-[#FAF3E7]/40 to-[#FBF5EA]/80 mix-blend-screen" />
       </div>
 
       <AnimatePresence mode="popLayout">

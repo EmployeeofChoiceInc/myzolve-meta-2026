@@ -15,24 +15,24 @@ export function Scene1() {
 
   return (
     <motion.div 
-      className="absolute inset-0 flex flex-col items-center justify-center bg-black overflow-hidden"
+      className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--color-bg-dark)] overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 1.1 }}
       transition={{ duration: 1 }}
     >
       <motion.div 
-        className="absolute inset-0 opacity-40 bg-cover bg-center"
+        className="absolute inset-0 opacity-20 bg-cover bg-center grayscale"
         style={{ backgroundImage: `url(${import.meta.env.BASE_URL}images/algorithm.png)` }}
-        animate={{ scale: [1, 1.1], opacity: [0.2, 0.4] }}
+        animate={{ scale: [1, 1.05], opacity: [0.1, 0.2] }}
         transition={{ duration: 6, ease: "linear" }}
       />
       
-      <div className="absolute inset-0 bg-black/60" />
+      <div className="absolute inset-0 bg-[var(--color-bg-dark)]/80" />
 
       <div className="z-10 text-center px-8 w-full max-w-5xl">
         <motion.p 
-          className="text-white/70 text-[2vw] font-body tracking-widest uppercase mb-8"
+          className="text-white/60 text-[2vw] font-body tracking-widest uppercase mb-8"
           initial={{ opacity: 0, y: 20 }}
           animate={phase >= 1 ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
           transition={{ duration: 1 }}
@@ -56,7 +56,7 @@ export function Scene1() {
           {'MEANT TO BE ALGORITHMS.'.split(' ').map((word, i) => (
             <motion.span 
               key={`line2-${i}`} 
-              className="inline-block mr-[1.5vw] text-transparent bg-clip-text bg-gradient-to-r from-gray-400 to-gray-600"
+              className="inline-block mr-[1.5vw] text-[#9ca3af]"
               initial={{ opacity: 0, y: 40, filter: 'blur(10px)' }}
               animate={phase >= 2 ? { opacity: 1, y: 0, filter: 'blur(0px)' } : { opacity: 0, y: 40, filter: 'blur(10px)' }}
               transition={{ duration: 0.8, delay: phase >= 2 ? 0.6 + i * 0.15 : 0, ease: [0.16, 1, 0.3, 1] }}

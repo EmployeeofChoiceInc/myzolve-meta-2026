@@ -1,16 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --color-bg-dark: #12100E;
-  --color-bg-light: #F9F6F0;
+  --color-bg-dark: #374151; /* Cold blue-grey */
+  --color-bg-light: #FBF5EA; /* Warm cream/ivory */
   
-  --color-primary: #E86A33; /* Warm amber/orange */
-  --color-secondary: #2C363F; 
-  --color-accent: #E2C275;
+  --color-primary: #D9744A; /* Terracotta / clay */
+  --color-secondary: #8AA17A; /* Sage green */
+  --color-accent: #E9A23B; /* Soft honey/amber */
 
-  --color-text-primary: #F9F6F0;
-  --color-text-secondary: #D4CDC3;
-  --color-text-inverse: #12100E;
+  --color-text-primary: #4A3A2E; /* Deep warm brown */
+  --color-text-secondary: #6B5B4E; 
+  --color-text-inverse: #FBF5EA; /* Light for dark backgrounds */
 
   --font-display: 'Playfair Display', serif;
   --font-body: 'Plus Jakarta Sans', sans-serif;
@@ -32,7 +32,7 @@
 
 body {
   font-family: var(--font-body);
-  background-color: var(--color-bg-dark);
+  background-color: var(--color-bg-light);
   color: var(--color-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

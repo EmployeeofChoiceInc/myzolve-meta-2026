@@ -130,10 +130,46 @@ title = "What's New — MyZolve Connect 1.0.6"
 id = "330OcSZr8ddjBtzALyysN"
 uri = "file://artifacts/circle-builder-ad/public/audio/bg_music.mp3"
 type = "audio"
-title = "background music"
+title = "warm background music (widescreen)"
 
 [[outputs]]
 id = "OkhOoCQni5e0PjzQb_H5V"
 uri = "file://artifacts/circle-builder-ad-vertical/public/audio/bg_music.mp3"
 type = "audio"
-title = "background music"
+title = "warm background music (vertical)"
+
+[[outputs]]
+id = "bFd3GVvvuqhvC1SjBcd9x"
+uri = "file://artifacts/circle-builder-ad/public/images/gathering_1.jpg"
+type = "image"
+title = "golden hour community gathering, real people talking and laughing together, warm sunlit"
+
+[[outputs]]
+id = "d89e5fVfiGU3F9U7mSzAF"
+uri = "file://artifacts/circle-builder-ad/public/images/gathering_2.jpg"
+type = "image"
+title = "golden hour community gathering, real people talking and laughing together, warm sunlit"
+
+[[outputs]]
+id = "0qEAtn_3UHwsFNJDdAF4D"
+uri = "file://artifacts/circle-builder-ad/public/images/gathering_3.jpg"
+type = "image"
+title = "golden hour community gathering, real people talking and laughing together, warm sunlit"
+
+[[outputs]]
+id = "2ElR7iMv5BbNGoYXMLB1P"
+uri = "file://artifacts/circle-builder-ad-vertical/public/images/gathering-1.jpg"
+type = "image"
+title = "golden hour outdoor community gathering people laughing shared meal sunlit warm"
+
+[[outputs]]
+id = "r3o33N3_KiJmgNvN1YWlA"
+uri = "file://artifacts/circle-builder-ad-vertical/public/images/gathering-2.jpg"
+type = "image"
+title = "diverse group of friends or neighbors talking and laughing on a porch sunset golden hour"
+
+[[outputs]]
+id = "oVf1a2BKWI9q8G882MyuT"
+uri = "file://artifacts/circle-builder-ad-vertical/public/images/gathering-3.jpg"
+type = "image"
+title = "people sitting in a circle outdoors warm light community gathering"
