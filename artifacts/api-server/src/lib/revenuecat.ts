@@ -11,6 +11,7 @@ import {
   usersTable,
 } from "@workspace/db";
 import { logger } from "./logger";
+import { getOrgEntitlement } from "./orgEntitlement";
 
 /**
  * Hard cap on the number of family members that receive derived Plus from
@@ -363,12 +364,15 @@ export async function isPlus(userId: string): Promise<boolean> {
   if (!userId) return false;
   if (await isPlusDirect(userId)) return true;
   const derived = await getDerivedPlusInfo(userId);
-  return derived !== null;
+  if (derived !== null) return true;
+  // Enterprise org members are treated as Plus while their seat is active.
+  const org = await getOrgEntitlement(userId);
+  return org !== null;
 }
 
 export type PlusStatus = {
   isPlus: boolean;
-  source: "direct" | "family" | "none";
+  source: "direct" | "family" | "org" | "none";
   planKind: "solo" | "family";
   familyCircleId: number | null;
   familyCircleMemberCount: number | null;
@@ -377,6 +381,10 @@ export type PlusStatus = {
   gifterName: string | null;
   gifterCircleId: number | null;
   graceUntil: string | null;
+  // Enterprise org membership, when the user's Plus comes from an org seat
+  // (or simply to surface "Member of [Org]" regardless of Plus source).
+  orgId: number | null;
+  orgName: string | null;
 };
 
 /**
@@ -390,6 +398,7 @@ export async function getPlusStatus(user: {
   familyCircleId: number | null;
 }): Promise<PlusStatus> {
   const direct = await isPlusDirect(user.clerkId);
+  const org = await getOrgEntitlement(user.clerkId);
 
   let familyCircleMemberCount: number | null = null;
   if (user.planKind === "family" && user.familyCircleId != null) {
@@ -417,6 +426,8 @@ export async function getPlusStatus(user: {
       gifterName: null,
       gifterCircleId: null,
       graceUntil: null,
+      orgId: org?.orgId ?? null,
+      orgName: org?.orgName ?? null,
     };
   }
 
@@ -433,6 +444,25 @@ export async function getPlusStatus(user: {
       gifterName: derived.ownerName,
       gifterCircleId: derived.circleId,
       graceUntil: derived.graceUntil ? derived.graceUntil.toISOString() : null,
+      orgId: org?.orgId ?? null,
+      orgName: org?.orgName ?? null,
+    };
+  }
+
+  if (org) {
+    return {
+      isPlus: true,
+      source: "org",
+      planKind: user.planKind === "family" ? "family" : "solo",
+      familyCircleId: user.familyCircleId ?? null,
+      familyCircleMemberCount,
+      familyCircleMemberCap: FAMILY_PLAN_MEMBER_CAP,
+      gifterUserId: null,
+      gifterName: null,
+      gifterCircleId: null,
+      graceUntil: null,
+      orgId: org.orgId,
+      orgName: org.orgName,
     };
   }
 
@@ -447,5 +477,7 @@ export async function getPlusStatus(user: {
     gifterName: null,
     gifterCircleId: null,
     graceUntil: null,
+    orgId: null,
+    orgName: null,
   };
 }

@@ -117,6 +117,20 @@ export default function ProfileScreen() {
                 {[me.firstName, me.lastName].filter(Boolean).join(" ")}
               </AppText>
             ) : null}
+            {me?.org ? (
+              <Row gap={5} style={{ marginTop: 8, alignItems: "center" }}>
+                <Feather name="briefcase" size={12} color={c.primary} />
+                <AppText
+                  variant="caption"
+                  color={c.primary}
+                  weight="semibold"
+                  numberOfLines={1}
+                  style={{ flexShrink: 1 }}
+                >
+                  Member of {me.org.name}
+                </AppText>
+              </Row>
+            ) : null}
           </View>
         </Row>
       </Card>

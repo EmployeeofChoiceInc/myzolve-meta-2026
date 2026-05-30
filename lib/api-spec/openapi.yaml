@@ -3194,6 +3194,343 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  # ── Enterprise Orgs ──────────────────────────────────────────────────────
+  /org-plans:
+    get:
+      operationId: listOrgPlans
+      tags: [orgs]
+      summary: List available org seat-pack plans (public)
+      responses:
+        "200":
+          description: Plan catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plans:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OrgPlan"
+                required: [plans]
+
+  /orgs:
+    post:
+      operationId: createOrg
+      tags: [orgs]
+      summary: Create a pending org (creator becomes owner)
+      security: [{ clerk: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrgBody"
+      responses:
+        "201":
+          description: Org created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Org"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /orgs/mine:
+    get:
+      operationId: listMyOrgs
+      tags: [orgs]
+      summary: List orgs the caller belongs to
+      security: [{ clerk: [] }]
+      responses:
+        "200":
+          description: Orgs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orgs:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Org"
+                required: [orgs]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /orgs/{orgId}:
+    get:
+      operationId: getOrgDashboard
+      tags: [orgs]
+      summary: Admin dashboard payload (org, members, pending invites)
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      responses:
+        "200":
+          description: Org dashboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgDashboard"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateOrg
+      tags: [orgs]
+      summary: Update org name and branding
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrgBody"
+      responses:
+        "200":
+          description: Updated org
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Org"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /orgs/{orgId}/logo/request-url:
+    post:
+      operationId: requestOrgLogoUploadUrl
+      tags: [orgs]
+      summary: Request a presigned upload URL for the org logo
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                size: { type: integer }
+                contentType: { type: string }
+              required: [name, size, contentType]
+      responses:
+        "200":
+          description: Upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgLogoUploadUrl"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /orgs/{orgId}/checkout:
+    post:
+      operationId: createOrgCheckout
+      tags: [orgs]
+      summary: Create a Stripe Checkout Session for the org seat pack
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrgCheckoutBody"
+      responses:
+        "200":
+          description: Checkout URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutUrl"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /orgs/{orgId}/portal:
+    post:
+      operationId: createOrgPortal
+      tags: [orgs]
+      summary: Create a Stripe billing portal session
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                returnUrl: { type: string, format: uri }
+              required: [returnUrl]
+      responses:
+        "200":
+          description: Portal URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutUrl"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /orgs/{orgId}/invites:
+    post:
+      operationId: createOrgInvite
+      tags: [orgs]
+      summary: Create an email or shareable-link org invite
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrgInviteBody"
+      responses:
+        "201":
+          description: Invite created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgInvite"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /orgs/{orgId}/invites/{inviteId}:
+    delete:
+      operationId: revokeOrgInvite
+      tags: [orgs]
+      summary: Revoke a pending org invite
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+        - name: inviteId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /orgs/{orgId}/members/{memberId}:
+    delete:
+      operationId: removeOrgMember
+      tags: [orgs]
+      summary: Remove a member (frees their seat)
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+        - name: memberId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /org-invites/{token}:
+    get:
+      operationId: previewOrgInvite
+      tags: [orgs]
+      summary: Public preview of an org invite (org name + branding)
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Invite preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgInvitePreview"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /org-invites/{token}/accept:
+    post:
+      operationId: acceptOrgInvite
+      tags: [orgs]
+      summary: Accept an org invite, consuming a seat
+      security: [{ clerk: [] }]
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Joined org
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orgId: { type: integer }
+                  orgName: { type: string }
+                required: [orgId, orgName]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
 components:
   securitySchemes:
     clerk:
@@ -3224,6 +3561,13 @@ components:
 
     serviceId:
       name: serviceId
+      in: path
+      required: true
+      schema:
+        type: integer
+
+    orgId:
+      name: orgId
       in: path
       required: true
       schema:
@@ -3261,6 +3605,12 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/PaywallError"
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
 
   schemas:
     HealthStatus:
@@ -3341,6 +3691,23 @@ components:
           description: |
             When `planKind` is "family", the circle whose first 6 active
             members receive derived Plus while the subscription is active.
+        org:
+          type: ["object", "null"]
+          description: |
+            The user's active organization affiliation, or null. Used to
+            render "Member of [Org]" on profile screens.
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            role:
+              type: string
+              enum: [admin, member]
+          required:
+            - id
+            - name
+            - role
         createdAt:
           type: string
           format: date-time
@@ -3665,6 +4032,20 @@ components:
           description: |
             Reason supplied by the reviewer on rejection. Surfaced to
             the owner so they can fix the issue and re-apply.
+        orgId:
+          type: ["integer", "null"]
+          description: |
+            The organization this circle belongs to, or null for a
+            personal circle. Org-owned circles inherit org branding.
+        orgName:
+          type: ["string", "null"]
+          description: Display name of the owning organization, when orgId is set.
+        orgLogoUrl:
+          type: ["string", "null"]
+          description: URL of the owning organization's logo, when set.
+        orgAccentColor:
+          type: ["string", "null"]
+          description: Accent color of the owning organization, when set.
         createdAt:
           type: string
           format: date-time
@@ -4127,6 +4508,253 @@ components:
           default: member
         customMessage:
           type: string
+
+    # ── Enterprise Orgs ─────────────────────────────────────────────────────
+    OkResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required: [ok]
+
+    OrgPlan:
+      type: object
+      description: A purchasable org seat-pack plan.
+      properties:
+        id:
+          type: string
+          enum: [reunion, erg]
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        billingType:
+          type: string
+          enum: [one_time, annual]
+        seats:
+          type: ["integer", "null"]
+        perSeat:
+          type: boolean
+        minSeats:
+          type: ["integer", "null"]
+        maxSeats:
+          type: ["integer", "null"]
+        unitAmount:
+          type: integer
+          description: Price in the smallest currency unit (cents).
+        currency:
+          type: string
+      required: [id, name, billingType, perSeat, unitAmount, currency]
+
+    Org:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        ownerId:
+          type: integer
+        plan:
+          type: string
+        planName:
+          type: string
+        billingType:
+          type: string
+          enum: [one_time, annual]
+        status:
+          type: string
+          enum: [pending, active, past_due, canceled]
+        seatLimit:
+          type: integer
+        seatsUsed:
+          type: ["integer", "null"]
+        logoUrl:
+          type: ["string", "null"]
+        accentColor:
+          type: ["string", "null"]
+        currentPeriodEnd:
+          type: ["string", "null"]
+          format: date-time
+        cancelAtPeriodEnd:
+          type: boolean
+        graceEndsAt:
+          type: ["string", "null"]
+          format: date-time
+        isActive:
+          type: boolean
+        myRole:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - ownerId
+        - plan
+        - planName
+        - billingType
+        - status
+        - seatLimit
+        - isActive
+        - createdAt
+
+    OrgMember:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        role:
+          type: string
+        status:
+          type: string
+        joinedAt:
+          type: ["string", "null"]
+          format: date-time
+        displayName:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        avatarObjectPath:
+          type: ["string", "null"]
+      required: [id, userId, role, status]
+
+    OrgInvite:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: ["string", "null"]
+        role:
+          type: string
+        token:
+          type: string
+        status:
+          type: string
+        expiresAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, role, token, status, createdAt]
+
+    OrgDashboard:
+      type: object
+      properties:
+        org:
+          $ref: "#/components/schemas/Org"
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrgMember"
+        pendingInvites:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrgInvite"
+      required: [org, members, pendingInvites]
+
+    OrgInvitePreview:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        status:
+          type: string
+        role:
+          type: string
+        invitedEmail:
+          type: ["string", "null"]
+        org:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            logoUrl:
+              type: ["string", "null"]
+            accentColor:
+              type: ["string", "null"]
+          required: [id, name]
+      required: [valid, status, role, org]
+
+    CreateOrgBody:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        plan:
+          type: string
+          enum: [reunion, erg]
+      required: [name, plan]
+
+    UpdateOrgBody:
+      type: object
+      properties:
+        name:
+          type: string
+        accentColor:
+          type: ["string", "null"]
+        logoObjectPath:
+          type: ["string", "null"]
+
+    OrgCheckoutBody:
+      type: object
+      properties:
+        seats:
+          type: integer
+          minimum: 1
+          maximum: 1000
+        successUrl:
+          type: string
+          format: uri
+        cancelUrl:
+          type: string
+          format: uri
+      required: [successUrl, cancelUrl]
+
+    OrgLogoUploadUrl:
+      type: object
+      properties:
+        uploadURL:
+          type: string
+        objectPath:
+          type: string
+        metadata:
+          type: object
+          properties:
+            name:
+              type: string
+            size:
+              type: integer
+            contentType:
+              type: string
+      required: [uploadURL, objectPath]
+
+    CreateOrgInviteBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, member]
+          default: member
+
+    CheckoutUrl:
+      type: object
+      properties:
+        url:
+          type: string
+      required: [url]
 
     # ── Support Requests ───────────────────────────────────────────────────────
     SupportRequest:

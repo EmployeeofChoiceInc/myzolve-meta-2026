@@ -23,6 +23,7 @@ import careDatesRouter from "./careDates";
 import copilotRouter from "./copilot";
 import wrapupsRouter from "./wrapups";
 import ledgerProRouter from "./ledgerPro";
+import orgsRouter from "./orgs";
 
 const router: IRouter = Router();
 
@@ -50,5 +51,6 @@ router.use(careDatesRouter);
 router.use(copilotRouter);
 router.use(wrapupsRouter);
 router.use(ledgerProRouter);
+router.use(orgsRouter);
 
 export default router;

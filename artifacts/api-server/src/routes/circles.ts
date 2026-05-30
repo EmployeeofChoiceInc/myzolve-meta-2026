@@ -16,6 +16,7 @@ import { isOwnerOrAdmin, canManageLedger } from "../lib/permissions";
 import { assertCanJoinAnotherCircle } from "../lib/circleLimits";
 import { isPlus } from "../lib/revenuecat";
 import { isAllowedAccentColor, MAX_WELCOME_MESSAGE_LEN } from "../lib/circleLook";
+import { getOrgBrandingMap } from "../lib/orgEntitlement";
 import { validateAndConsumePendingUpload } from "../lib/uploadTokens";
 import {
   supportRequestsTable,
@@ -66,11 +67,18 @@ const updateCircleSchema = z.object({
   welcomeMessage: z.string().max(MAX_WELCOME_MESSAGE_LEN).nullable().optional(),
 });
 
+type OrgBranding = {
+  name: string;
+  logoObjectPath: string | null;
+  accentColor: string | null;
+};
+
 function circleToApi(
   circle: Circle,
   memberCount: number,
   myRole: string | null,
   showWelcomeCard = false,
+  orgBranding?: OrgBranding | null,
 ) {
   return {
     id: circle.id,
@@ -91,8 +99,23 @@ function circleToApi(
     verificationStatus: circle.verificationStatus ?? "none",
     verificationAppliedAt: circle.verificationAppliedAt ?? null,
     verificationDecisionReason: circle.verificationDecisionReason ?? null,
+    orgId: circle.orgId ?? null,
+    orgName: orgBranding?.name ?? null,
+    orgLogoUrl:
+      circle.orgId && orgBranding?.logoObjectPath
+        ? `/api/orgs/${circle.orgId}/logo`
+        : null,
+    orgAccentColor: orgBranding?.accentColor ?? null,
     createdAt: circle.createdAt,
   };
+}
+
+async function brandingForCircle(
+  circle: Circle,
+): Promise<OrgBranding | null> {
+  if (!circle.orgId) return null;
+  const map = await getOrgBrandingMap([circle.orgId]);
+  return map.get(circle.orgId) ?? null;
 }
 
 const createJoinRequestSchema = z.object({
@@ -313,11 +336,16 @@ router.get("/circles", requireAuth, async (req, res) => {
 
   const countMap = new Map(memberCounts.map((mc) => [mc.circleId, Number(mc.cnt)]));
 
+  const brandingMap = await getOrgBrandingMap(
+    memberships.map((m) => m.circle.orgId).filter((id): id is number => id != null),
+  );
+
   const result = memberships.map((m) => {
     const mc = countMap.get(m.circle.id) ?? 1;
     let role = m.role;
     if (m.circle.ownerId === userId) role = "owner";
-    return circleToApi(m.circle, mc, role);
+    const branding = m.circle.orgId ? brandingMap.get(m.circle.orgId) ?? null : null;
+    return circleToApi(m.circle, mc, role, false, branding);
   });
 
   res.json(result);
@@ -422,7 +450,15 @@ router.get("/circles/:circleId", requireAuth, validateParams(circleIdParam), asy
       .then((r) => r[0]);
     showWelcomeCard = owner ? await isPlus(owner.clerkId) : false;
   }
-  res.json(circleToApi(circle, Number(memberCount.cnt), role, showWelcomeCard));
+  res.json(
+    circleToApi(
+      circle,
+      Number(memberCount.cnt),
+      role,
+      showWelcomeCard,
+      await brandingForCircle(circle),
+    ),
+  );
 });
 
 router.post(
@@ -587,7 +623,15 @@ router.post(
         ),
       );
 
-    res.json(circleToApi(updated, Number(memberCount.cnt), "owner"));
+    res.json(
+      circleToApi(
+        updated,
+        Number(memberCount.cnt),
+        "owner",
+        false,
+        await brandingForCircle(updated),
+      ),
+    );
   },
 );
 
@@ -769,7 +813,15 @@ router.patch("/circles/:circleId", requireAuth, validateParams(circleIdParam), v
     metadata: changedFields,
   });
 
-  res.json(circleToApi(updated, Number(memberCount.cnt), role));
+  res.json(
+    circleToApi(
+      updated,
+      Number(memberCount.cnt),
+      role,
+      false,
+      await brandingForCircle(updated),
+    ),
+  );
 });
 
 router.delete("/circles/:circleId", requireAuth, validateParams(circleIdParam), async (req, res) => {
@@ -1065,7 +1117,15 @@ router.post(
         ),
       );
 
-    res.json(circleToApi(updated, Number(memberCount.cnt), "owner"));
+    res.json(
+      circleToApi(
+        updated,
+        Number(memberCount.cnt),
+        "owner",
+        false,
+        await brandingForCircle(updated),
+      ),
+    );
   },
 );
 

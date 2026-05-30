@@ -50,6 +50,18 @@ export const UserProfilePlanKind = {
   family: "family",
 } as const;
 
+/**
+ * The user's active organization affiliation, or null. Used to
+render "Member of [Org]" on profile screens.
+
+ * @nullable
+ */
+export type UserProfileOrg = {
+  id: number;
+  name: string;
+  role: "admin" | "member";
+} | null;
+
 export interface UserProfile {
   id: number;
   clerkId: string;
@@ -86,6 +98,13 @@ members receive derived Plus while the subscription is active.
    * @nullable
    */
   familyCircleId?: number | null;
+  /**
+   * The user's active organization affiliation, or null. Used to
+render "Member of [Org]" on profile screens.
+
+   * @nullable
+   */
+  org?: UserProfileOrg;
   createdAt: string;
 }
 
@@ -430,6 +449,28 @@ the owner so they can fix the issue and re-apply.
    * @nullable
    */
   verificationDecisionReason?: string | null;
+  /**
+   * The organization this circle belongs to, or null for a
+personal circle. Org-owned circles inherit org branding.
+
+   * @nullable
+   */
+  orgId?: number | null;
+  /**
+   * Display name of the owning organization, when orgId is set.
+   * @nullable
+   */
+  orgName?: string | null;
+  /**
+   * URL of the owning organization's logo, when set.
+   * @nullable
+   */
+  orgLogoUrl?: string | null;
+  /**
+   * Accent color of the owning organization, when set.
+   * @nullable
+   */
+  orgAccentColor?: string | null;
   createdAt: string;
 }
 
@@ -916,6 +957,204 @@ export interface CreateInvitationBody {
   invitedEmail?: string | null;
   role?: CreateInvitationBodyRole;
   customMessage?: string;
+}
+
+export interface OkResponse {
+  ok: boolean;
+}
+
+export type OrgPlanId = (typeof OrgPlanId)[keyof typeof OrgPlanId];
+
+export const OrgPlanId = {
+  reunion: "reunion",
+  erg: "erg",
+} as const;
+
+export type OrgPlanBillingType =
+  (typeof OrgPlanBillingType)[keyof typeof OrgPlanBillingType];
+
+export const OrgPlanBillingType = {
+  one_time: "one_time",
+  annual: "annual",
+} as const;
+
+/**
+ * A purchasable org seat-pack plan.
+ */
+export interface OrgPlan {
+  id: OrgPlanId;
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  billingType: OrgPlanBillingType;
+  /** @nullable */
+  seats?: number | null;
+  perSeat: boolean;
+  /** @nullable */
+  minSeats?: number | null;
+  /** @nullable */
+  maxSeats?: number | null;
+  /** Price in the smallest currency unit (cents). */
+  unitAmount: number;
+  currency: string;
+}
+
+export type OrgBillingType =
+  (typeof OrgBillingType)[keyof typeof OrgBillingType];
+
+export const OrgBillingType = {
+  one_time: "one_time",
+  annual: "annual",
+} as const;
+
+export type OrgStatus = (typeof OrgStatus)[keyof typeof OrgStatus];
+
+export const OrgStatus = {
+  pending: "pending",
+  active: "active",
+  past_due: "past_due",
+  canceled: "canceled",
+} as const;
+
+export interface Org {
+  id: number;
+  name: string;
+  ownerId: number;
+  plan: string;
+  planName: string;
+  billingType: OrgBillingType;
+  status: OrgStatus;
+  seatLimit: number;
+  /** @nullable */
+  seatsUsed?: number | null;
+  /** @nullable */
+  logoUrl?: string | null;
+  /** @nullable */
+  accentColor?: string | null;
+  /** @nullable */
+  currentPeriodEnd?: string | null;
+  cancelAtPeriodEnd?: boolean;
+  /** @nullable */
+  graceEndsAt?: string | null;
+  isActive: boolean;
+  /** @nullable */
+  myRole?: string | null;
+  createdAt: string;
+}
+
+export interface OrgMember {
+  id: number;
+  userId: number;
+  role: string;
+  status: string;
+  /** @nullable */
+  joinedAt?: string | null;
+  /** @nullable */
+  displayName?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  avatarObjectPath?: string | null;
+}
+
+export interface OrgInvite {
+  id: number;
+  /** @nullable */
+  email?: string | null;
+  role: string;
+  token: string;
+  status: string;
+  /** @nullable */
+  expiresAt?: string | null;
+  createdAt: string;
+}
+
+export interface OrgDashboard {
+  org: Org;
+  members: OrgMember[];
+  pendingInvites: OrgInvite[];
+}
+
+export type OrgInvitePreviewOrg = {
+  id: number;
+  name: string;
+  /** @nullable */
+  logoUrl?: string | null;
+  /** @nullable */
+  accentColor?: string | null;
+};
+
+export interface OrgInvitePreview {
+  valid: boolean;
+  status: string;
+  role: string;
+  /** @nullable */
+  invitedEmail?: string | null;
+  org: OrgInvitePreviewOrg;
+}
+
+export type CreateOrgBodyPlan =
+  (typeof CreateOrgBodyPlan)[keyof typeof CreateOrgBodyPlan];
+
+export const CreateOrgBodyPlan = {
+  reunion: "reunion",
+  erg: "erg",
+} as const;
+
+export interface CreateOrgBody {
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  name: string;
+  plan: CreateOrgBodyPlan;
+}
+
+export interface UpdateOrgBody {
+  name?: string;
+  /** @nullable */
+  accentColor?: string | null;
+  /** @nullable */
+  logoObjectPath?: string | null;
+}
+
+export interface OrgCheckoutBody {
+  /**
+   * @minimum 1
+   * @maximum 1000
+   */
+  seats?: number;
+  successUrl: string;
+  cancelUrl: string;
+}
+
+export type OrgLogoUploadUrlMetadata = {
+  name?: string;
+  size?: number;
+  contentType?: string;
+};
+
+export interface OrgLogoUploadUrl {
+  uploadURL: string;
+  objectPath: string;
+  metadata?: OrgLogoUploadUrlMetadata;
+}
+
+export type CreateOrgInviteBodyRole =
+  (typeof CreateOrgInviteBodyRole)[keyof typeof CreateOrgInviteBodyRole];
+
+export const CreateOrgInviteBodyRole = {
+  admin: "admin",
+  member: "member",
+} as const;
+
+export interface CreateOrgInviteBody {
+  email?: string;
+  role?: CreateOrgInviteBodyRole;
+}
+
+export interface CheckoutUrl {
+  url: string;
 }
 
 /**
@@ -2370,6 +2609,11 @@ export type NotFoundResponse = ErrorResponse;
  */
 export type PaymentRequiredResponse = PaywallError;
 
+/**
+ * Conflict
+ */
+export type ConflictResponse = ErrorResponse;
+
 export type UpdateMyCircleVisibilityBody = {
   showOnProfile: boolean;
 };
@@ -2578,4 +2822,27 @@ export type MarkWrapupRead200 = {
   id: number;
   /** @nullable */
   readAt?: string | null;
+};
+
+export type ListOrgPlans200 = {
+  plans: OrgPlan[];
+};
+
+export type ListMyOrgs200 = {
+  orgs: Org[];
+};
+
+export type RequestOrgLogoUploadUrlBody = {
+  name: string;
+  size: number;
+  contentType: string;
+};
+
+export type CreateOrgPortalBody = {
+  returnUrl: string;
+};
+
+export type AcceptOrgInvite200 = {
+  orgId: number;
+  orgName: string;
 };

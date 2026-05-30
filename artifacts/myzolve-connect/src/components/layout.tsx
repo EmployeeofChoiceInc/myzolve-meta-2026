@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Heart, Home, Users, Bell, Settings, LogOut, Menu, Check, Compass, MessageCircle, Star, Flag, X as XIcon, UserPlus2, Search } from "lucide-react";
+import { Heart, Home, Users, Bell, Settings, LogOut, Menu, Check, Compass, MessageCircle, Star, Flag, X as XIcon, UserPlus2, Search, Building2 } from "lucide-react";
 import { useClerk, useUser } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -431,6 +431,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { icon: UserPlus2, label: "Connections", href: "/connections" },
     { icon: MessageCircle, label: "Messages", href: "/messages", badge: unreadMessages },
     { icon: Star, label: "Plus", href: "/plus", plus: true },
+    { icon: Building2, label: "Organizations", href: "/orgs" },
   ];
 
   const NavLinks = () => (

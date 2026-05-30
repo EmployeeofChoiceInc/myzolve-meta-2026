@@ -37,6 +37,9 @@ import WrapupPage from "@/pages/wrapup";
 import { PaywallProvider } from "@/components/paywall-dialog";
 import { CopilotProvider } from "@/lib/copilot";
 import { TutorialProvider } from "@/lib/tutorial-context";
+import OrgsPage from "@/pages/orgs";
+import OrgDashboardPage from "@/pages/org-dashboard";
+import OrgInviteAcceptPage from "@/pages/org-invite-accept";
 
 const queryClient = new QueryClient();
 
@@ -186,7 +189,10 @@ function ClerkProviderWithRoutes() {
           <Route path="/messages"><ProtectedRoute component={MessagesPage} /></Route>
           <Route path="/plus"><ProtectedRoute component={PlusPage} /></Route>
           <Route path="/wrapup"><ProtectedRoute component={WrapupPage} /></Route>
+          <Route path="/orgs"><ProtectedRoute component={OrgsPage} /></Route>
+          <Route path="/orgs/:id"><ProtectedRoute component={OrgDashboardPage} /></Route>
           <Route path="/invite/:token" component={InviteAcceptPage} />
+          <Route path="/org-invite/:token" component={OrgInviteAcceptPage} />
           <Route component={NotFound} />
         </Switch>
         </TutorialProvider>

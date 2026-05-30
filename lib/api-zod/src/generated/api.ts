@@ -52,6 +52,16 @@ export const GetMeResponse = zod.object({
     .describe(
       'When `planKind` is \"family\", the circle whose first 6 active\nmembers receive derived Plus while the subscription is active.\n',
     ),
+  org: zod
+    .object({
+      id: zod.number(),
+      name: zod.string(),
+      role: zod.enum(["admin", "member"]),
+    })
+    .nullish()
+    .describe(
+      'The user\'s active organization affiliation, or null. Used to\nrender \"Member of [Org]\" on profile screens.\n',
+    ),
   createdAt: zod.coerce.date(),
 });
 
@@ -105,6 +115,16 @@ export const UpdateMeResponse = zod.object({
     .nullish()
     .describe(
       'When `planKind` is \"family\", the circle whose first 6 active\nmembers receive derived Plus while the subscription is active.\n',
+    ),
+  org: zod
+    .object({
+      id: zod.number(),
+      name: zod.string(),
+      role: zod.enum(["admin", "member"]),
+    })
+    .nullish()
+    .describe(
+      'The user\'s active organization affiliation, or null. Used to\nrender \"Member of [Org]\" on profile screens.\n',
     ),
   createdAt: zod.coerce.date(),
 });
@@ -568,6 +588,24 @@ export const ListCirclesResponseItem = zod.object({
     .describe(
       "Reason supplied by the reviewer on rejection. Surfaced to\nthe owner so they can fix the issue and re-apply.\n",
     ),
+  orgId: zod
+    .number()
+    .nullish()
+    .describe(
+      "The organization this circle belongs to, or null for a\npersonal circle. Org-owned circles inherit org branding.\n",
+    ),
+  orgName: zod
+    .string()
+    .nullish()
+    .describe("Display name of the owning organization, when orgId is set."),
+  orgLogoUrl: zod
+    .string()
+    .nullish()
+    .describe("URL of the owning organization's logo, when set."),
+  orgAccentColor: zod
+    .string()
+    .nullish()
+    .describe("Accent color of the owning organization, when set."),
   createdAt: zod.coerce.date(),
 });
 export const ListCirclesResponse = zod.array(ListCirclesResponseItem);
@@ -662,6 +700,24 @@ export const GetCircleResponse = zod.object({
     .describe(
       "Reason supplied by the reviewer on rejection. Surfaced to\nthe owner so they can fix the issue and re-apply.\n",
     ),
+  orgId: zod
+    .number()
+    .nullish()
+    .describe(
+      "The organization this circle belongs to, or null for a\npersonal circle. Org-owned circles inherit org branding.\n",
+    ),
+  orgName: zod
+    .string()
+    .nullish()
+    .describe("Display name of the owning organization, when orgId is set."),
+  orgLogoUrl: zod
+    .string()
+    .nullish()
+    .describe("URL of the owning organization's logo, when set."),
+  orgAccentColor: zod
+    .string()
+    .nullish()
+    .describe("Accent color of the owning organization, when set."),
   createdAt: zod.coerce.date(),
 });
 
@@ -752,6 +808,24 @@ export const UpdateCircleResponse = zod.object({
     .describe(
       "Reason supplied by the reviewer on rejection. Surfaced to\nthe owner so they can fix the issue and re-apply.\n",
     ),
+  orgId: zod
+    .number()
+    .nullish()
+    .describe(
+      "The organization this circle belongs to, or null for a\npersonal circle. Org-owned circles inherit org branding.\n",
+    ),
+  orgName: zod
+    .string()
+    .nullish()
+    .describe("Display name of the owning organization, when orgId is set."),
+  orgLogoUrl: zod
+    .string()
+    .nullish()
+    .describe("URL of the owning organization's logo, when set."),
+  orgAccentColor: zod
+    .string()
+    .nullish()
+    .describe("Accent color of the owning organization, when set."),
   createdAt: zod.coerce.date(),
 });
 
@@ -878,6 +952,24 @@ export const ApplyForCircleVerificationResponse = zod.object({
     .describe(
       "Reason supplied by the reviewer on rejection. Surfaced to\nthe owner so they can fix the issue and re-apply.\n",
     ),
+  orgId: zod
+    .number()
+    .nullish()
+    .describe(
+      "The organization this circle belongs to, or null for a\npersonal circle. Org-owned circles inherit org branding.\n",
+    ),
+  orgName: zod
+    .string()
+    .nullish()
+    .describe("Display name of the owning organization, when orgId is set."),
+  orgLogoUrl: zod
+    .string()
+    .nullish()
+    .describe("URL of the owning organization's logo, when set."),
+  orgAccentColor: zod
+    .string()
+    .nullish()
+    .describe("Accent color of the owning organization, when set."),
   createdAt: zod.coerce.date(),
 });
 
@@ -980,6 +1072,24 @@ export const DecideCircleVerificationResponse = zod.object({
     .describe(
       "Reason supplied by the reviewer on rejection. Surfaced to\nthe owner so they can fix the issue and re-apply.\n",
     ),
+  orgId: zod
+    .number()
+    .nullish()
+    .describe(
+      "The organization this circle belongs to, or null for a\npersonal circle. Org-owned circles inherit org branding.\n",
+    ),
+  orgName: zod
+    .string()
+    .nullish()
+    .describe("Display name of the owning organization, when orgId is set."),
+  orgLogoUrl: zod
+    .string()
+    .nullish()
+    .describe("URL of the owning organization's logo, when set."),
+  orgAccentColor: zod
+    .string()
+    .nullish()
+    .describe("Accent color of the owning organization, when set."),
   createdAt: zod.coerce.date(),
 });
 
@@ -3955,4 +4065,279 @@ export const MarkWrapupReadParams = zod.object({
 export const MarkWrapupReadResponse = zod.object({
   id: zod.number(),
   readAt: zod.coerce.date().nullish(),
+});
+
+/**
+ * @summary List available org seat-pack plans (public)
+ */
+export const ListOrgPlansResponse = zod.object({
+  plans: zod.array(
+    zod
+      .object({
+        id: zod.enum(["reunion", "erg"]),
+        name: zod.string(),
+        description: zod.string().nullish(),
+        billingType: zod.enum(["one_time", "annual"]),
+        seats: zod.number().nullish(),
+        perSeat: zod.boolean(),
+        minSeats: zod.number().nullish(),
+        maxSeats: zod.number().nullish(),
+        unitAmount: zod
+          .number()
+          .describe("Price in the smallest currency unit (cents)."),
+        currency: zod.string(),
+      })
+      .describe("A purchasable org seat-pack plan."),
+  ),
+});
+
+/**
+ * @summary Create a pending org (creator becomes owner)
+ */
+export const createOrgBodyNameMax = 120;
+
+export const CreateOrgBody = zod.object({
+  name: zod.string().min(1).max(createOrgBodyNameMax),
+  plan: zod.enum(["reunion", "erg"]),
+});
+
+/**
+ * @summary List orgs the caller belongs to
+ */
+export const ListMyOrgsResponse = zod.object({
+  orgs: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      ownerId: zod.number(),
+      plan: zod.string(),
+      planName: zod.string(),
+      billingType: zod.enum(["one_time", "annual"]),
+      status: zod.enum(["pending", "active", "past_due", "canceled"]),
+      seatLimit: zod.number(),
+      seatsUsed: zod.number().nullish(),
+      logoUrl: zod.string().nullish(),
+      accentColor: zod.string().nullish(),
+      currentPeriodEnd: zod.coerce.date().nullish(),
+      cancelAtPeriodEnd: zod.boolean().optional(),
+      graceEndsAt: zod.coerce.date().nullish(),
+      isActive: zod.boolean(),
+      myRole: zod.string().nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Admin dashboard payload (org, members, pending invites)
+ */
+export const GetOrgDashboardParams = zod.object({
+  orgId: zod.coerce.number(),
+});
+
+export const GetOrgDashboardResponse = zod.object({
+  org: zod.object({
+    id: zod.number(),
+    name: zod.string(),
+    ownerId: zod.number(),
+    plan: zod.string(),
+    planName: zod.string(),
+    billingType: zod.enum(["one_time", "annual"]),
+    status: zod.enum(["pending", "active", "past_due", "canceled"]),
+    seatLimit: zod.number(),
+    seatsUsed: zod.number().nullish(),
+    logoUrl: zod.string().nullish(),
+    accentColor: zod.string().nullish(),
+    currentPeriodEnd: zod.coerce.date().nullish(),
+    cancelAtPeriodEnd: zod.boolean().optional(),
+    graceEndsAt: zod.coerce.date().nullish(),
+    isActive: zod.boolean(),
+    myRole: zod.string().nullish(),
+    createdAt: zod.coerce.date(),
+  }),
+  members: zod.array(
+    zod.object({
+      id: zod.number(),
+      userId: zod.number(),
+      role: zod.string(),
+      status: zod.string(),
+      joinedAt: zod.coerce.date().nullish(),
+      displayName: zod.string().nullish(),
+      email: zod.string().nullish(),
+      avatarObjectPath: zod.string().nullish(),
+    }),
+  ),
+  pendingInvites: zod.array(
+    zod.object({
+      id: zod.number(),
+      email: zod.string().nullish(),
+      role: zod.string(),
+      token: zod.string(),
+      status: zod.string(),
+      expiresAt: zod.coerce.date().nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Update org name and branding
+ */
+export const UpdateOrgParams = zod.object({
+  orgId: zod.coerce.number(),
+});
+
+export const UpdateOrgBody = zod.object({
+  name: zod.string().optional(),
+  accentColor: zod.string().nullish(),
+  logoObjectPath: zod.string().nullish(),
+});
+
+export const UpdateOrgResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  ownerId: zod.number(),
+  plan: zod.string(),
+  planName: zod.string(),
+  billingType: zod.enum(["one_time", "annual"]),
+  status: zod.enum(["pending", "active", "past_due", "canceled"]),
+  seatLimit: zod.number(),
+  seatsUsed: zod.number().nullish(),
+  logoUrl: zod.string().nullish(),
+  accentColor: zod.string().nullish(),
+  currentPeriodEnd: zod.coerce.date().nullish(),
+  cancelAtPeriodEnd: zod.boolean().optional(),
+  graceEndsAt: zod.coerce.date().nullish(),
+  isActive: zod.boolean(),
+  myRole: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Request a presigned upload URL for the org logo
+ */
+export const RequestOrgLogoUploadUrlParams = zod.object({
+  orgId: zod.coerce.number(),
+});
+
+export const RequestOrgLogoUploadUrlBody = zod.object({
+  name: zod.string(),
+  size: zod.number(),
+  contentType: zod.string(),
+});
+
+export const RequestOrgLogoUploadUrlResponse = zod.object({
+  uploadURL: zod.string(),
+  objectPath: zod.string(),
+  metadata: zod
+    .object({
+      name: zod.string().optional(),
+      size: zod.number().optional(),
+      contentType: zod.string().optional(),
+    })
+    .optional(),
+});
+
+/**
+ * @summary Create a Stripe Checkout Session for the org seat pack
+ */
+export const CreateOrgCheckoutParams = zod.object({
+  orgId: zod.coerce.number(),
+});
+
+export const createOrgCheckoutBodySeatsMax = 1000;
+
+export const CreateOrgCheckoutBody = zod.object({
+  seats: zod.number().min(1).max(createOrgCheckoutBodySeatsMax).optional(),
+  successUrl: zod.string().url(),
+  cancelUrl: zod.string().url(),
+});
+
+export const CreateOrgCheckoutResponse = zod.object({
+  url: zod.string(),
+});
+
+/**
+ * @summary Create a Stripe billing portal session
+ */
+export const CreateOrgPortalParams = zod.object({
+  orgId: zod.coerce.number(),
+});
+
+export const CreateOrgPortalBody = zod.object({
+  returnUrl: zod.string().url(),
+});
+
+export const CreateOrgPortalResponse = zod.object({
+  url: zod.string(),
+});
+
+/**
+ * @summary Create an email or shareable-link org invite
+ */
+export const CreateOrgInviteParams = zod.object({
+  orgId: zod.coerce.number(),
+});
+
+export const createOrgInviteBodyRoleDefault = `member`;
+
+export const CreateOrgInviteBody = zod.object({
+  email: zod.string().email().optional(),
+  role: zod.enum(["admin", "member"]).default(createOrgInviteBodyRoleDefault),
+});
+
+/**
+ * @summary Revoke a pending org invite
+ */
+export const RevokeOrgInviteParams = zod.object({
+  orgId: zod.coerce.number(),
+  inviteId: zod.coerce.number(),
+});
+
+export const RevokeOrgInviteResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Remove a member (frees their seat)
+ */
+export const RemoveOrgMemberParams = zod.object({
+  orgId: zod.coerce.number(),
+  memberId: zod.coerce.number(),
+});
+
+export const RemoveOrgMemberResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Public preview of an org invite (org name + branding)
+ */
+export const PreviewOrgInviteParams = zod.object({
+  token: zod.coerce.string(),
+});
+
+export const PreviewOrgInviteResponse = zod.object({
+  valid: zod.boolean(),
+  status: zod.string(),
+  role: zod.string(),
+  invitedEmail: zod.string().nullish(),
+  org: zod.object({
+    id: zod.number(),
+    name: zod.string(),
+    logoUrl: zod.string().nullish(),
+    accentColor: zod.string().nullish(),
+  }),
+});
+
+/**
+ * @summary Accept an org invite, consuming a seat
+ */
+export const AcceptOrgInviteParams = zod.object({
+  token: zod.coerce.string(),
+});
+
+export const AcceptOrgInviteResponse = zod.object({
+  orgId: zod.number(),
+  orgName: zod.string(),
 });

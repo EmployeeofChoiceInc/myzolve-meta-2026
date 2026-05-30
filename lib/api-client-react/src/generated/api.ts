@@ -17,11 +17,13 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AcceptOrgInvite200,
   ActivityItem,
   Attachment,
   AuditEntry,
   BadRequestResponse,
   CareDate,
+  CheckoutUrl,
   Circle,
   CircleBannerUploadUrlRequest,
   CircleBannerUploadUrlResponse,
@@ -33,6 +35,7 @@ import type {
   CircleVerificationDecisionBody,
   CircleVisibilityEntry,
   Comment,
+  ConflictResponse,
   Contribution,
   CopilotGrant,
   CopilotGrantLists,
@@ -47,6 +50,9 @@ import type {
   CreateGratitudeNoteBody,
   CreateInvitationBody,
   CreateJoinRequestBody,
+  CreateOrgBody,
+  CreateOrgInviteBody,
+  CreateOrgPortalBody,
   CreatePlaceholderBody,
   CreateRepaymentBody,
   CreateRepaymentPlanBody,
@@ -76,8 +82,10 @@ import type {
   ListAuditLogParams,
   ListCommentsParams,
   ListDisputesParams,
+  ListMyOrgs200,
   ListMyUserConnectionsParams,
   ListNotificationsParams,
+  ListOrgPlans200,
   ListServicePostsParams,
   ListSupportRequestsParams,
   ListUpcomingCareDatesParams,
@@ -89,6 +97,13 @@ import type {
   NotFoundResponse,
   NotificationList,
   NotificationPreference,
+  OkResponse,
+  Org,
+  OrgCheckoutBody,
+  OrgDashboard,
+  OrgInvite,
+  OrgInvitePreview,
+  OrgLogoUploadUrl,
   PaymentRequiredResponse,
   PendingCircleVerification,
   PlaceholderMember,
@@ -99,6 +114,7 @@ import type {
   RegisterDeviceTokenBody,
   Repayment,
   RepaymentPlan,
+  RequestOrgLogoUploadUrlBody,
   RequestUserConnectionBody,
   ResolveDisputeBody,
   RespondConnectionBody,
@@ -121,6 +137,7 @@ import type {
   UpdateMyCircleVisibility200,
   UpdateMyCircleVisibilityBody,
   UpdateNotificationPreferencesBody,
+  UpdateOrgBody,
   UpdatePlaceholderBody,
   UpdatePlusPlanBody,
   UpdateServicePostBody,
@@ -11783,4 +11800,1171 @@ export const useMarkWrapupRead = <
   TContext
 > => {
   return useMutation(getMarkWrapupReadMutationOptions(options));
+};
+
+/**
+ * @summary List available org seat-pack plans (public)
+ */
+export const getListOrgPlansUrl = () => {
+  return `/api/org-plans`;
+};
+
+export const listOrgPlans = async (
+  options?: RequestInit,
+): Promise<ListOrgPlans200> => {
+  return customFetch<ListOrgPlans200>(getListOrgPlansUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListOrgPlansQueryKey = () => {
+  return [`/api/org-plans`] as const;
+};
+
+export const getListOrgPlansQueryOptions = <
+  TData = Awaited<ReturnType<typeof listOrgPlans>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listOrgPlans>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListOrgPlansQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listOrgPlans>>> = ({
+    signal,
+  }) => listOrgPlans({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listOrgPlans>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListOrgPlansQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listOrgPlans>>
+>;
+export type ListOrgPlansQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List available org seat-pack plans (public)
+ */
+
+export function useListOrgPlans<
+  TData = Awaited<ReturnType<typeof listOrgPlans>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listOrgPlans>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListOrgPlansQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a pending org (creator becomes owner)
+ */
+export const getCreateOrgUrl = () => {
+  return `/api/orgs`;
+};
+
+export const createOrg = async (
+  createOrgBody: CreateOrgBody,
+  options?: RequestInit,
+): Promise<Org> => {
+  return customFetch<Org>(getCreateOrgUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createOrgBody),
+  });
+};
+
+export const getCreateOrgMutationOptions = <
+  TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createOrg>>,
+    TError,
+    { data: BodyType<CreateOrgBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createOrg>>,
+  TError,
+  { data: BodyType<CreateOrgBody> },
+  TContext
+> => {
+  const mutationKey = ["createOrg"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createOrg>>,
+    { data: BodyType<CreateOrgBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createOrg(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateOrgMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createOrg>>
+>;
+export type CreateOrgMutationBody = BodyType<CreateOrgBody>;
+export type CreateOrgMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse
+>;
+
+/**
+ * @summary Create a pending org (creator becomes owner)
+ */
+export const useCreateOrg = <
+  TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createOrg>>,
+    TError,
+    { data: BodyType<CreateOrgBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createOrg>>,
+  TError,
+  { data: BodyType<CreateOrgBody> },
+  TContext
+> => {
+  return useMutation(getCreateOrgMutationOptions(options));
+};
+
+/**
+ * @summary List orgs the caller belongs to
+ */
+export const getListMyOrgsUrl = () => {
+  return `/api/orgs/mine`;
+};
+
+export const listMyOrgs = async (
+  options?: RequestInit,
+): Promise<ListMyOrgs200> => {
+  return customFetch<ListMyOrgs200>(getListMyOrgsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListMyOrgsQueryKey = () => {
+  return [`/api/orgs/mine`] as const;
+};
+
+export const getListMyOrgsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMyOrgs>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMyOrgs>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListMyOrgsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listMyOrgs>>> = ({
+    signal,
+  }) => listMyOrgs({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMyOrgs>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListMyOrgsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMyOrgs>>
+>;
+export type ListMyOrgsQueryError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary List orgs the caller belongs to
+ */
+
+export function useListMyOrgs<
+  TData = Awaited<ReturnType<typeof listMyOrgs>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMyOrgs>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListMyOrgsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Admin dashboard payload (org, members, pending invites)
+ */
+export const getGetOrgDashboardUrl = (orgId: number) => {
+  return `/api/orgs/${orgId}`;
+};
+
+export const getOrgDashboard = async (
+  orgId: number,
+  options?: RequestInit,
+): Promise<OrgDashboard> => {
+  return customFetch<OrgDashboard>(getGetOrgDashboardUrl(orgId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetOrgDashboardQueryKey = (orgId: number) => {
+  return [`/api/orgs/${orgId}`] as const;
+};
+
+export const getGetOrgDashboardQueryOptions = <
+  TData = Awaited<ReturnType<typeof getOrgDashboard>>,
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+>(
+  orgId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOrgDashboard>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetOrgDashboardQueryKey(orgId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getOrgDashboard>>> = ({
+    signal,
+  }) => getOrgDashboard(orgId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!orgId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getOrgDashboard>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetOrgDashboardQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getOrgDashboard>>
+>;
+export type GetOrgDashboardQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Admin dashboard payload (org, members, pending invites)
+ */
+
+export function useGetOrgDashboard<
+  TData = Awaited<ReturnType<typeof getOrgDashboard>>,
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+>(
+  orgId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOrgDashboard>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetOrgDashboardQueryOptions(orgId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update org name and branding
+ */
+export const getUpdateOrgUrl = (orgId: number) => {
+  return `/api/orgs/${orgId}`;
+};
+
+export const updateOrg = async (
+  orgId: number,
+  updateOrgBody: UpdateOrgBody,
+  options?: RequestInit,
+): Promise<Org> => {
+  return customFetch<Org>(getUpdateOrgUrl(orgId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateOrgBody),
+  });
+};
+
+export const getUpdateOrgMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateOrg>>,
+    TError,
+    { orgId: number; data: BodyType<UpdateOrgBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateOrg>>,
+  TError,
+  { orgId: number; data: BodyType<UpdateOrgBody> },
+  TContext
+> => {
+  const mutationKey = ["updateOrg"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateOrg>>,
+    { orgId: number; data: BodyType<UpdateOrgBody> }
+  > = (props) => {
+    const { orgId, data } = props ?? {};
+
+    return updateOrg(orgId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateOrgMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateOrg>>
+>;
+export type UpdateOrgMutationBody = BodyType<UpdateOrgBody>;
+export type UpdateOrgMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Update org name and branding
+ */
+export const useUpdateOrg = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateOrg>>,
+    TError,
+    { orgId: number; data: BodyType<UpdateOrgBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateOrg>>,
+  TError,
+  { orgId: number; data: BodyType<UpdateOrgBody> },
+  TContext
+> => {
+  return useMutation(getUpdateOrgMutationOptions(options));
+};
+
+/**
+ * @summary Request a presigned upload URL for the org logo
+ */
+export const getRequestOrgLogoUploadUrlUrl = (orgId: number) => {
+  return `/api/orgs/${orgId}/logo/request-url`;
+};
+
+export const requestOrgLogoUploadUrl = async (
+  orgId: number,
+  requestOrgLogoUploadUrlBody: RequestOrgLogoUploadUrlBody,
+  options?: RequestInit,
+): Promise<OrgLogoUploadUrl> => {
+  return customFetch<OrgLogoUploadUrl>(getRequestOrgLogoUploadUrlUrl(orgId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(requestOrgLogoUploadUrlBody),
+  });
+};
+
+export const getRequestOrgLogoUploadUrlMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestOrgLogoUploadUrl>>,
+    TError,
+    { orgId: number; data: BodyType<RequestOrgLogoUploadUrlBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestOrgLogoUploadUrl>>,
+  TError,
+  { orgId: number; data: BodyType<RequestOrgLogoUploadUrlBody> },
+  TContext
+> => {
+  const mutationKey = ["requestOrgLogoUploadUrl"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestOrgLogoUploadUrl>>,
+    { orgId: number; data: BodyType<RequestOrgLogoUploadUrlBody> }
+  > = (props) => {
+    const { orgId, data } = props ?? {};
+
+    return requestOrgLogoUploadUrl(orgId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestOrgLogoUploadUrlMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestOrgLogoUploadUrl>>
+>;
+export type RequestOrgLogoUploadUrlMutationBody =
+  BodyType<RequestOrgLogoUploadUrlBody>;
+export type RequestOrgLogoUploadUrlMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Request a presigned upload URL for the org logo
+ */
+export const useRequestOrgLogoUploadUrl = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestOrgLogoUploadUrl>>,
+    TError,
+    { orgId: number; data: BodyType<RequestOrgLogoUploadUrlBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof requestOrgLogoUploadUrl>>,
+  TError,
+  { orgId: number; data: BodyType<RequestOrgLogoUploadUrlBody> },
+  TContext
+> => {
+  return useMutation(getRequestOrgLogoUploadUrlMutationOptions(options));
+};
+
+/**
+ * @summary Create a Stripe Checkout Session for the org seat pack
+ */
+export const getCreateOrgCheckoutUrl = (orgId: number) => {
+  return `/api/orgs/${orgId}/checkout`;
+};
+
+export const createOrgCheckout = async (
+  orgId: number,
+  orgCheckoutBody: OrgCheckoutBody,
+  options?: RequestInit,
+): Promise<CheckoutUrl> => {
+  return customFetch<CheckoutUrl>(getCreateOrgCheckoutUrl(orgId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(orgCheckoutBody),
+  });
+};
+
+export const getCreateOrgCheckoutMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createOrgCheckout>>,
+    TError,
+    { orgId: number; data: BodyType<OrgCheckoutBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createOrgCheckout>>,
+  TError,
+  { orgId: number; data: BodyType<OrgCheckoutBody> },
+  TContext
+> => {
+  const mutationKey = ["createOrgCheckout"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createOrgCheckout>>,
+    { orgId: number; data: BodyType<OrgCheckoutBody> }
+  > = (props) => {
+    const { orgId, data } = props ?? {};
+
+    return createOrgCheckout(orgId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateOrgCheckoutMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createOrgCheckout>>
+>;
+export type CreateOrgCheckoutMutationBody = BodyType<OrgCheckoutBody>;
+export type CreateOrgCheckoutMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Create a Stripe Checkout Session for the org seat pack
+ */
+export const useCreateOrgCheckout = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createOrgCheckout>>,
+    TError,
+    { orgId: number; data: BodyType<OrgCheckoutBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createOrgCheckout>>,
+  TError,
+  { orgId: number; data: BodyType<OrgCheckoutBody> },
+  TContext
+> => {
+  return useMutation(getCreateOrgCheckoutMutationOptions(options));
+};
+
+/**
+ * @summary Create a Stripe billing portal session
+ */
+export const getCreateOrgPortalUrl = (orgId: number) => {
+  return `/api/orgs/${orgId}/portal`;
+};
+
+export const createOrgPortal = async (
+  orgId: number,
+  createOrgPortalBody: CreateOrgPortalBody,
+  options?: RequestInit,
+): Promise<CheckoutUrl> => {
+  return customFetch<CheckoutUrl>(getCreateOrgPortalUrl(orgId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createOrgPortalBody),
+  });
+};
+
+export const getCreateOrgPortalMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createOrgPortal>>,
+    TError,
+    { orgId: number; data: BodyType<CreateOrgPortalBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createOrgPortal>>,
+  TError,
+  { orgId: number; data: BodyType<CreateOrgPortalBody> },
+  TContext
+> => {
+  const mutationKey = ["createOrgPortal"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createOrgPortal>>,
+    { orgId: number; data: BodyType<CreateOrgPortalBody> }
+  > = (props) => {
+    const { orgId, data } = props ?? {};
+
+    return createOrgPortal(orgId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateOrgPortalMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createOrgPortal>>
+>;
+export type CreateOrgPortalMutationBody = BodyType<CreateOrgPortalBody>;
+export type CreateOrgPortalMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Create a Stripe billing portal session
+ */
+export const useCreateOrgPortal = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createOrgPortal>>,
+    TError,
+    { orgId: number; data: BodyType<CreateOrgPortalBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createOrgPortal>>,
+  TError,
+  { orgId: number; data: BodyType<CreateOrgPortalBody> },
+  TContext
+> => {
+  return useMutation(getCreateOrgPortalMutationOptions(options));
+};
+
+/**
+ * @summary Create an email or shareable-link org invite
+ */
+export const getCreateOrgInviteUrl = (orgId: number) => {
+  return `/api/orgs/${orgId}/invites`;
+};
+
+export const createOrgInvite = async (
+  orgId: number,
+  createOrgInviteBody: CreateOrgInviteBody,
+  options?: RequestInit,
+): Promise<OrgInvite> => {
+  return customFetch<OrgInvite>(getCreateOrgInviteUrl(orgId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createOrgInviteBody),
+  });
+};
+
+export const getCreateOrgInviteMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | ConflictResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createOrgInvite>>,
+    TError,
+    { orgId: number; data: BodyType<CreateOrgInviteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createOrgInvite>>,
+  TError,
+  { orgId: number; data: BodyType<CreateOrgInviteBody> },
+  TContext
+> => {
+  const mutationKey = ["createOrgInvite"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createOrgInvite>>,
+    { orgId: number; data: BodyType<CreateOrgInviteBody> }
+  > = (props) => {
+    const { orgId, data } = props ?? {};
+
+    return createOrgInvite(orgId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateOrgInviteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createOrgInvite>>
+>;
+export type CreateOrgInviteMutationBody = BodyType<CreateOrgInviteBody>;
+export type CreateOrgInviteMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | ConflictResponse
+>;
+
+/**
+ * @summary Create an email or shareable-link org invite
+ */
+export const useCreateOrgInvite = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | ConflictResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createOrgInvite>>,
+    TError,
+    { orgId: number; data: BodyType<CreateOrgInviteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createOrgInvite>>,
+  TError,
+  { orgId: number; data: BodyType<CreateOrgInviteBody> },
+  TContext
+> => {
+  return useMutation(getCreateOrgInviteMutationOptions(options));
+};
+
+/**
+ * @summary Revoke a pending org invite
+ */
+export const getRevokeOrgInviteUrl = (orgId: number, inviteId: number) => {
+  return `/api/orgs/${orgId}/invites/${inviteId}`;
+};
+
+export const revokeOrgInvite = async (
+  orgId: number,
+  inviteId: number,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getRevokeOrgInviteUrl(orgId, inviteId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getRevokeOrgInviteMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof revokeOrgInvite>>,
+    TError,
+    { orgId: number; inviteId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof revokeOrgInvite>>,
+  TError,
+  { orgId: number; inviteId: number },
+  TContext
+> => {
+  const mutationKey = ["revokeOrgInvite"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof revokeOrgInvite>>,
+    { orgId: number; inviteId: number }
+  > = (props) => {
+    const { orgId, inviteId } = props ?? {};
+
+    return revokeOrgInvite(orgId, inviteId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RevokeOrgInviteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof revokeOrgInvite>>
+>;
+
+export type RevokeOrgInviteMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Revoke a pending org invite
+ */
+export const useRevokeOrgInvite = <
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof revokeOrgInvite>>,
+    TError,
+    { orgId: number; inviteId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof revokeOrgInvite>>,
+  TError,
+  { orgId: number; inviteId: number },
+  TContext
+> => {
+  return useMutation(getRevokeOrgInviteMutationOptions(options));
+};
+
+/**
+ * @summary Remove a member (frees their seat)
+ */
+export const getRemoveOrgMemberUrl = (orgId: number, memberId: number) => {
+  return `/api/orgs/${orgId}/members/${memberId}`;
+};
+
+export const removeOrgMember = async (
+  orgId: number,
+  memberId: number,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getRemoveOrgMemberUrl(orgId, memberId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getRemoveOrgMemberMutationOptions = <
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof removeOrgMember>>,
+    TError,
+    { orgId: number; memberId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof removeOrgMember>>,
+  TError,
+  { orgId: number; memberId: number },
+  TContext
+> => {
+  const mutationKey = ["removeOrgMember"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof removeOrgMember>>,
+    { orgId: number; memberId: number }
+  > = (props) => {
+    const { orgId, memberId } = props ?? {};
+
+    return removeOrgMember(orgId, memberId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RemoveOrgMemberMutationResult = NonNullable<
+  Awaited<ReturnType<typeof removeOrgMember>>
+>;
+
+export type RemoveOrgMemberMutationError = ErrorType<
+  | BadRequestResponse
+  | UnauthorizedResponse
+  | ForbiddenResponse
+  | NotFoundResponse
+>;
+
+/**
+ * @summary Remove a member (frees their seat)
+ */
+export const useRemoveOrgMember = <
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof removeOrgMember>>,
+    TError,
+    { orgId: number; memberId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof removeOrgMember>>,
+  TError,
+  { orgId: number; memberId: number },
+  TContext
+> => {
+  return useMutation(getRemoveOrgMemberMutationOptions(options));
+};
+
+/**
+ * @summary Public preview of an org invite (org name + branding)
+ */
+export const getPreviewOrgInviteUrl = (token: string) => {
+  return `/api/org-invites/${token}`;
+};
+
+export const previewOrgInvite = async (
+  token: string,
+  options?: RequestInit,
+): Promise<OrgInvitePreview> => {
+  return customFetch<OrgInvitePreview>(getPreviewOrgInviteUrl(token), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getPreviewOrgInviteQueryKey = (token: string) => {
+  return [`/api/org-invites/${token}`] as const;
+};
+
+export const getPreviewOrgInviteQueryOptions = <
+  TData = Awaited<ReturnType<typeof previewOrgInvite>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  token: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof previewOrgInvite>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getPreviewOrgInviteQueryKey(token);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof previewOrgInvite>>
+  > = ({ signal }) => previewOrgInvite(token, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!token,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof previewOrgInvite>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type PreviewOrgInviteQueryResult = NonNullable<
+  Awaited<ReturnType<typeof previewOrgInvite>>
+>;
+export type PreviewOrgInviteQueryError = ErrorType<NotFoundResponse>;
+
+/**
+ * @summary Public preview of an org invite (org name + branding)
+ */
+
+export function usePreviewOrgInvite<
+  TData = Awaited<ReturnType<typeof previewOrgInvite>>,
+  TError = ErrorType<NotFoundResponse>,
+>(
+  token: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof previewOrgInvite>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getPreviewOrgInviteQueryOptions(token, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Accept an org invite, consuming a seat
+ */
+export const getAcceptOrgInviteUrl = (token: string) => {
+  return `/api/org-invites/${token}/accept`;
+};
+
+export const acceptOrgInvite = async (
+  token: string,
+  options?: RequestInit,
+): Promise<AcceptOrgInvite200> => {
+  return customFetch<AcceptOrgInvite200>(getAcceptOrgInviteUrl(token), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getAcceptOrgInviteMutationOptions = <
+  TError = ErrorType<
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | NotFoundResponse
+    | ConflictResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof acceptOrgInvite>>,
+    TError,
+    { token: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof acceptOrgInvite>>,
+  TError,
+  { token: string },
+  TContext
+> => {
+  const mutationKey = ["acceptOrgInvite"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof acceptOrgInvite>>,
+    { token: string }
+  > = (props) => {
+    const { token } = props ?? {};
+
+    return acceptOrgInvite(token, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AcceptOrgInviteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof acceptOrgInvite>>
+>;
+
+export type AcceptOrgInviteMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse
+>;
+
+/**
+ * @summary Accept an org invite, consuming a seat
+ */
+export const useAcceptOrgInvite = <
+  TError = ErrorType<
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | NotFoundResponse
+    | ConflictResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof acceptOrgInvite>>,
+    TError,
+    { token: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof acceptOrgInvite>>,
+  TError,
+  { token: string },
+  TContext
+> => {
+  return useMutation(getAcceptOrgInviteMutationOptions(options));
 };

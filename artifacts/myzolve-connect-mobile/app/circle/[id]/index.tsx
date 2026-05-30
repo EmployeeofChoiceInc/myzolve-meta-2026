@@ -13,12 +13,47 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
+import { Image } from "react-native";
 import { AppText, Card, IconButton, Pill, Row, Skeleton } from "@/components/UI";
 import { Screen } from "@/components/Screen";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { useColors } from "@/hooks/useColors";
 import { CIRCLE_TYPE_LABELS, formatMoney } from "@/lib/circleTypes";
 import { safeBack } from "@/lib/safeBack";
+
+function orgLogoUri(logoUrl: string | null | undefined): string | undefined {
+  if (!logoUrl) return undefined;
+  return logoUrl.startsWith("http") ? logoUrl : `${API_BASE}${logoUrl}`;
+}
+
+function OrgBadge({
+  name,
+  logoUrl,
+  color,
+}: {
+  name: string;
+  logoUrl: string | null | undefined;
+  color: string;
+}) {
+  const uri = orgLogoUri(logoUrl);
+  return (
+    <Row align="center" gap={6} style={{ marginBottom: 8 }}>
+      {uri ? (
+        <Image
+          source={{ uri }}
+          style={{ width: 20, height: 20, borderRadius: 4 }}
+          resizeMode="contain"
+          accessibilityLabel={`${name} logo`}
+        />
+      ) : (
+        <Feather name="briefcase" size={14} color={color} />
+      )}
+      <AppText variant="caption" weight="semibold" style={{ color }}>
+        {name}
+      </AppText>
+    </Row>
+  );
+}
 
 const SECTIONS: {
   key: string;
@@ -186,6 +221,13 @@ export default function CircleHomeScreen() {
                   }}
                 />
                 <View style={{ padding: 16 }}>
+                  {circle.orgId && circle.orgName ? (
+                    <OrgBadge
+                      name={circle.orgName}
+                      logoUrl={circle.orgLogoUrl}
+                      color="#fff"
+                    />
+                  ) : null}
                   <Pill
                     label={CIRCLE_TYPE_LABELS[circle.circleType] ?? circle.circleType}
                     bg="rgba(255,255,255,0.2)"
@@ -214,6 +256,13 @@ export default function CircleHomeScreen() {
               </View>
             ) : (
               <>
+                {circle.orgId && circle.orgName ? (
+                  <OrgBadge
+                    name={circle.orgName}
+                    logoUrl={circle.orgLogoUrl}
+                    color={circle.orgAccentColor || c.primary}
+                  />
+                ) : null}
                 <Pill label={CIRCLE_TYPE_LABELS[circle.circleType] ?? circle.circleType} />
                 <Row align="center" gap={8} style={{ marginTop: 10 }}>
                   <AppText variant="h1" style={{ color: c.primary, flexShrink: 1 }}>

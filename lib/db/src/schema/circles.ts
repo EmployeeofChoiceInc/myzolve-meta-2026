@@ -31,6 +31,12 @@ export const circlesTable = pgTable("circles", {
   // description, contactEmail, supportingUrl). Mirrors the pattern used
   // by audit_logs.metadata so we don't need a jsonb column.
   verificationMetadata: text("verification_metadata"),
+  // Optional Enterprise "Org" linkage. When set, this circle is scoped to an
+  // org and renders the org's branding (logo + accent color) in headers and
+  // invite cards. Logical FK to orgs(id) — kept without a DB-level FK to
+  // avoid an import cycle (orgs.ts already references users; circles also
+  // references users). Validated server-side (creator must be an org member).
+  orgId: integer("org_id"),
   ownerId: integer("owner_id")
     .notNull()
     .references(() => usersTable.id),

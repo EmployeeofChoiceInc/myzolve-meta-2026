@@ -9,6 +9,8 @@ import {
   usersTable,
   circlesTable,
   circleMembersTable,
+  orgsTable,
+  orgMembersTable,
 } from "@workspace/db";
 import { and, asc, count, eq, ne } from "drizzle-orm";
 import { validateAndConsumePendingUpload } from "../lib/uploadTokens";
@@ -40,7 +42,35 @@ const updateProfileSchema = z.object({
   profileShowCirclesDefault: z.boolean().optional(),
 });
 
-function userToApi(user: typeof usersTable.$inferSelect) {
+type UserOrg = { id: number; name: string; role: string } | null;
+
+/**
+ * The user's active org affiliation, used to render "Member of [Org]" on
+ * profile screens. Returns the first active membership (a user is realistically
+ * in one org). Not gated on seat status — affiliation is shown even if the
+ * org's seat pool has lapsed; entitlement (Plus) is handled separately.
+ */
+async function getUserOrg(userId: number): Promise<UserOrg> {
+  const row = await db
+    .select({
+      id: orgsTable.id,
+      name: orgsTable.name,
+      role: orgMembersTable.role,
+    })
+    .from(orgMembersTable)
+    .innerJoin(orgsTable, eq(orgsTable.id, orgMembersTable.orgId))
+    .where(
+      and(
+        eq(orgMembersTable.userId, userId),
+        eq(orgMembersTable.status, "active"),
+      ),
+    )
+    .limit(1)
+    .then((r) => r[0] ?? null);
+  return row ? { id: row.id, name: row.name, role: row.role } : null;
+}
+
+function userToApi(user: typeof usersTable.$inferSelect, org: UserOrg = null) {
   return {
     id: user.id,
     clerkId: user.clerkId,
@@ -58,12 +88,14 @@ function userToApi(user: typeof usersTable.$inferSelect) {
     avatarObjectPath: user.avatarObjectPath ?? null,
     planKind: user.planKind === "family" ? "family" : "solo",
     familyCircleId: user.familyCircleId ?? null,
+    org,
     createdAt: user.createdAt,
   };
 }
 
 router.get("/me", requireAuth, async (req, res) => {
-  res.json(userToApi(req.dbUser!));
+  const org = await getUserOrg(req.dbUser!.id);
+  res.json(userToApi(req.dbUser!, org));
 });
 
 router.patch("/me", requireAuth, validateBody(updateProfileSchema), async (req, res) => {
@@ -143,7 +175,8 @@ router.patch("/me", requireAuth, validateBody(updateProfileSchema), async (req, 
     .where(eq(usersTable.id, user.id))
     .returning();
 
-  res.json(userToApi(updated));
+  const org = await getUserOrg(updated.id);
+  res.json(userToApi(updated, org));
 });
 
 // PATCH /me/circles/:circleId/visibility — per-membership "show on profile"

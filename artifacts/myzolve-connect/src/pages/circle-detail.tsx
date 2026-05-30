@@ -9,7 +9,7 @@ import {
   useListCircleConnections,
   useCreateCircleConnection,
 } from "@workspace/api-client-react";
-import { Heart, HandHeart, Sparkles, BookOpen, Users, Settings, Trash2, UserPlus, Link2, AlertTriangle, ClipboardList, Shield, ChevronDown, ChevronRight, PenSquare, CalendarDays } from "lucide-react";
+import { Heart, HandHeart, Sparkles, BookOpen, Users, Settings, Trash2, UserPlus, Link2, AlertTriangle, ClipboardList, Shield, ChevronDown, ChevronRight, PenSquare, CalendarDays, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -286,6 +286,27 @@ export default function CircleDetailPage() {
         
         <div className="relative z-10 flex flex-col md:flex-row justify-between gap-6 items-start">
           <div className="max-w-2xl">
+            {circle.orgId && circle.orgName ? (
+              <div
+                className="flex items-center gap-2 mb-4"
+                style={
+                  circle.orgAccentColor
+                    ? { color: circle.orgAccentColor }
+                    : undefined
+                }
+              >
+                {circle.orgLogoUrl ? (
+                  <img
+                    src={circle.orgLogoUrl}
+                    alt={`${circle.orgName} logo`}
+                    className="w-7 h-7 rounded object-contain"
+                  />
+                ) : (
+                  <Building2 className="w-5 h-5" />
+                )}
+                <span className="text-sm font-semibold">{circle.orgName}</span>
+              </div>
+            ) : null}
             <div className="flex items-center gap-3 mb-3">
               <span className="bg-primary/10 text-primary text-sm font-medium px-3 py-1 rounded-full">
                 {CIRCLE_TYPE_LABELS[circle.circleType] || circle.circleType}
