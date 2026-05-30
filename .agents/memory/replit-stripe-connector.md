@@ -23,3 +23,18 @@ names) so `isStripeConfigured()` was always false and checkout 502'd.
 **How to apply:** after connecting Stripe in dev and confirming checkout, the
 LIVE site needs a separate **production** connection (republish + bind), or
 production billing degrades to 502 (logged as a warning, not a crash).
+
+## Production connection must be bound from the Publish pane
+
+Calling `proposeIntegration` on the Stripe connection in the dev workspace
+only (re)authorizes the **development** connection — it does NOT create a
+production connection. The live deployment's production Stripe connection is
+set up from the **Publish/Deployment pane** (install the "Replit Integrated
+Payments" app there, which provisions live keys). After connecting there,
+**republish once** so the deployment restarts and `initStripe` runs (creates
+the `stripe` schema + seeds products in the PROD db).
+**Why:** schema/products are created at runtime by `initStripe`, not by the
+publish-time drizzle schema diff — so an empty `stripe` schema in the prod
+read-replica means init was skipped (no prod connection resolved).
+**How to verify:** query the prod replica for `information_schema.schemata`
+where name='stripe'; absent ⇒ prod Stripe never initialized.
