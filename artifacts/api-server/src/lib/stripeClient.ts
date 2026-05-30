@@ -3,7 +3,7 @@ import { StripeSync } from "stripe-replit-sync";
 import { logger } from "./logger";
 
 /**
- * Fetches Stripe credentials from the Replit connection API.
+ * Fetches Stripe credentials from the Replit managed connector.
  * Not cached — tokens can rotate, so fetch fresh each time.
  *
  * The managed Stripe connector exposes `secret` (secret key) and
@@ -13,7 +13,7 @@ import { logger } from "./logger";
  * distinguishes development vs production connections via the `environment`
  * query param, keyed off REPLIT_DEPLOYMENT.
  */
-async function getStripeCredentials(): Promise<{
+async function getCredentialsFromConnector(): Promise<{
   secretKey: string;
   publishableKey: string;
 }> {
@@ -68,6 +68,35 @@ async function getStripeCredentials(): Promise<{
     secretKey: settings.secret,
     publishableKey: settings.publishable,
   };
+}
+
+/**
+ * Resolves Stripe credentials. Prefers the Replit managed connector; in the
+ * published deployment it falls back to an explicit STRIPE_SECRET_KEY env var
+ * (live key) when no production connector connection exists. The fallback is
+ * production-only so development always uses the connector's test-mode keys
+ * and never risks real charges, even if the connector lookup fails transiently.
+ */
+async function getStripeCredentials(): Promise<{
+  secretKey: string;
+  publishableKey: string;
+}> {
+  const fromConnector = await getCredentialsFromConnector().catch(() => null);
+  if (fromConnector) return fromConnector;
+
+  const isProduction = process.env.REPLIT_DEPLOYMENT === "1";
+  const envSecret = process.env.STRIPE_SECRET_KEY;
+  if (isProduction && envSecret) {
+    return {
+      secretKey: envSecret,
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY ?? "",
+    };
+  }
+
+  throw new Error(
+    "Stripe not configured: no managed connector connection found" +
+      (isProduction ? " and no STRIPE_SECRET_KEY env var set." : "."),
+  );
 }
 
 /** Returns the Stripe publishable key for the current environment. */
