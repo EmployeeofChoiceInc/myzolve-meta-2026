@@ -675,6 +675,7 @@ router.delete("/invitations/:invitationId", requireAuth, validateParams(invitati
 
 const transferOwnershipSchema = z.object({
   newOwnerUserId: z.number().int().positive(),
+  demoteToRole: z.enum(["admin", "member"]).optional().default("admin"),
 });
 
 router.post(
@@ -685,7 +686,7 @@ router.post(
   async (req, res) => {
     const userId = req.dbUser!.id;
     const circleId = parseInt(String(req.params.circleId));
-    const { newOwnerUserId } = req.body;
+    const { newOwnerUserId, demoteToRole = "admin" } = req.body;
 
     const currentOwner = await db
       .select()
@@ -742,7 +743,7 @@ router.post(
 
       const [demotedMember] = await tx
         .update(circleMembersTable)
-        .set({ role: "admin" })
+        .set({ role: demoteToRole })
         .where(eq(circleMembersTable.id, currentOwner.id))
         .returning();
 
@@ -755,7 +756,7 @@ router.post(
       action: "ownership_transferred",
       targetEntityType: "user",
       targetEntityId: newOwnerUserId,
-      metadata: { previousOwnerId: userId, newOwnerId: newOwnerUserId },
+      metadata: { previousOwnerId: userId, newOwnerId: newOwnerUserId, demotedToRole: demoteToRole },
     });
 
     await createNotification({

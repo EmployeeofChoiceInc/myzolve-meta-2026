@@ -15,6 +15,7 @@ import {
   useApplyForCircleVerification,
   useGetCircle,
   useListCircleMembers,
+  useTransferCircleOwnership,
   useUpdateCircle,
   useUpdateCircleMember,
 } from "@workspace/api-client-react";
@@ -31,6 +32,7 @@ import {
 import { PaywallSheet } from "@/components/PaywallSheet";
 import { PlusBadge } from "@/components/PlusBadge";
 import { RolePickerSheet } from "@/components/RolePickerSheet";
+import { TransferOwnershipSheet } from "@/components/TransferOwnershipSheet";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { useColors } from "@/hooks/useColors";
 import { safeBack } from "@/lib/safeBack";
@@ -97,6 +99,8 @@ export default function CircleSettingsScreen() {
 
   const { data: members } = useListCircleMembers(circleId);
   const updateMember = useUpdateCircleMember();
+  const transferOwnership = useTransferCircleOwnership();
+  const [transferVisible, setTransferVisible] = useState(false);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -313,6 +317,43 @@ export default function CircleSettingsScreen() {
             return;
           }
           Alert.alert("Couldn't update role", "Please try again in a moment.");
+        },
+      },
+    );
+  }
+
+  function confirmTransfer(newOwnerUserId: number, demoteToRole: "admin" | "member") {
+    transferOwnership.mutate(
+      { circleId, data: { newOwnerUserId, demoteToRole } },
+      {
+        onSuccess: () => {
+          setTransferVisible(false);
+          qc.invalidateQueries({ queryKey: getGetCircleQueryKey(circleId) });
+          qc.invalidateQueries({
+            queryKey: getListCircleMembersQueryKey(circleId),
+          });
+          qc.invalidateQueries({ queryKey: getListCirclesQueryKey() });
+          Alert.alert(
+            "Ownership transferred",
+            "This circle now belongs to its new owner.",
+          );
+        },
+        onError: (err: unknown) => {
+          const status =
+            typeof err === "object" && err !== null && "status" in err
+              ? (err as { status?: number }).status
+              : undefined;
+          if (status === 404) {
+            Alert.alert(
+              "Member not found",
+              "That person is no longer an active member of this circle.",
+            );
+            return;
+          }
+          Alert.alert(
+            "Couldn't transfer ownership",
+            "Please try again in a moment.",
+          );
         },
       },
     );
@@ -1178,10 +1219,49 @@ export default function CircleSettingsScreen() {
                   </View>
                 </View>
               ) : null}
+
+              {isOwner ? (
+                <View style={{ marginTop: 32 }}>
+                  <AppText weight="semibold" style={{ marginBottom: 4 }}>
+                    Transfer ownership
+                  </AppText>
+                  <AppText
+                    variant="caption"
+                    color={c.mutedForeground}
+                    style={{ marginBottom: 12, lineHeight: 18 }}
+                  >
+                    Hand this circle over to another member if you&apos;re
+                    stepping away. You&apos;ll choose whether to stay on as an
+                    admin or a member.
+                  </AppText>
+                  <Button
+                    title="Transfer ownership"
+                    variant="outline"
+                    testID="open-transfer-ownership"
+                    onPress={() => setTransferVisible(true)}
+                  />
+                </View>
+              ) : null}
             </>
           )}
         </KeyboardAwareScrollView>
       </View>
+      {isOwner ? (
+        <TransferOwnershipSheet
+          visible={transferVisible}
+          loading={transferOwnership.isPending}
+          members={(members ?? [])
+            .filter((m) => m.status === "active" && m.role !== "owner")
+            .map((m) => ({
+              id: m.id,
+              userId: m.userId ?? null,
+              displayName: m.displayName,
+              email: m.email ?? null,
+            }))}
+          onClose={() => setTransferVisible(false)}
+          onConfirm={confirmTransfer}
+        />
+      ) : null}
       {pickerFor ? (
         <RolePickerSheet
           visible={!!pickerFor}

@@ -936,9 +936,22 @@ export interface RespondConnectionBody {
   action: RespondConnectionBodyAction;
 }
 
+/**
+ * Role the outgoing owner is demoted to after the transfer. Defaults to admin.
+ */
+export type TransferOwnershipBodyDemoteToRole =
+  (typeof TransferOwnershipBodyDemoteToRole)[keyof typeof TransferOwnershipBodyDemoteToRole];
+
+export const TransferOwnershipBodyDemoteToRole = {
+  admin: "admin",
+  member: "member",
+} as const;
+
 export interface TransferOwnershipBody {
   /** User ID of the active member who will become the new owner */
   newOwnerUserId: number;
+  /** Role the outgoing owner is demoted to after the transfer. Defaults to admin. */
+  demoteToRole?: TransferOwnershipBodyDemoteToRole;
 }
 
 export type CreateInvitationBodyRole =

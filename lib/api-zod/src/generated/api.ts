@@ -1471,10 +1471,18 @@ export const TransferCircleOwnershipParams = zod.object({
   circleId: zod.coerce.number(),
 });
 
+export const transferCircleOwnershipBodyDemoteToRoleDefault = `admin`;
+
 export const TransferCircleOwnershipBody = zod.object({
   newOwnerUserId: zod
     .number()
     .describe("User ID of the active member who will become the new owner"),
+  demoteToRole: zod
+    .enum(["admin", "member"])
+    .default(transferCircleOwnershipBodyDemoteToRoleDefault)
+    .describe(
+      "Role the outgoing owner is demoted to after the transfer. Defaults to admin.",
+    ),
 });
 
 export const TransferCircleOwnershipResponse = zod.object({

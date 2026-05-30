@@ -4492,6 +4492,13 @@ components:
         newOwnerUserId:
           type: integer
           description: User ID of the active member who will become the new owner
+        demoteToRole:
+          type: string
+          enum: [admin, member]
+          default: admin
+          description: >-
+            Role the outgoing owner is demoted to after the transfer.
+            Defaults to admin.
       required:
         - newOwnerUserId
 
