@@ -21,14 +21,7 @@ export default function TermsPage() {
       <main className="flex-1 px-6 pb-20">
         <article className="max-w-3xl mx-auto prose prose-stone">
           <h1 className="text-4xl font-bold tracking-tight text-foreground mb-2">Terms of Service</h1>
-          <p className="text-muted-foreground mb-8">Last updated: April 2026</p>
-
-          <div className="rounded-2xl bg-accent/40 border border-accent-border p-4 text-sm text-foreground mb-8">
-            <strong>TODO — legal review required.</strong> This is plain-language
-            boilerplate intended as a starting point for MyZolve's lawyer to
-            review and tailor before public launch. Do not treat as final legal
-            text.
-          </div>
+          <p className="text-muted-foreground mb-8">Last updated: May 2026</p>
 
           <h2>The agreement</h2>
           <p>
@@ -84,8 +77,17 @@ export default function TermsPage() {
           <p>
             To the fullest extent permitted by law, MyZolve is not liable for
             any indirect, incidental, special, or consequential damages arising
-            out of your use of the Service. <em>TODO: legal to finalize the
-            liability cap and jurisdictional carve-outs.</em>
+            out of your use of the Service.
+          </p>
+
+          <h2>Subscriptions and billing</h2>
+          <p>
+            MyZolve Connect Plus is offered as an auto-renewable subscription.
+            Payment is charged to your Apple ID account at confirmation of
+            purchase. The subscription automatically renews for the same price
+            and period unless it is cancelled at least 24 hours before the end of
+            the current period. You can manage or cancel your subscription at any
+            time in your device's App Store account settings.
           </p>
 
           <h2>Termination</h2>

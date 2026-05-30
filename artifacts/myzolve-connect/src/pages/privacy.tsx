@@ -21,14 +21,7 @@ export default function PrivacyPage() {
       <main className="flex-1 px-6 pb-20">
         <article className="max-w-3xl mx-auto prose prose-stone">
           <h1 className="text-4xl font-bold tracking-tight text-foreground mb-2">Privacy Policy</h1>
-          <p className="text-muted-foreground mb-8">Last updated: April 2026</p>
-
-          <div className="rounded-2xl bg-accent/40 border border-accent-border p-4 text-sm text-foreground mb-8">
-            <strong>TODO — legal review required.</strong> This is plain-language
-            boilerplate intended as a starting point for MyZolve's lawyer to
-            review and tailor before public launch. Do not treat as final legal
-            text.
-          </div>
+          <p className="text-muted-foreground mb-8">Last updated: May 2026</p>
 
           <h2>The short version</h2>
           <p>
@@ -77,16 +70,17 @@ export default function PrivacyPage() {
           <p>
             We rely on a small set of trusted vendors to operate the service,
             including Clerk (authentication), our cloud hosting provider, and
-            Plausible (privacy-friendly analytics). <em>TODO: legal to confirm
-            and finalize the full sub-processor list.</em>
+            Plausible (privacy-friendly analytics).
           </p>
 
           <h2>Your rights</h2>
           <p>
             You can access, correct, export, or delete your account information
             at any time by emailing <a href="mailto:privacy@myzolve.com">privacy@myzolve.com</a>.
-            <em> TODO: legal to align this section with applicable GDPR / CCPA
-            language for our launch jurisdictions.</em>
+            Depending on where you live, you may have additional rights under
+            laws such as the GDPR or CCPA, including the right to object to or
+            restrict certain processing; we honor these requests where they
+            apply.
           </p>
 
           <h2>Children</h2>

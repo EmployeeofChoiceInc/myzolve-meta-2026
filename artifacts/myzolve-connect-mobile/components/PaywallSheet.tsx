@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -364,9 +365,45 @@ export function PaywallSheet({
             color={c.mutedForeground}
             style={{ marginTop: 18, textAlign: "center", lineHeight: 16 }}
           >
-            Auto-renews. Cancel anytime in your App Store subscription settings.
-            Introductory pricing while we get this off the ground.
+            Payment is charged to your Apple ID at confirmation of purchase. The
+            subscription auto-renews for the same price and period unless cancelled
+            at least 24 hours before the end of the current period. Manage or cancel
+            anytime in your App Store subscription settings.
           </AppText>
+
+          <View
+            style={{
+              marginTop: 12,
+              flexDirection: "row",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: 14,
+            }}
+          >
+            <Pressable
+              onPress={() =>
+                Linking.openURL("https://connect.myzolve.com/terms")
+              }
+              testID="paywall-terms"
+            >
+              <AppText variant="caption" color={c.primary} weight="semibold">
+                Terms of Use
+              </AppText>
+            </Pressable>
+            <AppText variant="caption" color={c.mutedForeground}>
+              •
+            </AppText>
+            <Pressable
+              onPress={() =>
+                Linking.openURL("https://connect.myzolve.com/privacy")
+              }
+              testID="paywall-privacy"
+            >
+              <AppText variant="caption" color={c.primary} weight="semibold">
+                Privacy Policy
+              </AppText>
+            </Pressable>
+          </View>
         </ScrollView>
       </View>
     </Modal>
