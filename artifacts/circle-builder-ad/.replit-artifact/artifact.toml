@@ -1,0 +1,31 @@
+kind = "video"
+previewPath = "/circle-builder-ad/"
+title = "Circle Builder Ad (Widescreen)"
+version = "1.0.0"
+id = "artifacts/circle-builder-ad"
+router = "path"
+
+[[integratedSkills]]
+name = "video-js"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/circle-builder-ad/" ]
+localPort = 23024
+
+[services.development]
+run = "pnpm --filter @workspace/circle-builder-ad run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/circle-builder-ad", "run", "build" ]
+publicDir = "artifacts/circle-builder-ad/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23024"
+BASE_PATH = "/circle-builder-ad/"

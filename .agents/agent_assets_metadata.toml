@@ -18,6 +18,24 @@ uri = "file://artifacts/myzolve-connect-ad/public/images/circle-exchange.png"
 type = "image"
 title = "circle exchange"
 
+[[generated]]
+id = "qq2bkqmZN4KzrHknngPZp"
+uri = "file://artifacts/circle-builder-ad/public/images/algorithm.png"
+type = "image"
+title = "Digital algorithm grid"
+
+[[generated]]
+id = "4Ng4uGfu6f2mrzNt2MbGg"
+uri = "file://artifacts/circle-builder-ad/public/images/community.png"
+type = "image"
+title = "Warm community silhouette"
+
+[[generated]]
+id = "rKqQ0Q3S9v9K7QBlHds4Y"
+uri = "file://artifacts/circle-builder-ad-vertical/public/images/founder-badge.png"
+type = "image"
+title = "Premium founder badge"
+
 [[outputs]]
 id = "dHXnu7TW8seIluGsfhFFS"
 uri = "file://exports/app-store/iphone-6.9/01-onboarding.png"
@@ -107,3 +125,15 @@ id = "7T5hMGVCUC8dBO3Mm1dug"
 uri = "file://artifacts/myzolve-connect-mobile/store/whats-new-1.0.6.md"
 type = "text"
 title = "What's New — MyZolve Connect 1.0.6"
+
+[[outputs]]
+id = "330OcSZr8ddjBtzALyysN"
+uri = "file://artifacts/circle-builder-ad/public/audio/bg_music.mp3"
+type = "audio"
+title = "background music"
+
+[[outputs]]
+id = "OkhOoCQni5e0PjzQb_H5V"
+uri = "file://artifacts/circle-builder-ad-vertical/public/audio/bg_music.mp3"
+type = "audio"
+title = "background music"

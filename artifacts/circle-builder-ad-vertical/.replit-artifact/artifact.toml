@@ -1,0 +1,31 @@
+kind = "video"
+previewPath = "/circle-builder-ad-vertical/"
+title = "Circle Builder Ad (Vertical)"
+version = "1.0.0"
+id = "artifacts/circle-builder-ad-vertical"
+router = "path"
+
+[[integratedSkills]]
+name = "video-js"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/circle-builder-ad-vertical/" ]
+localPort = 18778
+
+[services.development]
+run = "pnpm --filter @workspace/circle-builder-ad-vertical run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/circle-builder-ad-vertical", "run", "build" ]
+publicDir = "artifacts/circle-builder-ad-vertical/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18778"
+BASE_PATH = "/circle-builder-ad-vertical/"
