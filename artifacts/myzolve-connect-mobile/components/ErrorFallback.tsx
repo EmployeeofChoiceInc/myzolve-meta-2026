@@ -48,12 +48,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
     default: "monospace",
   });
 
-  // DIAGNOSTIC OVERRIDE — TestFlight build 21 (cold-launch error capture).
-  // Temporarily forced ON so an OTA update can surface the actual error
-  // text on a private TestFlight build. MUST be reverted to `__DEV__`
-  // before App Store submission — Apple reviewers reject apps that expose
-  // raw stack traces, and it's an information-disclosure risk.
-  const showErrorDetails = true;
+  const showErrorDetails = __DEV__;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
