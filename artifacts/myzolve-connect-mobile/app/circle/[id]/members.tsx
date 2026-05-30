@@ -31,6 +31,7 @@ import { useColors } from "@/hooks/useColors";
 import { safeBack } from "@/lib/safeBack";
 import {
   type CircleRole,
+  ROLE_DESCRIPTIONS,
   ROLE_LABELS,
   rolePillColors,
 } from "@/lib/circleRoles";
@@ -48,6 +49,11 @@ export default function MembersScreen() {
 
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
+  const [explainedRoleId, setExplainedRoleId] = useState<number | null>(null);
+
+  function toggleRoleExplainer(memberId: number) {
+    setExplainedRoleId((prev) => (prev === memberId ? null : memberId));
+  }
 
   function send() {
     if (!email.trim()) {
@@ -117,14 +123,38 @@ export default function MembersScreen() {
                   {(() => {
                     const pill = rolePillColors(m.role, c);
                     return (
-                      <Pill
-                        label={ROLE_LABELS[m.role as CircleRole] ?? m.role}
-                        bg={pill.bg}
-                        fg={pill.fg}
-                      />
+                      <Pressable
+                        onPress={() => toggleRoleExplainer(m.id)}
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${ROLE_LABELS[m.role as CircleRole] ?? m.role} role`}
+                        accessibilityHint="Shows what this role can do"
+                      >
+                        <Pill
+                          label={ROLE_LABELS[m.role as CircleRole] ?? m.role}
+                          bg={pill.bg}
+                          fg={pill.fg}
+                        />
+                      </Pressable>
                     );
                   })()}
                 </Row>
+                {explainedRoleId === m.id &&
+                ROLE_DESCRIPTIONS[m.role as CircleRole] ? (
+                  <View
+                    style={{
+                      marginTop: 10,
+                      paddingTop: 10,
+                      borderTopWidth: 1,
+                      borderTopColor: c.border,
+                    }}
+                  >
+                    <AppText variant="caption" color={c.mutedForeground}>
+                      {ROLE_LABELS[m.role as CircleRole] ?? m.role} —{" "}
+                      {ROLE_DESCRIPTIONS[m.role as CircleRole]}
+                    </AppText>
+                  </View>
+                ) : null}
               </PressableCard>
             ))}
           </View>
