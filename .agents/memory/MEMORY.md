@@ -4,3 +4,4 @@
 - [stripe-replit-sync gotchas](stripe-replit-sync-gotchas.md) — must externalize in esbuild (else migrations create 0 tables); syncBackfill needs `{ object: "all" }` or it's a no-op.
 - [Replit Stripe connector fields](replit-stripe-connector.md) — settings expose `secret`/`publishable` (no webhook_secret); header `X-Replit-Token`; pass `environment` per REPLIT_DEPLOYMENT.
 - [api-server runs a built bundle](api-server-build-not-watch.md) — workflow does `build && start` (not watch); restart it after editing api-server src or new routes won't load.
+- [Clerk session token has no email](clerk-email-not-in-session.md) — sessionClaims lacks `email`, so users get `@unknown.com`; fetch real email via `clerkClient.users.getUser`.
