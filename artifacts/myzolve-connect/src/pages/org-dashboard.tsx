@@ -167,9 +167,9 @@ export default function OrgDashboardPage() {
         },
         onError: () =>
           toast({
-            title: "Billing unavailable",
-            description: "Could not start checkout. Please try again shortly.",
-            variant: "destructive",
+            title: "Online billing coming soon",
+            description:
+              "We're finalizing payments. Contact us and we'll help you set up your plan in the meantime.",
           }),
       },
     );
@@ -183,7 +183,10 @@ export default function OrgDashboardPage() {
           if (res.url) window.location.href = res.url;
         },
         onError: () =>
-          toast({ title: "Billing portal unavailable", variant: "destructive" }),
+          toast({
+            title: "Online billing coming soon",
+            description: "The billing portal isn't available yet. Contact us for help with your plan.",
+          }),
       },
     );
   }
