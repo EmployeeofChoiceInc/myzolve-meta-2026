@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { db, orgsTable, type Org } from "@workspace/db";
 import { getUncachableStripeClient } from "./stripeClient";
-import { getOrgPlan, type OrgPlan } from "./orgPlans";
+import { getOrgPlan, ORG_PLANS, type OrgPlan } from "./orgPlans";
 import { ORG_GRACE_MS } from "./orgEntitlement";
 import { bustIsPlusCache } from "./revenuecat";
 import { logger } from "./logger";
@@ -28,6 +28,70 @@ export async function resolvePriceIdForPlan(
   );
   const row = result.rows[0] as { price_id?: string } | undefined;
   return row?.price_id ?? null;
+}
+
+/**
+ * Idempotently create the Stripe Product + Price for each org plan.
+ *
+ * Products are keyed by `metadata.orgPlan` so they can be matched on later
+ * reruns (and by resolvePriceIdForPlan at checkout). A new price is only
+ * created when no active price already matches the plan's amount/interval.
+ * Safe to run on every boot — existing products/prices are reused.
+ */
+export async function seedOrgProducts(): Promise<void> {
+  const stripe = await getUncachableStripeClient();
+
+  // List existing products once and match on metadata.orgPlan. We use list
+  // (strongly consistent) rather than products.search (eventually consistent
+  // index) so rapid restarts during a deploy can't create duplicate products
+  // before the search index catches up.
+  const existing = await stripe.products
+    .list({ active: true, limit: 100 })
+    .autoPagingToArray({ limit: 1000 });
+  const byPlan = new Map<string, { id: string }>();
+  for (const p of existing) {
+    const planId = p.metadata?.["orgPlan"];
+    if (planId && !byPlan.has(planId)) byPlan.set(planId, { id: p.id });
+  }
+
+  for (const plan of Object.values(ORG_PLANS)) {
+    // Find an existing product for this plan via metadata.
+    let product: { id: string } | null = byPlan.get(plan.id) ?? null;
+
+    if (!product) {
+      product = await stripe.products.create({
+        name: `MyZolve ${plan.name}`,
+        description: plan.description,
+        metadata: { orgPlan: plan.id },
+      });
+      logger.info({ plan: plan.id, product: product.id }, "Created Stripe product");
+    }
+
+    // Ensure an active price matching the plan exists.
+    const recurring = plan.billingType === "annual";
+    const prices = await stripe.prices.list({
+      product: product.id,
+      active: true,
+      limit: 100,
+    });
+    const match = prices.data.find(
+      (p) =>
+        p.unit_amount === plan.unitAmount &&
+        p.currency === plan.currency &&
+        (recurring ? p.recurring?.interval === "year" : !p.recurring),
+    );
+
+    if (!match) {
+      const price = await stripe.prices.create({
+        product: product.id,
+        unit_amount: plan.unitAmount,
+        currency: plan.currency,
+        metadata: { orgPlan: plan.id },
+        ...(recurring ? { recurring: { interval: "year" } } : {}),
+      });
+      logger.info({ plan: plan.id, price: price.id }, "Created Stripe price");
+    }
+  }
 }
 
 /**

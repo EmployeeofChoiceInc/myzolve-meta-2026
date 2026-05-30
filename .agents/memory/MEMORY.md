@@ -1,3 +1,5 @@
 - [Orval query hooks need queryKey](orval-query-hooks.md) — passing `{ query: { enabled } }` fails typecheck; must also pass `getXQueryKey(...)`.
 - [Artifact prod build needs platform env](artifact-build-env.md) — `pnpm --filter <web> build` fails standalone (requires PORT + BASE_PATH); verify via dev workflow + typecheck instead.
 - [TS project refs rebuild after codegen](ts-project-refs.md) — after openapi codegen, rebuild lib/api-client-react + lib/api-zod (+ lib/db after schema) with `npx tsc -b ... --force`.
+- [stripe-replit-sync gotchas](stripe-replit-sync-gotchas.md) — must externalize in esbuild (else migrations create 0 tables); syncBackfill needs `{ object: "all" }` or it's a no-op.
+- [Replit Stripe connector fields](replit-stripe-connector.md) — settings expose `secret`/`publishable` (no webhook_secret); header `X-Replit-Token`; pass `environment` per REPLIT_DEPLOYMENT.

@@ -1,5 +1,6 @@
 import { runMigrations } from "stripe-replit-sync";
 import { getStripeSync, isStripeConfigured } from "./stripeClient";
+import { seedOrgProducts } from "./orgStripe";
 import { logger } from "./logger";
 
 /**
@@ -26,6 +27,15 @@ export async function initStripe(): Promise<void> {
     await runMigrations({ databaseUrl });
     logger.info("Stripe schema ready");
 
+    // Ensure the org plan products/prices exist in Stripe before backfill so
+    // they get pulled into the synced stripe.* tables (idempotent).
+    try {
+      await seedOrgProducts();
+      logger.info("Stripe org products seeded");
+    } catch (err) {
+      logger.error({ err }, "Failed to seed Stripe org products");
+    }
+
     const stripeSync = await getStripeSync();
 
     const domain = process.env.REPLIT_DOMAINS?.split(",")[0]
@@ -41,10 +51,12 @@ export async function initStripe(): Promise<void> {
       logger.warn("No REPLIT domain found; skipping managed webhook setup");
     }
 
-    // Backfill in the background so startup isn't blocked.
+    // Backfill in the background so startup isn't blocked. Must pass
+    // { object: "all" } — calling syncBackfill() with no args defaults to a
+    // no-op branch and syncs nothing (products/prices would never populate).
     stripeSync
-      .syncBackfill()
-      .then(() => logger.info("Stripe data synced"))
+      .syncBackfill({ object: "all" })
+      .then((res) => logger.info({ res }, "Stripe data synced"))
       .catch((err) => logger.error({ err }, "Stripe backfill failed"));
   } catch (err) {
     logger.error({ err }, "Failed to initialize Stripe (continuing without it)");
