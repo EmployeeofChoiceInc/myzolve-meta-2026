@@ -40,6 +40,8 @@ import { TutorialProvider } from "@/lib/tutorial-context";
 import OrgsPage from "@/pages/orgs";
 import OrgDashboardPage from "@/pages/org-dashboard";
 import OrgInviteAcceptPage from "@/pages/org-invite-accept";
+import CircleBuilderPage from "@/pages/circle-builder";
+import AdminCircleBuildersPage from "@/pages/admin-circle-builders";
 
 const queryClient = new QueryClient();
 
@@ -166,6 +168,8 @@ function ClerkProviderWithRoutes() {
           <Route path="/sign-up/*?" component={SignUpPage} />
           <Route path="/privacy" component={PrivacyPage} />
           <Route path="/terms" component={TermsPage} />
+          <Route path="/circle-builder" component={CircleBuilderPage} />
+          <Route path="/admin/circle-builders"><ProtectedRoute component={AdminCircleBuildersPage} /></Route>
           <Route path="/dashboard"><ProtectedRoute component={DashboardPage} /></Route>
           <Route path="/circles"><ProtectedRoute component={CirclesPage} /></Route>
           <Route path="/circles/:id"><ProtectedRoute component={CircleDetailPage} /></Route>

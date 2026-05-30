@@ -88,6 +88,28 @@ export default function LandingPage() {
             <p className="text-muted-foreground leading-relaxed">Offer to babysit, help move, or cook a meal. Exchange care and time just as easily as financial support.</p>
           </div>
         </div>
+
+        <div className="w-full max-w-5xl mt-24">
+          <div className="bg-primary/5 border border-primary/20 rounded-3xl p-10 flex flex-col items-center text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-5">
+              <Sparkles className="w-4 h-4" />
+              The 100 Circle Initiative
+            </div>
+            <h2 className="text-3xl lg:text-4xl font-bold mb-4 max-w-2xl">
+              Communities were never meant to be algorithms.
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mb-8">
+              Join the Circle Builder Program and help create the next generation
+              of local support networks.
+            </p>
+            <Link href="/circle-builder">
+              <Button size="lg" className="rounded-full text-lg h-14 px-8">
+                Become a Founding Circle Builder
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+            </Link>
+          </div>
+        </div>
       </main>
 
       <SiteFooter />

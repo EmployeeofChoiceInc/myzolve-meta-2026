@@ -1056,3 +1056,68 @@ export function useUpdateCircleVisibility() {
     },
   });
 }
+
+// --- Circle Builder Program (100 Circle Initiative) ---
+
+export interface CircleBuilderApplicationInput {
+  name: string;
+  email: string;
+  location: string;
+  communityServed: string;
+  networkSize: string;
+  motivation: string;
+  desiredImpact: string;
+  willingToHost: boolean;
+}
+
+export interface CircleBuilderApplication extends CircleBuilderApplicationInput {
+  id: number;
+  status: "pending" | "approved" | "declined";
+  reviewedByUserId: number | null;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+  createdAt: string;
+}
+
+export function useSubmitCircleBuilderApplication() {
+  return useMutation({
+    mutationFn: (input: CircleBuilderApplicationInput) =>
+      customFetch<{ id: number }>("/api/circle-builder/applications", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+  });
+}
+
+export function useCircleBuilderApplications(enabled = true) {
+  return useQuery({
+    queryKey: ["circle-builder-applications"],
+    queryFn: () =>
+      customFetch<CircleBuilderApplication[]>(
+        "/api/circle-builder/applications",
+      ),
+    enabled,
+  });
+}
+
+export function useReviewCircleBuilderApplication() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      status,
+      reviewNote,
+    }: {
+      id: number;
+      status: "pending" | "approved" | "declined";
+      reviewNote?: string | null;
+    }) =>
+      customFetch<CircleBuilderApplication>(
+        `/api/circle-builder/applications/${id}`,
+        { method: "PATCH", body: JSON.stringify({ status, reviewNote }) },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["circle-builder-applications"] });
+    },
+  });
+}

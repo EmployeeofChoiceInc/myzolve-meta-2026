@@ -3,3 +3,4 @@
 - [TS project refs rebuild after codegen](ts-project-refs.md) — after openapi codegen, rebuild lib/api-client-react + lib/api-zod (+ lib/db after schema) with `npx tsc -b ... --force`.
 - [stripe-replit-sync gotchas](stripe-replit-sync-gotchas.md) — must externalize in esbuild (else migrations create 0 tables); syncBackfill needs `{ object: "all" }` or it's a no-op.
 - [Replit Stripe connector fields](replit-stripe-connector.md) — settings expose `secret`/`publishable` (no webhook_secret); header `X-Replit-Token`; pass `environment` per REPLIT_DEPLOYMENT.
+- [api-server runs a built bundle](api-server-build-not-watch.md) — workflow does `build && start` (not watch); restart it after editing api-server src or new routes won't load.
