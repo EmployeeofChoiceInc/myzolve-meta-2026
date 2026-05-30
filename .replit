@@ -14,7 +14,7 @@ runButton = "Project"
 [agent]
 stack = "PNPM_WORKSPACE"
 expertMode = true
-integrations = ["revenuecat:1.0.0", "stripe:1.0.0"]
+integrations = ["revenuecat:1.0.0", "stripe:1.0.0", "google-mail:1.0.0"]
 
 [postMerge]
 path = "scripts/post-merge.sh"
@@ -66,3 +66,4 @@ REVENUECAT_TEST_STORE_APP_ID = "app9f03985ea9"
 REVENUECAT_APPLE_APP_STORE_APP_ID = "app4c87883785"
 REVENUECAT_GOOGLE_PLAY_STORE_APP_ID = "appb74a9b2aa1"
 VERIFICATION_ADMIN_EMAIL = "info@employeeofchoice.com"
+EMAIL_FROM = "MyZolve Connect <info@employeeofchoice.com>"

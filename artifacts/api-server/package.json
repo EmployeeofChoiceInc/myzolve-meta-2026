@@ -12,6 +12,7 @@
   "dependencies": {
     "@clerk/express": "^2.1.0",
     "@google-cloud/storage": "^7.19.0",
+    "@replit/connectors-sdk": "^0.4.1",
     "@replit/revenuecat-sdk": "4.0.0",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",

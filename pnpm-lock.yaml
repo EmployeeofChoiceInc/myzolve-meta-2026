@@ -206,6 +206,9 @@ importers:
       '@google-cloud/storage':
         specifier: ^7.19.0
         version: 7.19.0
+      '@replit/connectors-sdk':
+        specifier: ^0.4.1
+        version: 0.4.1
       '@replit/revenuecat-sdk':
         specifier: 4.0.0
         version: 4.0.0(typescript@5.9.3)
@@ -3109,6 +3112,9 @@ packages:
         optional: true
       react-native:
         optional: true
+
+  '@replit/connectors-sdk@0.4.1':
+    resolution: {integrity: sha512-iw0uy95+Qul8MPc/bBo8hBfYk1wm6RpBZ9sHyCpcA9A9T4zcUT9deSQxdyMyI0w3sv3+5uGmdfq1TpFTMrjD1g==}
 
   '@replit/revenuecat-sdk@4.0.0':
     resolution: {integrity: sha512-G0uySlMtSe6uhkPPaXSeuiYQqTAI7b+/Qr2xGUpnskQEl5/QbSffKBUBu+n8HsXQUcIHg7oJI9bKGsTx3leIVA==}
@@ -11607,6 +11613,8 @@ snapshots:
     transitivePeerDependencies:
       - '@types/react'
       - immer
+
+  '@replit/connectors-sdk@0.4.1': {}
 
   '@replit/revenuecat-sdk@4.0.0(typescript@5.9.3)':
     dependencies:
