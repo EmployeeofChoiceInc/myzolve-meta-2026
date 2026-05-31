@@ -44,9 +44,12 @@ export default function OrgInviteAcceptPage() {
     acceptInvite.mutate(
       { token },
       {
-        onSuccess: () => {
+        onSuccess: (res) => {
           setStatus("success");
-          setTimeout(() => setLocation("/dashboard"), 2000);
+          setTimeout(
+            () => setLocation(res?.orgId ? `/orgs/${res.orgId}` : "/dashboard"),
+            2000,
+          );
         },
         onError: (err: AcceptOrgInviteMutationError) => {
           setStatus("error");

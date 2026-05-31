@@ -2,12 +2,15 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { Readable } from "stream";
 import { randomBytes } from "crypto";
 import { z } from "zod";
-import { and, eq, count } from "drizzle-orm";
+import { and, eq, count, desc } from "drizzle-orm";
 import {
   db,
   orgsTable,
   orgMembersTable,
   orgInvitesTable,
+  orgAnnouncementsTable,
+  orgEventsTable,
+  circlesTable,
   usersTable,
   type Org,
 } from "@workspace/db";
@@ -52,6 +55,9 @@ const updateOrgSchema = z.object({
   name: z.string().min(1).max(120).optional(),
   accentColor: z.string().max(16).nullable().optional(),
   logoObjectPath: z.string().max(1000).nullable().optional(),
+  welcomeMessage: z.string().max(2000).nullable().optional(),
+  coverImageObjectPath: z.string().max(1000).nullable().optional(),
+  heroEventDate: z.string().datetime().nullable().optional(),
 });
 
 const checkoutSchema = z.object({
@@ -69,6 +75,29 @@ const createInviteSchema = z.object({
   // Null/omitted → a shareable link invite (anyone with the link can accept).
   email: z.string().email().max(320).optional(),
   role: z.enum(["admin", "member"]).optional().default("member"),
+});
+
+const createAnnouncementSchema = z.object({
+  title: z.string().max(160).nullable().optional(),
+  body: z.string().min(1).max(5000),
+});
+
+const createEventSchema = z.object({
+  title: z.string().min(1).max(160),
+  description: z.string().max(5000).nullable().optional(),
+  location: z.string().max(300).nullable().optional(),
+  startsAt: z.string().datetime(),
+  endsAt: z.string().datetime().nullable().optional(),
+});
+
+const orgAnnouncementIdParam = z.object({
+  orgId: z.coerce.number().int().positive(),
+  announcementId: z.coerce.number().int().positive(),
+});
+
+const orgEventIdParam = z.object({
+  orgId: z.coerce.number().int().positive(),
+  eventId: z.coerce.number().int().positive(),
 });
 
 function orgToApi(
@@ -151,6 +180,41 @@ async function requireOrgAdmin(
     return null;
   }
   return { org, role: membership?.role ?? "owner" };
+}
+
+/**
+ * Require the caller to be an active member (any role) of the org — used for
+ * the member-facing Reunion Home. Returns the org + role, or sends an error.
+ */
+async function requireOrgMember(
+  req: Request,
+  res: Response,
+  orgId: number,
+): Promise<{ org: Org; role: string } | null> {
+  const userId = req.dbUser!.id;
+  const org = await db
+    .select()
+    .from(orgsTable)
+    .where(eq(orgsTable.id, orgId))
+    .limit(1)
+    .then((r) => r[0] ?? null);
+  if (!org) {
+    res.status(404).json({ error: "Org not found" });
+    return null;
+  }
+  const membership = await getMembership(orgId, userId);
+  const isMember =
+    org.ownerId === userId || membership?.status === "active";
+  if (!isMember) {
+    res
+      .status(403)
+      .json({ error: "You must be a member of this organization." });
+    return null;
+  }
+  return {
+    org,
+    role: membership?.role ?? (org.ownerId === userId ? "owner" : "member"),
+  };
 }
 
 // GET /org-plans — public catalog of seat-pack plans.
@@ -321,6 +385,30 @@ router.patch(
           return;
         }
         updates.logoObjectPath = body.logoObjectPath;
+      }
+    }
+    if (body.welcomeMessage !== undefined)
+      updates.welcomeMessage = body.welcomeMessage;
+    if (body.heroEventDate !== undefined)
+      updates.heroEventDate = body.heroEventDate
+        ? new Date(body.heroEventDate)
+        : null;
+    if (body.coverImageObjectPath !== undefined) {
+      if (body.coverImageObjectPath === null) {
+        updates.coverImageObjectPath = null;
+      } else {
+        const ok = validateAndConsumePendingUpload(
+          body.coverImageObjectPath,
+          req.dbUser!.id,
+          -1,
+        );
+        if (!ok) {
+          res
+            .status(400)
+            .json({ error: "Invalid or expired image upload token" });
+          return;
+        }
+        updates.coverImageObjectPath = body.coverImageObjectPath;
       }
     }
 
@@ -627,6 +715,266 @@ router.delete(
       .then((r) => r[0] ?? null);
     if (removedUser?.clerkId) bustIsPlusCache(removedUser.clerkId);
 
+    res.json({ ok: true });
+  },
+);
+
+// GET /orgs/:orgId/cover — member-gated stream of the org cover image (hero).
+router.get(
+  "/orgs/:orgId/cover",
+  requireAuth,
+  validateParams(orgIdParam),
+  async (req, res) => {
+    const orgId = Number(req.params.orgId);
+    const m = await requireOrgMember(req, res, orgId);
+    if (!m) return;
+    if (!m.org.coverImageObjectPath) {
+      res.status(404).json({ error: "No cover image" });
+      return;
+    }
+    try {
+      const file = await objectStorageService.getObjectEntityFile(
+        m.org.coverImageObjectPath,
+      );
+      const response = await objectStorageService.downloadObject(file, 86400);
+      res.status(response.status);
+      response.headers.forEach((value, key) => res.setHeader(key, value));
+      if (response.body) {
+        const nodeStream = Readable.fromWeb(
+          response.body as ReadableStream<Uint8Array>,
+        );
+        nodeStream.pipe(res);
+      } else {
+        res.end();
+      }
+    } catch (error) {
+      logger.error({ err: error, orgId }, "Error serving org cover image");
+      res.status(404).json({ error: "No cover image" });
+    }
+  },
+);
+
+// GET /orgs/:orgId/home — the member-facing Reunion Home ("front door").
+// Aggregates the org profile, organizer announcements, upcoming events, the
+// circles inside the org, and a member directory preview. Any active member
+// (or the owner) may view it.
+router.get(
+  "/orgs/:orgId/home",
+  requireAuth,
+  validateParams(orgIdParam),
+  async (req, res) => {
+    const orgId = Number(req.params.orgId);
+    const m = await requireOrgMember(req, res, orgId);
+    if (!m) return;
+
+    const seatsUsed = await countActiveSeats(orgId);
+    const comped = await isOrgComped(orgId);
+    const canManage =
+      m.org.ownerId === req.dbUser!.id ||
+      m.role === "owner" ||
+      m.role === "admin";
+
+    const announcementRows = await db
+      .select({
+        id: orgAnnouncementsTable.id,
+        title: orgAnnouncementsTable.title,
+        body: orgAnnouncementsTable.body,
+        createdAt: orgAnnouncementsTable.createdAt,
+        authorUserId: orgAnnouncementsTable.authorUserId,
+        authorName: usersTable.displayName,
+        authorAvatarObjectPath: usersTable.avatarObjectPath,
+      })
+      .from(orgAnnouncementsTable)
+      .innerJoin(
+        usersTable,
+        eq(usersTable.id, orgAnnouncementsTable.authorUserId),
+      )
+      .where(eq(orgAnnouncementsTable.orgId, orgId))
+      .orderBy(desc(orgAnnouncementsTable.createdAt))
+      .limit(25);
+
+    const now = Date.now();
+    const eventRows = await db
+      .select()
+      .from(orgEventsTable)
+      .where(eq(orgEventsTable.orgId, orgId))
+      .orderBy(orgEventsTable.startsAt);
+    const events = eventRows
+      .filter((e) => (e.endsAt ?? e.startsAt).getTime() >= now)
+      .slice(0, 25)
+      .map((e) => ({
+        id: e.id,
+        title: e.title,
+        description: e.description,
+        location: e.location,
+        startsAt: e.startsAt,
+        endsAt: e.endsAt,
+      }));
+
+    const circleRows = await db
+      .select({
+        id: circlesTable.id,
+        name: circlesTable.name,
+        description: circlesTable.description,
+        privacyMode: circlesTable.privacyMode,
+        accentColor: circlesTable.accentColor,
+      })
+      .from(circlesTable)
+      .where(eq(circlesTable.orgId, orgId));
+
+    const memberRows = await db
+      .select({
+        userId: orgMembersTable.userId,
+        role: orgMembersTable.role,
+        displayName: usersTable.displayName,
+        avatarObjectPath: usersTable.avatarObjectPath,
+      })
+      .from(orgMembersTable)
+      .innerJoin(usersTable, eq(usersTable.id, orgMembersTable.userId))
+      .where(
+        and(
+          eq(orgMembersTable.orgId, orgId),
+          eq(orgMembersTable.status, "active"),
+        ),
+      );
+
+    res.json({
+      org: {
+        ...orgToApi(m.org, { seatsUsed, myRole: m.role, isComped: comped }),
+        welcomeMessage: m.org.welcomeMessage,
+        coverImageUrl: m.org.coverImageObjectPath
+          ? `/api/orgs/${orgId}/cover`
+          : null,
+        heroEventDate: m.org.heroEventDate,
+      },
+      canManage,
+      announcements: announcementRows.map((a) => ({
+        id: a.id,
+        title: a.title,
+        body: a.body,
+        createdAt: a.createdAt,
+        authorName: a.authorName,
+        authorAvatarObjectPath: a.authorAvatarObjectPath,
+      })),
+      events,
+      circles: circleRows,
+      memberCount: memberRows.length,
+      members: memberRows.slice(0, 18).map((mm) => ({
+        userId: mm.userId,
+        role: mm.role,
+        displayName: mm.displayName,
+        avatarObjectPath: mm.avatarObjectPath,
+      })),
+    });
+  },
+);
+
+// POST /orgs/:orgId/announcements — post an organizer announcement (admin).
+router.post(
+  "/orgs/:orgId/announcements",
+  requireAuth,
+  validateParams(orgIdParam),
+  validateBody(createAnnouncementSchema),
+  async (req, res) => {
+    const orgId = Number(req.params.orgId);
+    const admin = await requireOrgAdmin(req, res, orgId);
+    if (!admin) return;
+    const { title, body } = req.body as z.infer<
+      typeof createAnnouncementSchema
+    >;
+    const [row] = await db
+      .insert(orgAnnouncementsTable)
+      .values({
+        orgId,
+        authorUserId: req.dbUser!.id,
+        title: title ?? null,
+        body: body.trim(),
+      })
+      .returning();
+    res.status(201).json({
+      id: row.id,
+      title: row.title,
+      body: row.body,
+      createdAt: row.createdAt,
+      authorName: req.dbUser!.displayName,
+      authorAvatarObjectPath: req.dbUser!.avatarObjectPath ?? null,
+    });
+  },
+);
+
+// DELETE /orgs/:orgId/announcements/:announcementId — remove one (admin).
+router.delete(
+  "/orgs/:orgId/announcements/:announcementId",
+  requireAuth,
+  validateParams(orgAnnouncementIdParam),
+  async (req, res) => {
+    const orgId = Number(req.params.orgId);
+    const announcementId = Number(req.params.announcementId);
+    const admin = await requireOrgAdmin(req, res, orgId);
+    if (!admin) return;
+    await db
+      .delete(orgAnnouncementsTable)
+      .where(
+        and(
+          eq(orgAnnouncementsTable.id, announcementId),
+          eq(orgAnnouncementsTable.orgId, orgId),
+        ),
+      );
+    res.json({ ok: true });
+  },
+);
+
+// POST /orgs/:orgId/events — create an org-wide event (admin).
+router.post(
+  "/orgs/:orgId/events",
+  requireAuth,
+  validateParams(orgIdParam),
+  validateBody(createEventSchema),
+  async (req, res) => {
+    const orgId = Number(req.params.orgId);
+    const admin = await requireOrgAdmin(req, res, orgId);
+    if (!admin) return;
+    const { title, description, location, startsAt, endsAt } = req.body as z.infer<
+      typeof createEventSchema
+    >;
+    const [row] = await db
+      .insert(orgEventsTable)
+      .values({
+        orgId,
+        createdByUserId: req.dbUser!.id,
+        title: title.trim(),
+        description: description ?? null,
+        location: location ?? null,
+        startsAt: new Date(startsAt),
+        endsAt: endsAt ? new Date(endsAt) : null,
+      })
+      .returning();
+    res.status(201).json({
+      id: row.id,
+      title: row.title,
+      description: row.description,
+      location: row.location,
+      startsAt: row.startsAt,
+      endsAt: row.endsAt,
+    });
+  },
+);
+
+// DELETE /orgs/:orgId/events/:eventId — remove an event (admin).
+router.delete(
+  "/orgs/:orgId/events/:eventId",
+  requireAuth,
+  validateParams(orgEventIdParam),
+  async (req, res) => {
+    const orgId = Number(req.params.orgId);
+    const eventId = Number(req.params.eventId);
+    const admin = await requireOrgAdmin(req, res, orgId);
+    if (!admin) return;
+    await db
+      .delete(orgEventsTable)
+      .where(
+        and(eq(orgEventsTable.id, eventId), eq(orgEventsTable.orgId, orgId)),
+      );
     res.json({ ok: true });
   },
 );

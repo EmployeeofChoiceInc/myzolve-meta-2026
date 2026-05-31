@@ -1218,3 +1218,157 @@ export function useReviewCircleBuilderApplication() {
     },
   });
 }
+
+// ── Reunion Home ──────────────────────────────────────────────────────────────
+
+export interface OrgHomeOrg {
+  id: number;
+  name: string;
+  status: string;
+  isActive: boolean;
+  comped: boolean;
+  planName: string;
+  accentColor: string | null;
+  logoUrl: string | null;
+  welcomeMessage: string | null;
+  coverImageUrl: string | null;
+  heroEventDate: string | null;
+  seatLimit: number;
+  seatsUsed: number | null;
+  myRole: string | null;
+}
+
+export interface OrgAnnouncement {
+  id: number;
+  title: string | null;
+  body: string;
+  createdAt: string;
+  authorName: string | null;
+  authorAvatarObjectPath: string | null;
+}
+
+export interface OrgEvent {
+  id: number;
+  title: string;
+  description: string | null;
+  location: string | null;
+  startsAt: string;
+  endsAt: string | null;
+}
+
+export interface OrgHomeCircle {
+  id: number;
+  name: string;
+  description: string | null;
+  privacyMode: string;
+  accentColor: string | null;
+}
+
+export interface OrgHomeMember {
+  userId: number;
+  role: string;
+  displayName: string | null;
+  avatarObjectPath: string | null;
+}
+
+export interface OrgHome {
+  org: OrgHomeOrg;
+  canManage: boolean;
+  announcements: OrgAnnouncement[];
+  events: OrgEvent[];
+  circles: OrgHomeCircle[];
+  memberCount: number;
+  members: OrgHomeMember[];
+}
+
+function orgHomeKey(orgId: number) {
+  return ["org-home", orgId] as const;
+}
+
+export function useOrgHome(orgId: number) {
+  return useQuery({
+    queryKey: orgHomeKey(orgId),
+    queryFn: () => customFetch<OrgHome>(`/api/orgs/${orgId}/home`),
+    enabled: Number.isFinite(orgId) && orgId > 0,
+    retry: false,
+  });
+}
+
+export function useUpdateOrgProfile(orgId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      name?: string;
+      accentColor?: string | null;
+      logoObjectPath?: string | null;
+      coverImageObjectPath?: string | null;
+      welcomeMessage?: string | null;
+      heroEventDate?: string | null;
+    }) =>
+      customFetch(`/api/orgs/${orgId}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: orgHomeKey(orgId) });
+    },
+  });
+}
+
+export function usePostOrgAnnouncement(orgId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { title?: string | null; body: string }) =>
+      customFetch<OrgAnnouncement>(`/api/orgs/${orgId}/announcements`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: orgHomeKey(orgId) });
+    },
+  });
+}
+
+export function useDeleteOrgAnnouncement(orgId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (announcementId: number) =>
+      customFetch(`/api/orgs/${orgId}/announcements/${announcementId}`, {
+        method: "DELETE",
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: orgHomeKey(orgId) });
+    },
+  });
+}
+
+export function usePostOrgEvent(orgId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      title: string;
+      description?: string | null;
+      location?: string | null;
+      startsAt: string;
+      endsAt?: string | null;
+    }) =>
+      customFetch<OrgEvent>(`/api/orgs/${orgId}/events`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: orgHomeKey(orgId) });
+    },
+  });
+}
+
+export function useDeleteOrgEvent(orgId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (eventId: number) =>
+      customFetch(`/api/orgs/${orgId}/events/${eventId}`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: orgHomeKey(orgId) });
+    },
+  });
+}

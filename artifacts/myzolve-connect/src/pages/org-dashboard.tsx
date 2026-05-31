@@ -230,10 +230,10 @@ export default function OrgDashboardPage() {
   return (
     <div className="max-w-3xl mx-auto w-full">
       <button
-        onClick={() => setLocation("/orgs")}
+        onClick={() => setLocation(`/orgs/${orgId}`)}
         className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
       >
-        <ArrowLeft className="w-4 h-4" /> Organizations
+        <ArrowLeft className="w-4 h-4" /> Back to home
       </button>
 
       {/* Header */}

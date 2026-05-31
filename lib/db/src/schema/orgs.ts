@@ -26,6 +26,12 @@ export const orgsTable = pgTable("orgs", {
   // Light branding shown on org-scoped Circle headers and invite cards.
   logoObjectPath: text("logo_object_path"),
   accentColor: text("accent_color"),
+  // Reunion Home ("front door") profile. Welcome message shown in the hero,
+  // an optional cover image, and the headline date (e.g. the reunion day or an
+  // ERG's flagship event) used for the home-page countdown.
+  welcomeMessage: text("welcome_message"),
+  coverImageObjectPath: text("cover_image_object_path"),
+  heroEventDate: timestamp("hero_event_date", { withTimezone: true }),
   // Plan + billing. `plan` is the marketing tier ("reunion" | "erg" | ...),
   // kept as plain text for forward compatibility. `billingType` is
   // "one_time" (Reunion seat pack) or "annual" (ERG subscription).

@@ -39,6 +39,7 @@ import { CopilotProvider } from "@/lib/copilot";
 import { TutorialProvider } from "@/lib/tutorial-context";
 import OrgsPage from "@/pages/orgs";
 import OrgDashboardPage from "@/pages/org-dashboard";
+import ReunionHomePage from "@/pages/reunion-home";
 import OrgInviteAcceptPage from "@/pages/org-invite-accept";
 import CircleBuilderPage from "@/pages/circle-builder";
 import AdminCircleBuildersPage from "@/pages/admin-circle-builders";
@@ -196,7 +197,8 @@ function ClerkProviderWithRoutes() {
           <Route path="/plus"><ProtectedRoute component={PlusPage} /></Route>
           <Route path="/wrapup"><ProtectedRoute component={WrapupPage} /></Route>
           <Route path="/orgs"><ProtectedRoute component={OrgsPage} /></Route>
-          <Route path="/orgs/:id"><ProtectedRoute component={OrgDashboardPage} /></Route>
+          <Route path="/orgs/:id/manage"><ProtectedRoute component={OrgDashboardPage} /></Route>
+          <Route path="/orgs/:id"><ProtectedRoute component={ReunionHomePage} /></Route>
           <Route path="/invite/:token" component={InviteAcceptPage} />
           <Route path="/org-invite/:token" component={OrgInviteAcceptPage} />
           <Route component={NotFound} />

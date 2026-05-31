@@ -17,5 +17,7 @@ export * from "./careDates";
 export * from "./copilot";
 export * from "./wrapups";
 export * from "./orgs";
+export * from "./orgAnnouncements";
+export * from "./orgEvents";
 export * from "./circleBuilder";
 export * from "./comps";
