@@ -42,9 +42,9 @@ export function Scene5() {
         transition={{ type: 'spring', bounce: 0.5, duration: 0.8 }}
       >
         <img 
-          src={`${import.meta.env.BASE_URL}images/founder-badge.png`} 
-          className="w-48 h-48 object-contain drop-shadow-[0_10px_30px_rgba(217,116,74,0.3)]" 
-          alt="Founder Badge" 
+          src={`${import.meta.env.BASE_URL}images/founder-peach-badge.png`} 
+          className="w-56 h-56 object-contain drop-shadow-[0_10px_30px_rgba(217,116,74,0.3)]" 
+          alt="Founding Ambassador peach badge" 
         />
       </motion.div>
 

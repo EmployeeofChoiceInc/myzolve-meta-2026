@@ -49,7 +49,7 @@ export function Scene4() {
         animate={phase >= 1 ? { opacity: 0.3, rotate: 0, scale: 1 } : { opacity: 0, rotate: -20, scale: 0.8 }}
         transition={{ duration: 1.5, ease: 'easeOut' }}
       >
-        <img src={`${import.meta.env.BASE_URL}images/founder-badge.png`} className="w-full h-auto drop-shadow-2xl" alt="badge" />
+        <img src={`${import.meta.env.BASE_URL}images/founder-peach-badge.png`} className="w-full h-auto drop-shadow-2xl" alt="badge" />
       </motion.div>
 
       <motion.h3
