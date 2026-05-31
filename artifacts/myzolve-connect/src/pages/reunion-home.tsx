@@ -20,6 +20,7 @@ import {
   type OrgMainCircleCareDate,
 } from "@/hooks/use-api";
 import { customFetch } from "@workspace/api-client-react";
+import { ReactionBar, CommentsSection } from "@/components/post-interactions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -703,32 +704,50 @@ export default function ReunionHomePage() {
                 </p>
               ) : (
                 data.mainCircle.recentPosts.map((p: OrgMainCirclePost) => (
-                  <button
+                  <div
                     key={p.id}
-                    onClick={() => setLocation(`/circles/${data.mainCircle.id}`)}
-                    className="text-left rounded-xl border p-3 hover:bg-muted/50 transition-colors flex items-start gap-3"
+                    className="rounded-xl border p-3 flex flex-col gap-3"
                   >
-                    <Avatar className="h-9 w-9 shrink-0">
-                      <AvatarImage
-                        src={objectPathToUrl(p.authorAvatarObjectPath)}
-                        alt={p.authorName ?? ""}
-                      />
-                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                        {initial(p.authorName)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium">
-                        {p.authorName ?? "Someone"}
-                      </p>
-                      {p.title && (
-                        <p className="text-sm font-medium truncate">{p.title}</p>
-                      )}
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {p.body}
-                      </p>
+                    <div className="flex items-start gap-3">
+                      <Avatar className="h-9 w-9 shrink-0">
+                        <AvatarImage
+                          src={objectPathToUrl(p.authorAvatarObjectPath)}
+                          alt={p.authorName ?? ""}
+                        />
+                        <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                          {initial(p.authorName)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium">
+                          {p.authorName ?? "Someone"}
+                        </p>
+                        {p.title && (
+                          <p className="text-sm font-medium">{p.title}</p>
+                        )}
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                          {p.body}
+                        </p>
+                        {p.imageObjectPath && (
+                          <img
+                            src={objectPathToUrl(p.imageObjectPath)}
+                            alt="Post attachment"
+                            className="mt-2 rounded-xl w-full object-cover max-h-64"
+                          />
+                        )}
+                      </div>
                     </div>
-                  </button>
+                    <div className="space-y-3 pl-12">
+                      <ReactionBar
+                        circleId={data.mainCircle.id}
+                        postId={p.id}
+                      />
+                      <CommentsSection
+                        circleId={data.mainCircle.id}
+                        postId={p.id}
+                      />
+                    </div>
+                  </div>
                 ))
               )}
             </CardContent>
