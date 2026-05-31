@@ -1189,6 +1189,11 @@ async function sendOrgInviteEmail(
 function webBaseUrl(): string {
   const explicit = process.env["WEB_APP_URL"];
   if (explicit) return explicit.replace(/\/$/, "");
+  // Prefer the production deployment domain over the dev domain so invite/
+  // dashboard links in emails point at the live app, not the (often-offline)
+  // dev URL. Mirrors the domain resolution in lib/stripeInit.ts.
+  const prod = process.env["REPLIT_DOMAINS"]?.split(",")[0]?.trim();
+  if (prod) return `https://${prod}`;
   const dev = process.env["REPLIT_DEV_DOMAIN"];
   if (dev) return `https://${dev}`;
   return "https://myzolve.com";
