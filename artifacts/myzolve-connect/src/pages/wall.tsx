@@ -132,7 +132,7 @@ function PostCard({
 
         <div className="space-y-3 pt-1">
           <ReactionBar circleId={circleId} postId={post.id} />
-          <CommentsSection circleId={circleId} postId={post.id} />
+          <CommentsSection circleId={circleId} postId={post.id} isAdmin={isAdmin} />
         </div>
       </CardContent>
     </Card>

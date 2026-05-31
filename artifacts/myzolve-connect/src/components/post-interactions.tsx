@@ -5,15 +5,19 @@ import {
   useToggleReaction,
   useComments,
   useCreateComment,
+  useDeleteComment,
+  useMe,
 } from "@/hooks/use-api";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import {
   MessageSquare,
   ChevronUp,
   ChevronDown,
   Send,
+  Trash2,
 } from "lucide-react";
 import { CopilotSwitcher, CopilotAttribution } from "@/components/copilot-switcher";
 import { useActingForInCircle } from "@/lib/copilot";
@@ -63,15 +67,28 @@ export function ReactionBar({
 export function CommentsSection({
   circleId,
   postId,
+  isAdmin = false,
 }: {
   circleId: number;
   postId: number;
+  isAdmin?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [commentText, setCommentText] = useState("");
   const { data: comments } = useComments(circleId, "circle_post", postId);
   const createComment = useCreateComment(circleId, "circle_post", postId);
+  const deleteComment = useDeleteComment(circleId);
+  const { data: me } = useMe();
+  const { toast } = useToast();
   const actingForUserId = useActingForInCircle(circleId);
+
+  function handleDelete(commentId: number) {
+    deleteComment.mutate(commentId, {
+      onSuccess: () => toast({ title: "Comment removed" }),
+      onError: () =>
+        toast({ title: "Could not remove comment", variant: "destructive" }),
+    });
+  }
 
   function handleSubmit() {
     if (!commentText.trim()) return;
@@ -106,38 +123,54 @@ export function CommentsSection({
 
       {expanded && (
         <div className="space-y-3 pl-2 border-l-2 border-border/40">
-          {comments?.map((c) => (
-            <div key={c.id} className="flex gap-2">
-              <Link href={`/profile/${c.authorUserId ?? ""}`}>
-                <Avatar className="w-7 h-7 shrink-0 cursor-pointer">
-                  <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                    {c.authorName.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-              </Link>
-              <div>
+          {comments?.map((c) => {
+            const canDelete =
+              isAdmin || (me?.id !== undefined && c.authorUserId === me.id);
+            return (
+              <div key={c.id} className="flex gap-2 group">
                 <Link href={`/profile/${c.authorUserId ?? ""}`}>
-                  <p className="text-xs font-medium text-foreground hover:underline cursor-pointer">
-                    {c.authorName}
-                  </p>
+                  <Avatar className="w-7 h-7 shrink-0 cursor-pointer">
+                    <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                      {c.authorName.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
                 </Link>
-                <p className="text-sm text-foreground/80">{c.body}</p>
-                {c.actingForName ? (
-                  <CopilotAttribution
-                    helperName={c.authorName}
-                    forName={c.actingForName}
-                    review={c.copilotReview}
-                    size="compact"
-                  />
-                ) : null}
-                <p className="text-[10px] text-muted-foreground mt-0.5">
-                  {formatDistanceToNow(new Date(c.createdAt), {
-                    addSuffix: true,
-                  })}
-                </p>
+                <div className="flex-1 min-w-0">
+                  <Link href={`/profile/${c.authorUserId ?? ""}`}>
+                    <p className="text-xs font-medium text-foreground hover:underline cursor-pointer">
+                      {c.authorName}
+                    </p>
+                  </Link>
+                  <p className="text-sm text-foreground/80">{c.body}</p>
+                  {c.actingForName ? (
+                    <CopilotAttribution
+                      helperName={c.authorName}
+                      forName={c.actingForName}
+                      review={c.copilotReview}
+                      size="compact"
+                    />
+                  ) : null}
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    {formatDistanceToNow(new Date(c.createdAt), {
+                      addSuffix: true,
+                    })}
+                  </p>
+                </div>
+                {canDelete && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Delete comment"
+                    className="h-6 w-6 shrink-0 rounded-full text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+                    onClick={() => handleDelete(c.id)}
+                    disabled={deleteComment.isPending}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
           <CopilotSwitcher circleId={circleId} className="mb-1" />
           <div className="flex gap-2">
             <Input
