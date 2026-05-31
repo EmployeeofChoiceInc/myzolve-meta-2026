@@ -1411,6 +1411,27 @@ export function usePostOrgAnnouncement(orgId: number) {
   });
 }
 
+export function useUpdateOrgAnnouncement(orgId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      announcementId: number;
+      title?: string | null;
+      body?: string;
+    }) =>
+      customFetch<OrgAnnouncement>(
+        `/api/orgs/${orgId}/announcements/${data.announcementId}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ title: data.title, body: data.body }),
+        },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: orgHomeKey(orgId) });
+    },
+  });
+}
+
 export function useDeleteOrgAnnouncement(orgId: number) {
   const qc = useQueryClient();
   return useMutation({
@@ -1438,6 +1459,29 @@ export function usePostOrgEvent(orgId: number) {
         method: "POST",
         body: JSON.stringify(data),
       }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: orgHomeKey(orgId) });
+    },
+  });
+}
+
+export function useUpdateOrgEvent(orgId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      eventId: number;
+      title?: string;
+      description?: string | null;
+      location?: string | null;
+      startsAt?: string;
+      endsAt?: string | null;
+    }) => {
+      const { eventId, ...payload } = data;
+      return customFetch<OrgEvent>(`/api/orgs/${orgId}/events/${eventId}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: orgHomeKey(orgId) });
     },

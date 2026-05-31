@@ -4,8 +4,10 @@ import {
   useOrgHome,
   useUpdateOrgProfile,
   usePostOrgAnnouncement,
+  useUpdateOrgAnnouncement,
   useDeleteOrgAnnouncement,
   usePostOrgEvent,
+  useUpdateOrgEvent,
   useDeleteOrgEvent,
   useCreateSubCircle,
   useRsvpOrgEvent,
@@ -39,6 +41,7 @@ import {
   MapPin,
   Settings,
   Plus,
+  Pencil,
   Trash2,
   Image as ImageIcon,
   Sparkles,
@@ -163,19 +166,24 @@ export default function ReunionHomePage() {
   const { data, isLoading, error } = useOrgHome(orgId);
   const updateProfile = useUpdateOrgProfile(orgId);
   const postAnnouncement = usePostOrgAnnouncement(orgId);
+  const updateAnnouncement = useUpdateOrgAnnouncement(orgId);
   const deleteAnnouncement = useDeleteOrgAnnouncement(orgId);
   const postEvent = usePostOrgEvent(orgId);
+  const updateEvent = useUpdateOrgEvent(orgId);
   const deleteEvent = useDeleteOrgEvent(orgId);
 
   const coverInputRef = useRef<HTMLInputElement>(null);
   const [coverUploading, setCoverUploading] = useState(false);
 
-  // Compose state
+  // Compose / edit state (editingAnnId === null → creating)
   const [announceOpen, setAnnounceOpen] = useState(false);
+  const [editingAnnId, setEditingAnnId] = useState<number | null>(null);
   const [annTitle, setAnnTitle] = useState("");
   const [annBody, setAnnBody] = useState("");
 
+  // editingEventId === null → creating
   const [eventOpen, setEventOpen] = useState(false);
+  const [editingEventId, setEditingEventId] = useState<number | null>(null);
   const [evTitle, setEvTitle] = useState("");
   const [evDesc, setEvDesc] = useState("");
   const [evLocation, setEvLocation] = useState("");
@@ -324,24 +332,113 @@ export default function ReunionHomePage() {
     );
   }
 
+  function openNewAnnouncement() {
+    setEditingAnnId(null);
+    setAnnTitle("");
+    setAnnBody("");
+    setAnnounceOpen(true);
+  }
+
+  function openEditAnnouncement(a: OrgAnnouncement) {
+    setEditingAnnId(a.id);
+    setAnnTitle(a.title ?? "");
+    setAnnBody(a.body);
+    setAnnounceOpen(true);
+  }
+
   function submitAnnouncement() {
     if (!annBody.trim()) return;
+    const onDone = () => {
+      setEditingAnnId(null);
+      setAnnTitle("");
+      setAnnBody("");
+      setAnnounceOpen(false);
+    };
+    if (editingAnnId !== null) {
+      updateAnnouncement.mutate(
+        {
+          announcementId: editingAnnId,
+          title: annTitle.trim() || null,
+          body: annBody.trim(),
+        },
+        {
+          onSuccess: onDone,
+          onError: () =>
+            toast({ title: "Could not save", variant: "destructive" }),
+        },
+      );
+      return;
+    }
     postAnnouncement.mutate(
       { title: annTitle.trim() || null, body: annBody.trim() },
       {
-        onSuccess: () => {
-          setAnnTitle("");
-          setAnnBody("");
-          setAnnounceOpen(false);
-        },
+        onSuccess: onDone,
         onError: () =>
           toast({ title: "Could not post", variant: "destructive" }),
       },
     );
   }
 
+  /** Converts an ISO timestamp to the value a datetime-local input expects. */
+  function toLocalInput(iso: string): string {
+    const d = new Date(iso);
+    const offset = d.getTimezoneOffset();
+    return new Date(d.getTime() - offset * 60_000).toISOString().slice(0, 16);
+  }
+
+  function openNewEvent() {
+    setEditingEventId(null);
+    setEvTitle("");
+    setEvDesc("");
+    setEvLocation("");
+    setEvStart("");
+    setEvEnd("");
+    setEventOpen(true);
+  }
+
+  function openEditEvent(ev: OrgEvent) {
+    setEditingEventId(ev.id);
+    setEvTitle(ev.title);
+    setEvDesc(ev.description ?? "");
+    setEvLocation(ev.location ?? "");
+    setEvStart(ev.startsAt ? toLocalInput(ev.startsAt) : "");
+    setEvEnd(ev.endsAt ? toLocalInput(ev.endsAt) : "");
+    setEventOpen(true);
+  }
+
   function submitEvent() {
     if (!evTitle.trim() || !evStart) return;
+    if (evEnd && new Date(evEnd).getTime() < new Date(evStart).getTime()) {
+      toast({ title: "The end can't be before the start", variant: "destructive" });
+      return;
+    }
+    const onDone = () => {
+      setEditingEventId(null);
+      setEvTitle("");
+      setEvDesc("");
+      setEvLocation("");
+      setEvStart("");
+      setEvEnd("");
+      setEventOpen(false);
+    };
+    if (editingEventId !== null) {
+      updateEvent.mutate(
+        {
+          eventId: editingEventId,
+          title: evTitle.trim(),
+          description: evDesc.trim() || null,
+          location: evLocation.trim() || null,
+          startsAt: new Date(evStart).toISOString(),
+          endsAt: evEnd ? new Date(evEnd).toISOString() : null,
+        },
+        {
+          onSuccess: onDone,
+          onError: () =>
+            toast({ title: "Could not save event", variant: "destructive" }),
+        },
+      );
+      return;
+    }
     postEvent.mutate(
       {
         title: evTitle.trim(),
@@ -351,14 +448,7 @@ export default function ReunionHomePage() {
         endsAt: evEnd ? new Date(evEnd).toISOString() : null,
       },
       {
-        onSuccess: () => {
-          setEvTitle("");
-          setEvDesc("");
-          setEvLocation("");
-          setEvStart("");
-          setEvEnd("");
-          setEventOpen(false);
-        },
+        onSuccess: onDone,
         onError: () =>
           toast({ title: "Could not create event", variant: "destructive" }),
       },
@@ -580,7 +670,9 @@ export default function ReunionHomePage() {
                   size="sm"
                   variant="outline"
                   className="rounded-full"
-                  onClick={() => setAnnounceOpen((v) => !v)}
+                  onClick={() =>
+                    announceOpen ? setAnnounceOpen(false) : openNewAnnouncement()
+                  }
                 >
                   <Plus className="w-4 h-4 mr-1" /> Post
                 </Button>
@@ -605,9 +697,15 @@ export default function ReunionHomePage() {
                       size="sm"
                       className="rounded-full"
                       onClick={submitAnnouncement}
-                      disabled={postAnnouncement.isPending || !annBody.trim()}
+                      disabled={
+                        postAnnouncement.isPending ||
+                        updateAnnouncement.isPending ||
+                        !annBody.trim()
+                      }
                     >
-                      Post announcement
+                      {editingAnnId !== null
+                        ? "Save changes"
+                        : "Post announcement"}
                     </Button>
                     <Button
                       size="sm"
@@ -651,14 +749,24 @@ export default function ReunionHomePage() {
                         </p>
                       </div>
                       {canManage && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-destructive shrink-0"
-                          onClick={() => deleteAnnouncement.mutate(a.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <div className="flex items-center shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => openEditAnnouncement(a)}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive"
+                            onClick={() => deleteAnnouncement.mutate(a.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       )}
                     </div>
                     <p className="text-sm whitespace-pre-wrap leading-relaxed pl-11">
@@ -919,7 +1027,9 @@ export default function ReunionHomePage() {
                   size="sm"
                   variant="outline"
                   className="rounded-full"
-                  onClick={() => setEventOpen((v) => !v)}
+                  onClick={() =>
+                    eventOpen ? setEventOpen(false) : openNewEvent()
+                  }
                 >
                   <Plus className="w-4 h-4" />
                 </Button>
@@ -965,9 +1075,14 @@ export default function ReunionHomePage() {
                       size="sm"
                       className="rounded-full"
                       onClick={submitEvent}
-                      disabled={postEvent.isPending || !evTitle.trim() || !evStart}
+                      disabled={
+                        postEvent.isPending ||
+                        updateEvent.isPending ||
+                        !evTitle.trim() ||
+                        !evStart
+                      }
                     >
-                      Add event
+                      {editingEventId !== null ? "Save changes" : "Add event"}
                     </Button>
                     <Button
                       size="sm"
@@ -994,14 +1109,24 @@ export default function ReunionHomePage() {
                     <div className="flex items-start justify-between gap-2">
                       <p className="font-medium text-sm">{ev.title}</p>
                       {canManage && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-destructive shrink-0 -mt-1 -mr-1"
-                          onClick={() => deleteEvent.mutate(ev.id)}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
+                        <div className="flex items-center shrink-0 -mt-1 -mr-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => openEditEvent(ev)}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-destructive"
+                            onClick={() => deleteEvent.mutate(ev.id)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
                       )}
                     </div>
                     <p className="text-xs font-medium text-primary">
