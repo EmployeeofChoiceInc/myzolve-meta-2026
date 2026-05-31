@@ -12,7 +12,14 @@ import {
   type CirclePost,
 } from "@/hooks/use-api";
 import { ReactionBar, CommentsSection } from "@/components/post-interactions";
-import { useGetCircle, getGetCircleQueryKey, customFetch } from "@workspace/api-client-react";
+import {
+  useGetCircle,
+  getGetCircleQueryKey,
+  useListOrgAnnouncements,
+  getListOrgAnnouncementsQueryKey,
+  customFetch,
+  type OrgAnnouncement,
+} from "@workspace/api-client-react";
 import {
   ArrowLeft,
   PenSquare,
@@ -25,6 +32,7 @@ import {
   ImagePlus,
   X,
   Video as VideoIcon,
+  Megaphone,
 } from "lucide-react";
 import { VoiceRecorder } from "@/components/voice-recorder";
 import { MediaAttachmentList } from "@/components/media-attachment-display";
@@ -136,6 +144,26 @@ function PostCard({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function AnnouncementBanner({ ann }: { ann: OrgAnnouncement }) {
+  return (
+    <div className="rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-4 flex gap-3">
+      <Megaphone className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+      <div className="min-w-0">
+        {ann.title && (
+          <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">{ann.title}</p>
+        )}
+        <p className="text-sm text-amber-800 dark:text-amber-300 whitespace-pre-wrap leading-relaxed">
+          {ann.body}
+        </p>
+        <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
+          {ann.authorName ? `${ann.authorName} · ` : ""}
+          {formatDistanceToNow(new Date(ann.createdAt), { addSuffix: true })}
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -606,6 +634,14 @@ export default function WallPage() {
 
   const isAdmin = circle?.myRole === "owner" || circle?.myRole === "admin";
 
+  const orgId = circle?.isOrgMain && circle?.orgId ? circle.orgId : null;
+  const { data: announcements } = useListOrgAnnouncements(orgId ?? 0, {
+    query: {
+      enabled: !!orgId,
+      queryKey: getListOrgAnnouncementsQueryKey(orgId ?? 0),
+    },
+  });
+
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in duration-500">
       <div className="flex items-center gap-2">
@@ -626,6 +662,17 @@ export default function WallPage() {
           <PenSquare className="w-4 h-4" /> New Post
         </Button>
       </div>
+
+      {announcements && announcements.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+            <Megaphone className="w-3.5 h-3.5" /> Announcements
+          </p>
+          {announcements.map((ann) => (
+            <AnnouncementBanner key={ann.id} ann={ann} />
+          ))}
+        </div>
+      )}
 
       {isLoading ? (
         <div className="space-y-4">

@@ -471,6 +471,8 @@ personal circle. Org-owned circles inherit org branding.
    * @nullable
    */
   orgAccentColor?: string | null;
+  /** True if this is the primary (auto-created) circle for its organization. */
+  isOrgMain?: boolean;
   createdAt: string;
 }
 

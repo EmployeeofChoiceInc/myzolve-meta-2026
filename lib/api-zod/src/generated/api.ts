@@ -606,6 +606,12 @@ export const ListCirclesResponseItem = zod.object({
     .string()
     .nullish()
     .describe("Accent color of the owning organization, when set."),
+  isOrgMain: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True if this is the primary (auto-created) circle for its organization.",
+    ),
   createdAt: zod.coerce.date(),
 });
 export const ListCirclesResponse = zod.array(ListCirclesResponseItem);
@@ -718,6 +724,12 @@ export const GetCircleResponse = zod.object({
     .string()
     .nullish()
     .describe("Accent color of the owning organization, when set."),
+  isOrgMain: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True if this is the primary (auto-created) circle for its organization.",
+    ),
   createdAt: zod.coerce.date(),
 });
 
@@ -826,6 +838,12 @@ export const UpdateCircleResponse = zod.object({
     .string()
     .nullish()
     .describe("Accent color of the owning organization, when set."),
+  isOrgMain: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True if this is the primary (auto-created) circle for its organization.",
+    ),
   createdAt: zod.coerce.date(),
 });
 
@@ -970,6 +988,12 @@ export const ApplyForCircleVerificationResponse = zod.object({
     .string()
     .nullish()
     .describe("Accent color of the owning organization, when set."),
+  isOrgMain: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True if this is the primary (auto-created) circle for its organization.",
+    ),
   createdAt: zod.coerce.date(),
 });
 
@@ -1090,6 +1114,12 @@ export const DecideCircleVerificationResponse = zod.object({
     .string()
     .nullish()
     .describe("Accent color of the owning organization, when set."),
+  isOrgMain: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True if this is the primary (auto-created) circle for its organization.",
+    ),
   createdAt: zod.coerce.date(),
 });
 
