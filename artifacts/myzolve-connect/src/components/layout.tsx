@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Heart, Home, Users, Bell, Settings, LogOut, Menu, Check, Compass, MessageCircle, Star, Flag, X as XIcon, UserPlus2, Search, Building2 } from "lucide-react";
+import { Heart, Home, Users, Bell, Settings, LogOut, Menu, Check, Compass, MessageCircle, Star, Flag, X as XIcon, UserPlus2, Search, Building2, Gift } from "lucide-react";
 import { useClerk, useUser } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -15,6 +15,7 @@ import {
   useMyPlusStatus,
   useAcceptConnection,
   useDeclineConnection,
+  useAdminCheck,
   type Notification,
 } from "@/hooks/use-api";
 import { PlusBadge } from "@/components/plus-badge";
@@ -414,6 +415,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const unreadMessages = (inbox ?? []).reduce((acc, t) => acc + t.unreadCount, 0);
   const { data: plusStatus } = useMyPlusStatus();
   const isPlus = !!plusStatus?.isPlus;
+  const { data: adminCheck } = useAdminCheck();
+  const isAdmin = !!adminCheck?.ok;
 
   type NavItem = {
     icon: typeof Home;
@@ -432,6 +435,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { icon: MessageCircle, label: "Messages", href: "/messages", badge: unreadMessages },
     { icon: Star, label: "Plus", href: "/plus", plus: true },
     { icon: Building2, label: "Organizations", href: "/orgs" },
+    ...(isAdmin
+      ? [{ icon: Gift, label: "Comps", href: "/admin/comps" } as NavItem]
+      : []),
   ];
 
   const NavLinks = () => (

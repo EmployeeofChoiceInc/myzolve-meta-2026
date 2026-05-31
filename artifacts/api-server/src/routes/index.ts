@@ -25,6 +25,7 @@ import wrapupsRouter from "./wrapups";
 import ledgerProRouter from "./ledgerPro";
 import orgsRouter from "./orgs";
 import circleBuilderRouter from "./circleBuilder";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -54,5 +55,6 @@ router.use(wrapupsRouter);
 router.use(ledgerProRouter);
 router.use(orgsRouter);
 router.use(circleBuilderRouter);
+router.use(adminRouter);
 
 export default router;

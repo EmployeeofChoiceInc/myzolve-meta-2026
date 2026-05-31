@@ -10,24 +10,9 @@ import {
 } from "@workspace/db";
 import { desc, eq } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { isProgramAdmin } from "../lib/admin";
 
 const router = Router();
-
-/**
- * Returns true if the requesting user's email matches the configured
- * admin allow-list. We reuse the same comma-separated
- * `VERIFICATION_ADMIN_EMAIL` env var the MyZolve team already uses for the
- * verified-circle queue rather than introduce a separate secret.
- */
-function isProgramAdmin(email: string | null | undefined): boolean {
-  const raw = process.env["VERIFICATION_ADMIN_EMAIL"];
-  if (!raw || !email) return false;
-  const allowed = raw
-    .split(",")
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
-  return allowed.includes(email.toLowerCase());
-}
 
 const applicationIdParam = z.object({
   id: z.coerce.number().int().positive(),

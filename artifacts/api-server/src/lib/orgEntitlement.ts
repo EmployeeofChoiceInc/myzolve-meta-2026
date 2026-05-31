@@ -1,5 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db, orgsTable, orgMembersTable, usersTable, type Org } from "@workspace/db";
+import { getActiveOrgCompIds } from "./comps";
 
 /**
  * After an org payment fails we keep members' Plus alive for this long before
@@ -70,8 +71,17 @@ export async function getOrgEntitlement(
     );
 
   const now = new Date();
+  // A comped org's seat pool is treated as live even when its Stripe status
+  // isn't active/past_due — that's the whole point of a complimentary org grant.
+  const compedOrgIds = await getActiveOrgCompIds(
+    rows.map((r) => r.orgId),
+    now,
+  );
   for (const row of rows) {
-    if (isOrgSeatActive({ status: row.status, graceEndsAt: row.graceEndsAt }, now)) {
+    if (
+      compedOrgIds.has(row.orgId) ||
+      isOrgSeatActive({ status: row.status, graceEndsAt: row.graceEndsAt }, now)
+    ) {
       return {
         orgId: row.orgId,
         orgName: row.orgName,

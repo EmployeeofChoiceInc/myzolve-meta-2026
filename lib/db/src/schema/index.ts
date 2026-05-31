@@ -18,3 +18,4 @@ export * from "./copilot";
 export * from "./wrapups";
 export * from "./orgs";
 export * from "./circleBuilder";
+export * from "./comps";

@@ -12,6 +12,7 @@ import {
 } from "@workspace/db";
 import { logger } from "./logger";
 import { getOrgEntitlement } from "./orgEntitlement";
+import { getActiveUserComp, hasActiveUserComp } from "./comps";
 
 /**
  * Hard cap on the number of family members that receive derived Plus from
@@ -365,14 +366,17 @@ export async function isPlus(userId: string): Promise<boolean> {
   if (await isPlusDirect(userId)) return true;
   const derived = await getDerivedPlusInfo(userId);
   if (derived !== null) return true;
-  // Enterprise org members are treated as Plus while their seat is active.
+  // A direct complimentary grant (admin "comp") counts as Plus.
+  if (await hasActiveUserComp(userId)) return true;
+  // Enterprise org members are treated as Plus while their seat is active
+  // (getOrgEntitlement also honors org-level comps).
   const org = await getOrgEntitlement(userId);
   return org !== null;
 }
 
 export type PlusStatus = {
   isPlus: boolean;
-  source: "direct" | "family" | "org" | "none";
+  source: "direct" | "family" | "org" | "comp" | "none";
   planKind: "solo" | "family";
   familyCircleId: number | null;
   familyCircleMemberCount: number | null;
@@ -385,6 +389,9 @@ export type PlusStatus = {
   // (or simply to surface "Member of [Org]" regardless of Plus source).
   orgId: number | null;
   orgName: string | null;
+  // When `source` is "comp", the cutoff at which the complimentary grant
+  // expires. Null means the comp is indefinite (no end date).
+  compExpiresAt: string | null;
 };
 
 /**
@@ -428,6 +435,7 @@ export async function getPlusStatus(user: {
       graceUntil: null,
       orgId: org?.orgId ?? null,
       orgName: org?.orgName ?? null,
+      compExpiresAt: null,
     };
   }
 
@@ -446,6 +454,26 @@ export async function getPlusStatus(user: {
       graceUntil: derived.graceUntil ? derived.graceUntil.toISOString() : null,
       orgId: org?.orgId ?? null,
       orgName: org?.orgName ?? null,
+      compExpiresAt: null,
+    };
+  }
+
+  const userComp = await getActiveUserComp(user.clerkId);
+  if (userComp) {
+    return {
+      isPlus: true,
+      source: "comp",
+      planKind: user.planKind === "family" ? "family" : "solo",
+      familyCircleId: user.familyCircleId ?? null,
+      familyCircleMemberCount,
+      familyCircleMemberCap: FAMILY_PLAN_MEMBER_CAP,
+      gifterUserId: null,
+      gifterName: null,
+      gifterCircleId: null,
+      graceUntil: null,
+      orgId: org?.orgId ?? null,
+      orgName: org?.orgName ?? null,
+      compExpiresAt: userComp.expiresAt ? userComp.expiresAt.toISOString() : null,
     };
   }
 
@@ -463,6 +491,7 @@ export async function getPlusStatus(user: {
       graceUntil: null,
       orgId: org.orgId,
       orgName: org.orgName,
+      compExpiresAt: null,
     };
   }
 
@@ -479,5 +508,6 @@ export async function getPlusStatus(user: {
     graceUntil: null,
     orgId: null,
     orgName: null,
+    compExpiresAt: null,
   };
 }

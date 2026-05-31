@@ -8,6 +8,7 @@
     "seed:revenuecat": "tsx ./src/seedRevenueCat.ts",
     "seed:org-products": "tsx ./src/seedOrgProducts.ts",
     "verify:circle": "tsx ./src/verifyCircle.ts",
+    "comp": "tsx ./src/comp.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

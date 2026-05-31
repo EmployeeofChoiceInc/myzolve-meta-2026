@@ -699,7 +699,7 @@ export function useCircleMediaUpload(circleId: number) {
 // Plus suite — status, plan management, verification, ledger pro, media
 // ---------------------------------------------------------------------------
 
-export type PlusSource = "direct" | "family" | "none";
+export type PlusSource = "direct" | "family" | "org" | "comp" | "none";
 export type PlanKind = "solo" | "family";
 
 export interface PlusStatus {
@@ -713,6 +713,9 @@ export interface PlusStatus {
   gifterName?: string | null;
   gifterCircleId?: number | null;
   graceUntil?: string | null;
+  orgId?: number | null;
+  orgName?: string | null;
+  compExpiresAt?: string | null;
 }
 
 export const PLUS_STATUS_KEY = ["/api/me/plus-status"] as const;
@@ -736,6 +739,99 @@ export function useUpdateMyPlusPlan() {
     onSuccess: (status) => {
       qc.setQueryData(PLUS_STATUS_KEY, status);
       qc.invalidateQueries({ queryKey: ["/api/me"] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Admin — complimentary access ("comp") management (program admins only)
+// ---------------------------------------------------------------------------
+
+export interface Comp {
+  id: number;
+  targetType: "user" | "org";
+  userId: number | null;
+  orgId: number | null;
+  userEmail: string | null;
+  userName: string | null;
+  orgName: string | null;
+  reason: string | null;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  grantedByUserId: number | null;
+  grantedByName: string | null;
+  active: boolean;
+  createdAt: string;
+}
+
+export const COMPS_KEY = ["/api/admin/comps"] as const;
+
+/**
+ * Probe that resolves when the caller is a program admin and rejects (403)
+ * otherwise. Used to gate the admin page and nav link.
+ */
+export function useAdminCheck() {
+  return useQuery({
+    queryKey: ["/api/admin/check"],
+    queryFn: () => customFetch<{ ok: boolean }>("/api/admin/check"),
+    retry: false,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useComps(enabled = true) {
+  return useQuery({
+    queryKey: COMPS_KEY,
+    queryFn: () => customFetch<Comp[]>("/api/admin/comps"),
+    enabled,
+    retry: false,
+  });
+}
+
+export function useGrantUserComp() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      email: string;
+      durationDays?: number | null;
+      reason?: string | null;
+    }) =>
+      customFetch<Comp>("/api/admin/comps/user", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: COMPS_KEY });
+    },
+  });
+}
+
+export function useGrantOrgComp() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      orgId?: number;
+      ownerEmail?: string;
+      durationDays?: number | null;
+      reason?: string | null;
+    }) =>
+      customFetch<Comp>("/api/admin/comps/org", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: COMPS_KEY });
+    },
+  });
+}
+
+export function useRevokeComp() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) =>
+      customFetch<Comp>(`/api/admin/comps/${id}/revoke`, { method: "POST" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: COMPS_KEY });
     },
   });
 }

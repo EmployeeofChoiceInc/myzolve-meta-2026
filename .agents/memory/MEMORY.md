@@ -6,3 +6,4 @@
 - [api-server runs a built bundle](api-server-build-not-watch.md) — workflow does `build && start` (not watch); restart it after editing api-server src or new routes won't load.
 - [Clerk session token has no email](clerk-email-not-in-session.md) — sessionClaims lacks `email`, so users get `@unknown.com`; fetch real email via `clerkClient.users.getUser`.
 - [Email sending transport](email-transport.md) — sendEmail uses the Gmail (google-mail) connector by default, not Resend; EMAIL_FROM = connected Google account.
+- [MyZolve admin identity](myzolve-admin-identity.md) — admin = VERIFICATION_ADMIN_EMAIL env allow-list (no isAdmin column, no /me flag); web detects via GET /admin/check.
