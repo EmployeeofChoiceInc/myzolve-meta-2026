@@ -36,6 +36,8 @@ import {
   usePostOrgAnnouncement,
   usePostOrgEvent,
   useRsvpOrgEvent,
+  useUpdateOrgAnnouncement,
+  useUpdateOrgEvent,
   useUpdateOrgProfile,
   type LocalOrgImage,
   type OrgEvent,
@@ -484,8 +486,10 @@ export default function ReunionHomeScreen() {
   const createSubCircle = useCreateSubCircle(orgId);
   const updateProfile = useUpdateOrgProfile(orgId);
   const postAnnouncement = usePostOrgAnnouncement(orgId);
+  const updateAnnouncement = useUpdateOrgAnnouncement(orgId);
   const deleteAnnouncement = useDeleteOrgAnnouncement(orgId);
   const postEvent = usePostOrgEvent(orgId);
+  const updateEvent = useUpdateOrgEvent(orgId);
   const deleteEvent = useDeleteOrgEvent(orgId);
   const coverUpload = useOrgImageUpload(orgId);
 
@@ -499,13 +503,15 @@ export default function ReunionHomeScreen() {
   const [heroDate, setHeroDate] = useState<Date | null>(null);
   const [coverUploading, setCoverUploading] = useState(false);
 
-  // Announcement compose
+  // Announcement compose / edit (editingAnnId === null → creating)
   const [announceOpen, setAnnounceOpen] = useState(false);
+  const [editingAnnId, setEditingAnnId] = useState<number | null>(null);
   const [annTitle, setAnnTitle] = useState("");
   const [annBody, setAnnBody] = useState("");
 
-  // Event compose
+  // Event compose / edit (editingEventId === null → creating)
   const [eventOpen, setEventOpen] = useState(false);
+  const [editingEventId, setEditingEventId] = useState<number | null>(null);
   const [evTitle, setEvTitle] = useState("");
   const [evDesc, setEvDesc] = useState("");
   const [evLocation, setEvLocation] = useState("");
@@ -599,19 +605,53 @@ export default function ReunionHomeScreen() {
     });
   }
 
+  function openNewAnnouncement() {
+    setEditingAnnId(null);
+    setAnnTitle("");
+    setAnnBody("");
+    setAnnounceOpen(true);
+  }
+
+  function openEditAnnouncement(a: {
+    id: number;
+    title: string | null;
+    body: string;
+  }) {
+    setEditingAnnId(a.id);
+    setAnnTitle(a.title ?? "");
+    setAnnBody(a.body);
+    setAnnounceOpen(true);
+  }
+
   function submitAnnouncement() {
     if (!annBody.trim()) {
       Alert.alert("Add a message", "Please write something to share.");
       return;
     }
+    const onDone = () => {
+      setEditingAnnId(null);
+      setAnnTitle("");
+      setAnnBody("");
+      setAnnounceOpen(false);
+    };
+    if (editingAnnId !== null) {
+      updateAnnouncement.mutate(
+        {
+          announcementId: editingAnnId,
+          title: annTitle.trim() || null,
+          body: annBody.trim(),
+        },
+        {
+          onSuccess: onDone,
+          onError: () => Alert.alert("Couldn't save", "Please try again."),
+        },
+      );
+      return;
+    }
     postAnnouncement.mutate(
       { title: annTitle.trim() || null, body: annBody.trim() },
       {
-        onSuccess: () => {
-          setAnnTitle("");
-          setAnnBody("");
-          setAnnounceOpen(false);
-        },
+        onSuccess: onDone,
         onError: () => Alert.alert("Couldn't post", "Please try again."),
       },
     );
@@ -632,6 +672,26 @@ export default function ReunionHomeScreen() {
     ]);
   }
 
+  function openNewEvent() {
+    setEditingEventId(null);
+    setEvTitle("");
+    setEvDesc("");
+    setEvLocation("");
+    setEvStart(null);
+    setEvEnd(null);
+    setEventOpen(true);
+  }
+
+  function openEditEvent(ev: OrgEvent) {
+    setEditingEventId(ev.id);
+    setEvTitle(ev.title);
+    setEvDesc(ev.description ?? "");
+    setEvLocation(ev.location ?? "");
+    setEvStart(ev.startsAt ? new Date(ev.startsAt) : null);
+    setEvEnd(ev.endsAt ? new Date(ev.endsAt) : null);
+    setEventOpen(true);
+  }
+
   function submitEvent() {
     if (!evTitle.trim()) {
       Alert.alert("Add a title", "Your event needs a title.");
@@ -645,6 +705,32 @@ export default function ReunionHomeScreen() {
       Alert.alert("Check the times", "The end can't be before the start.");
       return;
     }
+    const onDone = () => {
+      setEditingEventId(null);
+      setEvTitle("");
+      setEvDesc("");
+      setEvLocation("");
+      setEvStart(null);
+      setEvEnd(null);
+      setEventOpen(false);
+    };
+    if (editingEventId !== null) {
+      updateEvent.mutate(
+        {
+          eventId: editingEventId,
+          title: evTitle.trim(),
+          description: evDesc.trim() || null,
+          location: evLocation.trim() || null,
+          startsAt: evStart.toISOString(),
+          endsAt: evEnd ? evEnd.toISOString() : null,
+        },
+        {
+          onSuccess: onDone,
+          onError: () => Alert.alert("Couldn't save event", "Please try again."),
+        },
+      );
+      return;
+    }
     postEvent.mutate(
       {
         title: evTitle.trim(),
@@ -654,14 +740,7 @@ export default function ReunionHomeScreen() {
         endsAt: evEnd ? evEnd.toISOString() : null,
       },
       {
-        onSuccess: () => {
-          setEvTitle("");
-          setEvDesc("");
-          setEvLocation("");
-          setEvStart(null);
-          setEvEnd(null);
-          setEventOpen(false);
-        },
+        onSuccess: onDone,
         onError: () =>
           Alert.alert("Couldn't create event", "Please try again."),
       },
@@ -866,7 +945,7 @@ export default function ReunionHomeScreen() {
                   canManage ? (
                     <IconButton
                       icon="plus"
-                      onPress={() => setAnnounceOpen(true)}
+                      onPress={openNewAnnouncement}
                       bg={c.primary}
                       color="#fff"
                       size={36}
@@ -897,14 +976,24 @@ export default function ReunionHomeScreen() {
                           </AppText>
                         </View>
                         {canManage ? (
-                          <IconButton
-                            icon="trash-2"
-                            onPress={() => confirmDeleteAnnouncement(a.id)}
-                            color={c.destructive}
-                            size={32}
-                            testID={`delete-announcement-${a.id}`}
-                            accessibilityLabel="Delete announcement"
-                          />
+                          <Row gap={2} align="center">
+                            <IconButton
+                              icon="edit-2"
+                              onPress={() => openEditAnnouncement(a)}
+                              color={c.primary}
+                              size={32}
+                              testID={`edit-announcement-${a.id}`}
+                              accessibilityLabel="Edit announcement"
+                            />
+                            <IconButton
+                              icon="trash-2"
+                              onPress={() => confirmDeleteAnnouncement(a.id)}
+                              color={c.destructive}
+                              size={32}
+                              testID={`delete-announcement-${a.id}`}
+                              accessibilityLabel="Delete announcement"
+                            />
+                          </Row>
                         ) : null}
                       </Row>
                       <AppText style={{ lineHeight: 20 }}>{a.body}</AppText>
@@ -919,7 +1008,7 @@ export default function ReunionHomeScreen() {
                 action={
                   <IconButton
                     icon="plus"
-                    onPress={() => setAnnounceOpen(true)}
+                    onPress={openNewAnnouncement}
                     bg={c.primary}
                     color="#fff"
                     size={36}
@@ -1098,7 +1187,7 @@ export default function ReunionHomeScreen() {
                 canManage ? (
                   <IconButton
                     icon="plus"
-                    onPress={() => setEventOpen(true)}
+                    onPress={openNewEvent}
                     bg={c.primary}
                     color="#fff"
                     size={36}
@@ -1120,14 +1209,24 @@ export default function ReunionHomeScreen() {
                         <EventRow ev={ev} orgId={orgId} />
                       </View>
                       {canManage ? (
-                        <IconButton
-                          icon="trash-2"
-                          onPress={() => confirmDeleteEvent(ev.id)}
-                          color={c.destructive}
-                          size={32}
-                          testID={`delete-event-${ev.id}`}
-                          accessibilityLabel="Delete event"
-                        />
+                        <View style={{ gap: 2 }}>
+                          <IconButton
+                            icon="edit-2"
+                            onPress={() => openEditEvent(ev)}
+                            color={c.primary}
+                            size={32}
+                            testID={`edit-event-${ev.id}`}
+                            accessibilityLabel="Edit event"
+                          />
+                          <IconButton
+                            icon="trash-2"
+                            onPress={() => confirmDeleteEvent(ev.id)}
+                            color={c.destructive}
+                            size={32}
+                            testID={`delete-event-${ev.id}`}
+                            accessibilityLabel="Delete event"
+                          />
+                        </View>
                       ) : null}
                     </Row>
                   ))}
@@ -1405,7 +1504,9 @@ export default function ReunionHomeScreen() {
             <Pressable onPress={() => setAnnounceOpen(false)}>
               <AppText color={c.mutedForeground}>Cancel</AppText>
             </Pressable>
-            <AppText weight="semibold">New announcement</AppText>
+            <AppText weight="semibold">
+              {editingAnnId !== null ? "Edit announcement" : "New announcement"}
+            </AppText>
             <View style={{ width: 50 }} />
           </Row>
           <KeyboardAwareScrollView
@@ -1431,9 +1532,9 @@ export default function ReunionHomeScreen() {
               />
             </Field>
             <Button
-              title="Post announcement"
+              title={editingAnnId !== null ? "Save changes" : "Post announcement"}
               onPress={submitAnnouncement}
-              loading={postAnnouncement.isPending}
+              loading={postAnnouncement.isPending || updateAnnouncement.isPending}
               testID="button-submit-announcement"
               style={{ marginTop: 16 }}
             />
@@ -1462,7 +1563,9 @@ export default function ReunionHomeScreen() {
             <Pressable onPress={() => setEventOpen(false)}>
               <AppText color={c.mutedForeground}>Cancel</AppText>
             </Pressable>
-            <AppText weight="semibold">New event</AppText>
+            <AppText weight="semibold">
+              {editingEventId !== null ? "Edit event" : "New event"}
+            </AppText>
             <View style={{ width: 50 }} />
           </Row>
           <KeyboardAwareScrollView
@@ -1523,9 +1626,9 @@ export default function ReunionHomeScreen() {
               />
             </Field>
             <Button
-              title="Create event"
+              title={editingEventId !== null ? "Save changes" : "Create event"}
               onPress={submitEvent}
-              loading={postEvent.isPending}
+              loading={postEvent.isPending || updateEvent.isPending}
               testID="button-submit-event"
               style={{ marginTop: 16 }}
             />

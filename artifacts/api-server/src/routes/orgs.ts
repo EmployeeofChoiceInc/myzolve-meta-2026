@@ -93,11 +93,24 @@ const createAnnouncementSchema = z.object({
   body: z.string().min(1).max(5000),
 });
 
+const updateAnnouncementSchema = z.object({
+  title: z.string().max(160).nullable().optional(),
+  body: z.string().min(1).max(5000).optional(),
+});
+
 const createEventSchema = z.object({
   title: z.string().min(1).max(160),
   description: z.string().max(5000).nullable().optional(),
   location: z.string().max(300).nullable().optional(),
   startsAt: z.string().datetime(),
+  endsAt: z.string().datetime().nullable().optional(),
+});
+
+const updateEventSchema = z.object({
+  title: z.string().min(1).max(160).optional(),
+  description: z.string().max(5000).nullable().optional(),
+  location: z.string().max(300).nullable().optional(),
+  startsAt: z.string().datetime().optional(),
   endsAt: z.string().datetime().nullable().optional(),
 });
 
@@ -1116,6 +1129,78 @@ router.post(
   },
 );
 
+// PATCH /orgs/:orgId/announcements/:announcementId — edit one (admin).
+router.patch(
+  "/orgs/:orgId/announcements/:announcementId",
+  requireAuth,
+  validateParams(orgAnnouncementIdParam),
+  validateBody(updateAnnouncementSchema),
+  async (req, res) => {
+    const orgId = Number(req.params.orgId);
+    const announcementId = Number(req.params.announcementId);
+    const admin = await requireOrgAdmin(req, res, orgId);
+    if (!admin) return;
+    const body = req.body as z.infer<typeof updateAnnouncementSchema>;
+
+    const updates: Partial<typeof orgAnnouncementsTable.$inferInsert> = {};
+    if (body.title !== undefined) updates.title = body.title ?? null;
+    if (body.body !== undefined) updates.body = body.body.trim();
+    if (Object.keys(updates).length === 0) {
+      res.status(400).json({ error: "Nothing to update" });
+      return;
+    }
+
+    const existing = await db
+      .select({
+        id: orgAnnouncementsTable.id,
+        authorUserId: orgAnnouncementsTable.authorUserId,
+      })
+      .from(orgAnnouncementsTable)
+      .where(
+        and(
+          eq(orgAnnouncementsTable.id, announcementId),
+          eq(orgAnnouncementsTable.orgId, orgId),
+        ),
+      )
+      .limit(1)
+      .then((r) => r[0] ?? null);
+    if (!existing) {
+      res.status(404).json({ error: "Announcement not found" });
+      return;
+    }
+
+    const [row] = await db
+      .update(orgAnnouncementsTable)
+      .set(updates)
+      .where(
+        and(
+          eq(orgAnnouncementsTable.id, announcementId),
+          eq(orgAnnouncementsTable.orgId, orgId),
+        ),
+      )
+      .returning();
+
+    const author = await db
+      .select({
+        displayName: usersTable.displayName,
+        avatarObjectPath: usersTable.avatarObjectPath,
+      })
+      .from(usersTable)
+      .where(eq(usersTable.id, row.authorUserId))
+      .limit(1)
+      .then((r) => r[0] ?? null);
+
+    res.json({
+      id: row.id,
+      title: row.title,
+      body: row.body,
+      createdAt: row.createdAt,
+      authorName: author?.displayName ?? null,
+      authorAvatarObjectPath: author?.avatarObjectPath ?? null,
+    });
+  },
+);
+
 // DELETE /orgs/:orgId/announcements/:announcementId — remove one (admin).
 router.delete(
   "/orgs/:orgId/announcements/:announcementId",
@@ -1164,6 +1249,73 @@ router.post(
       })
       .returning();
     res.status(201).json({
+      id: row.id,
+      title: row.title,
+      description: row.description,
+      location: row.location,
+      startsAt: row.startsAt,
+      endsAt: row.endsAt,
+    });
+  },
+);
+
+// PATCH /orgs/:orgId/events/:eventId — edit an event (admin).
+router.patch(
+  "/orgs/:orgId/events/:eventId",
+  requireAuth,
+  validateParams(orgEventIdParam),
+  validateBody(updateEventSchema),
+  async (req, res) => {
+    const orgId = Number(req.params.orgId);
+    const eventId = Number(req.params.eventId);
+    const admin = await requireOrgAdmin(req, res, orgId);
+    if (!admin) return;
+    const body = req.body as z.infer<typeof updateEventSchema>;
+
+    const existing = await db
+      .select()
+      .from(orgEventsTable)
+      .where(
+        and(eq(orgEventsTable.id, eventId), eq(orgEventsTable.orgId, orgId)),
+      )
+      .limit(1)
+      .then((r) => r[0] ?? null);
+    if (!existing) {
+      res.status(404).json({ error: "Event not found" });
+      return;
+    }
+
+    const updates: Partial<typeof orgEventsTable.$inferInsert> = {};
+    if (body.title !== undefined) updates.title = body.title.trim();
+    if (body.description !== undefined)
+      updates.description = body.description ?? null;
+    if (body.location !== undefined) updates.location = body.location ?? null;
+    if (body.startsAt !== undefined) updates.startsAt = new Date(body.startsAt);
+    if (body.endsAt !== undefined)
+      updates.endsAt = body.endsAt ? new Date(body.endsAt) : null;
+    if (Object.keys(updates).length === 0) {
+      res.status(400).json({ error: "Nothing to update" });
+      return;
+    }
+
+    // Guard against an end that lands before the start (using the resulting
+    // values, whether they came from the patch or the stored row).
+    const resultStart = updates.startsAt ?? existing.startsAt;
+    const resultEnd =
+      updates.endsAt !== undefined ? updates.endsAt : existing.endsAt;
+    if (resultEnd && resultEnd.getTime() < resultStart.getTime()) {
+      res.status(400).json({ error: "The event can't end before it starts." });
+      return;
+    }
+
+    const [row] = await db
+      .update(orgEventsTable)
+      .set(updates)
+      .where(
+        and(eq(orgEventsTable.id, eventId), eq(orgEventsTable.orgId, orgId)),
+      )
+      .returning();
+    res.json({
       id: row.id,
       title: row.title,
       description: row.description,
