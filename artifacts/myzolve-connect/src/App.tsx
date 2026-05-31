@@ -44,6 +44,7 @@ import OrgInviteAcceptPage from "@/pages/org-invite-accept";
 import CircleBuilderPage from "@/pages/circle-builder";
 import AdminCircleBuildersPage from "@/pages/admin-circle-builders";
 import AdminCompsPage from "@/pages/admin-comps";
+import AdminHubPage from "@/pages/admin-hub";
 
 const queryClient = new QueryClient();
 
@@ -171,6 +172,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/privacy" component={PrivacyPage} />
           <Route path="/terms" component={TermsPage} />
           <Route path="/circle-builder" component={CircleBuilderPage} />
+          <Route path="/admin"><ProtectedRoute component={AdminHubPage} /></Route>
           <Route path="/admin/circle-builders"><ProtectedRoute component={AdminCircleBuildersPage} /></Route>
           <Route path="/admin/comps"><ProtectedRoute component={AdminCompsPage} /></Route>
           <Route path="/dashboard"><ProtectedRoute component={DashboardPage} /></Route>

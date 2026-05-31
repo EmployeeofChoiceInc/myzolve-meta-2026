@@ -858,6 +858,85 @@ export function useApplyCircleVerification(circleId: number) {
   });
 }
 
+// ---- Admin: Verification queue -------------------------------------------
+
+export interface VerificationApplication {
+  circleId: number;
+  circleName: string;
+  ownerId: number | null;
+  ownerName: string | null;
+  ownerEmail: string | null;
+  appliedAt: string | null;
+  legalName: string | null;
+  orgType: string | null;
+  description: string | null;
+  contactEmail: string | null;
+  supportingUrl: string | null;
+}
+
+const VERIF_QUEUE_KEY = ["/api/admin/circles/verifications"] as const;
+
+export function useVerificationQueue() {
+  return useQuery({
+    queryKey: VERIF_QUEUE_KEY,
+    queryFn: () => customFetch<VerificationApplication[]>("/api/admin/circles/verifications"),
+    retry: false,
+  });
+}
+
+export function useVerificationDecision() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      circleId,
+      decision,
+      reason,
+    }: {
+      circleId: number;
+      decision: "approve" | "reject";
+      reason?: string;
+    }) =>
+      customFetch(`/api/admin/circles/${circleId}/verification/decision`, {
+        method: "POST",
+        body: JSON.stringify({ decision, reason }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: VERIF_QUEUE_KEY });
+    },
+  });
+}
+
+// ---- Admin: User management -----------------------------------------------
+
+export interface AdminUser {
+  id: number;
+  displayName: string;
+  email: string | null;
+  createdAt: string;
+  planKind: string | null;
+}
+
+export function useAdminUserSearch(q: string) {
+  return useQuery({
+    queryKey: ["/api/admin/users/search", q] as const,
+    queryFn: () =>
+      customFetch<AdminUser[]>(`/api/admin/users/search?q=${encodeURIComponent(q)}`),
+    enabled: q.trim().length >= 2,
+    retry: false,
+  });
+}
+
+export function useAdminDeleteUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: number) =>
+      customFetch(`/api/admin/users/${userId}`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.removeQueries({ queryKey: ["/api/admin/users/search"] });
+    },
+  });
+}
+
 // ---- Ledger Pro ----------------------------------------------------------
 
 export interface LedgerProMonth {

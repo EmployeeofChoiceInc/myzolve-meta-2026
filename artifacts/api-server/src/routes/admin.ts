@@ -1,18 +1,23 @@
 import { Router } from "express";
 import { z } from "zod";
-import { and, desc, eq, gt, inArray, isNull, or } from "drizzle-orm";
+import { randomBytes } from "node:crypto";
+import { clerkClient } from "@clerk/express";
+import { and, asc, desc, eq, gt, ilike, inArray, isNull, ne, or } from "drizzle-orm";
 import {
   db,
   compsTable,
   usersTable,
   orgsTable,
   orgMembersTable,
+  circlesTable,
+  circleMembersTable,
   type Comp,
 } from "@workspace/db";
 import { requireAuth } from "../middlewares/requireAuth";
 import { requireAdmin } from "../middlewares/requireAdmin";
-import { validateBody, validateParams } from "../middlewares/validate";
+import { validateBody, validateParams, validateQuery } from "../middlewares/validate";
 import { bustIsPlusCache } from "../lib/revenuecat";
+import { ObjectStorageService } from "../lib/objectStorage";
 import { logger } from "../lib/logger";
 
 const router = Router();
@@ -360,6 +365,153 @@ router.post(
       "admin revoked comp",
     );
     res.json(compToApi(updated!));
+  },
+);
+
+// ── Admin: User search ──────────────────────────────────────────────────────
+
+const adminUserSearchSchema = z.object({
+  q: z.string().trim().min(1).max(100),
+});
+
+router.get(
+  "/admin/users/search",
+  validateQuery(adminUserSearchSchema),
+  async (req, res) => {
+    const { q } = req.query as { q: string };
+    const lowerQ = q.trim().toLowerCase();
+    const rows = await db
+      .select({
+        id: usersTable.id,
+        displayName: usersTable.displayName,
+        email: usersTable.email,
+        createdAt: usersTable.createdAt,
+        planKind: usersTable.planKind,
+      })
+      .from(usersTable)
+      .where(
+        or(
+          ilike(usersTable.displayName, `%${q}%`),
+          eq(usersTable.email, lowerQ),
+        ),
+      )
+      .orderBy(desc(usersTable.createdAt))
+      .limit(25);
+
+    res.json(
+      rows.map((r) => ({
+        id: r.id,
+        displayName: r.displayName,
+        email: r.email ?? null,
+        createdAt: r.createdAt.toISOString(),
+        planKind: r.planKind ?? null,
+      })),
+    );
+  },
+);
+
+// ── Admin: Force-delete any user ────────────────────────────────────────────
+
+const adminUserIdParam = z.object({
+  userId: z.coerce.number().int().positive(),
+});
+
+router.delete(
+  "/admin/users/:userId",
+  validateParams(adminUserIdParam),
+  async (req, res) => {
+    const { userId } = req.params as unknown as z.infer<typeof adminUserIdParam>;
+
+    if (req.dbUser!.id === userId) {
+      res.status(400).json({ error: "Use DELETE /me to delete your own account." });
+      return;
+    }
+
+    const user = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .limit(1)
+      .then((r) => r[0] ?? null);
+
+    if (!user) {
+      res.status(404).json({ error: "User not found." });
+      return;
+    }
+
+    // 1. Transfer or delete owned circles.
+    const ownedCircles = await db
+      .select({ id: circlesTable.id })
+      .from(circlesTable)
+      .where(eq(circlesTable.ownerId, userId));
+
+    for (const circle of ownedCircles) {
+      const successor = await db
+        .select({ id: circleMembersTable.id, userId: circleMembersTable.userId })
+        .from(circleMembersTable)
+        .where(
+          and(
+            eq(circleMembersTable.circleId, circle.id),
+            eq(circleMembersTable.status, "active"),
+            ne(circleMembersTable.userId, userId),
+          ),
+        )
+        .orderBy(asc(circleMembersTable.joinedAt), asc(circleMembersTable.createdAt))
+        .limit(1)
+        .then((r) => r[0] ?? null);
+
+      if (successor?.userId != null) {
+        await db.transaction(async (tx) => {
+          await tx
+            .update(circlesTable)
+            .set({ ownerId: successor.userId! })
+            .where(eq(circlesTable.id, circle.id));
+          await tx
+            .update(circleMembersTable)
+            .set({ role: "owner" })
+            .where(eq(circleMembersTable.id, successor.id));
+        });
+      } else {
+        await db.delete(circlesTable).where(eq(circlesTable.id, circle.id));
+      }
+    }
+
+    // 2. Best-effort: remove avatar from object storage.
+    if (user.avatarObjectPath) {
+      try {
+        const storage = new ObjectStorageService();
+        const file = await storage.getObjectEntityFile(user.avatarObjectPath);
+        await file.delete({ ignoreNotFound: true });
+      } catch (err) {
+        logger.warn({ err, userId }, "Avatar delete failed during admin user deletion");
+      }
+    }
+
+    // 3. Delete from Clerk (revokes all active sessions).
+    try {
+      await clerkClient.users.deleteUser(user.clerkId);
+    } catch (err) {
+      logger.warn({ err, userId, clerkId: user.clerkId }, "Clerk delete failed; continuing with DB anonymization");
+    }
+
+    // 4. Anonymize the DB row (preserve referential integrity).
+    const placeholder = `deleted_${user.id}_${randomBytes(8).toString("hex")}`;
+    await db
+      .update(usersTable)
+      .set({
+        clerkId: placeholder,
+        displayName: "Deleted user",
+        email: `${placeholder}@deleted.local`,
+        firstName: null,
+        lastName: null,
+        bio: null,
+        location: null,
+        avatarObjectPath: null,
+      })
+      .where(eq(usersTable.id, userId));
+
+    logger.info({ targetUserId: userId, by: req.dbUser!.id }, "admin force-deleted user");
+    res.json({ ok: true });
   },
 );
 

@@ -590,7 +590,8 @@ router.post(
     const adminEmail = process.env["VERIFICATION_ADMIN_EMAIL"];
     if (adminEmail) {
       const { sendEmail } = await import("../lib/email");
-      const summary = [
+      const adminUrl = `${webBaseUrl()}/admin`;
+      const rows = [
         `Circle: ${circle.name} (id: ${circle.id})`,
         `Owner: ${req.dbUser!.displayName} <${req.dbUser!.email ?? "no email"}>`,
         `Org name: ${metadata.legalName}`,
@@ -600,17 +601,28 @@ router.post(
         "",
         metadata.description,
         "",
-        `Approve:  pnpm --filter @workspace/scripts exec tsx ./src/verifyCircle.ts approve ${circle.id} "Looks good"`,
-        `Reject:   pnpm --filter @workspace/scripts exec tsx ./src/verifyCircle.ts reject ${circle.id} "Reason"`,
-      ].join("\n");
+        `Review at: ${adminUrl}`,
+      ];
+      const text = rows.join("\n");
+      const html = `
+<p><strong>New circle verification application</strong></p>
+<table style="border-collapse:collapse;font-size:14px;margin-bottom:16px">
+  <tr><td style="padding:4px 12px 4px 0;color:#6b7280">Circle</td><td>${escapeHtml(circle.name)} (id: ${circle.id})</td></tr>
+  <tr><td style="padding:4px 12px 4px 0;color:#6b7280">Owner</td><td>${escapeHtml(req.dbUser!.displayName ?? "")} &lt;${escapeHtml(req.dbUser!.email ?? "no email")}&gt;</td></tr>
+  <tr><td style="padding:4px 12px 4px 0;color:#6b7280">Org name</td><td>${escapeHtml(metadata.legalName)}</td></tr>
+  <tr><td style="padding:4px 12px 4px 0;color:#6b7280">Org type</td><td>${escapeHtml(metadata.orgType)}</td></tr>
+  <tr><td style="padding:4px 12px 4px 0;color:#6b7280">Contact</td><td>${escapeHtml(metadata.contactEmail)}</td></tr>
+  <tr><td style="padding:4px 12px 4px 0;color:#6b7280">URL</td><td>${metadata.supportingUrl ? `<a href="${escapeHtml(metadata.supportingUrl)}">${escapeHtml(metadata.supportingUrl)}</a>` : "(none)"}</td></tr>
+</table>
+<p style="white-space:pre-wrap">${escapeHtml(metadata.description)}</p>
+<p style="margin-top:24px">
+  <a href="${adminUrl}" style="background:#e05a2b;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:600">Review in admin panel →</a>
+</p>`;
       void sendEmail({
         to: adminEmail,
         subject: `[MyZolve] Verify circle: ${circle.name}`,
-        text: summary,
-        html: `<pre style="font-family: ui-monospace, monospace; white-space: pre-wrap;">${summary
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")}</pre>`,
+        text,
+        html,
       });
     }
 
@@ -1129,5 +1141,25 @@ router.post(
     );
   },
 );
+
+// ── Shared helpers ──────────────────────────────────────────────────────────
+
+function webBaseUrl(): string {
+  const explicit = process.env["WEB_APP_URL"];
+  if (explicit) return explicit.replace(/\/$/, "");
+  const prod = process.env["REPLIT_DOMAINS"]?.split(",")[0]?.trim();
+  if (prod) return `https://${prod}`;
+  const dev = process.env["REPLIT_DEV_DOMAIN"];
+  if (dev) return `https://${dev}`;
+  return "https://myzolve.com";
+}
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 export default router;
