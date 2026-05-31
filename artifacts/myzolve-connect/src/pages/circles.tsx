@@ -239,7 +239,7 @@ export default function CirclesPage() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {circles?.map((circle) => (
+          {circles?.filter(c => !(c as { isOrgMain?: boolean }).isOrgMain).map((circle) => (
             <Link key={circle.id} href={`/circles/${circle.id}`}>
               <Card className="rounded-3xl hover:shadow-md transition-shadow cursor-pointer h-full border-border/50 flex flex-col">
                 <CardHeader className="pb-3 flex-1">

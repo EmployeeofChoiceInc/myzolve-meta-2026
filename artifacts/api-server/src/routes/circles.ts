@@ -107,6 +107,7 @@ function circleToApi(
         : null,
     orgAccentColor: orgBranding?.accentColor ?? null,
     createdAt: circle.createdAt,
+    isOrgMain: circle.isOrgMain,
   };
 }
 
