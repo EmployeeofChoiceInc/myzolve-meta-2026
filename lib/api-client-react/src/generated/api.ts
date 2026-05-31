@@ -57,6 +57,7 @@ import type {
   CreateRepaymentBody,
   CreateRepaymentPlanBody,
   CreateServicePostBody,
+  CreateSubCircleBody,
   CreateSupportRequestBody,
   DashboardSummary,
   DeviceToken,
@@ -99,8 +100,12 @@ import type {
   NotificationPreference,
   OkResponse,
   Org,
+  OrgAnnouncement,
   OrgCheckoutBody,
   OrgDashboard,
+  OrgEvent,
+  OrgHome,
+  OrgHomeCircle,
   OrgInvite,
   OrgInvitePreview,
   OrgLogoUploadUrl,
@@ -108,6 +113,8 @@ import type {
   PendingCircleVerification,
   PlaceholderMember,
   PlusStatus,
+  PostOrgAnnouncementBody,
+  PostOrgEventBody,
   PublicUserProfile,
   ReactionSummary,
   ReactionToggleResult,
@@ -120,6 +127,8 @@ import type {
   RespondConnectionBody,
   ReviewCopilotPost200,
   ReviewCopilotPostBody,
+  RsvpOrgEvent200,
+  RsvpOrgEventBody,
   SearchUsersParams,
   ServiceBoardSummary,
   ServicePost,
@@ -137,7 +146,9 @@ import type {
   UpdateMyCircleVisibility200,
   UpdateMyCircleVisibilityBody,
   UpdateNotificationPreferencesBody,
+  UpdateOrgAnnouncementBody,
   UpdateOrgBody,
+  UpdateOrgEventBody,
   UpdatePlaceholderBody,
   UpdatePlusPlanBody,
   UpdateServicePostBody,
@@ -12784,6 +12795,1073 @@ export const useRemoveOrgMember = <
   TContext
 > => {
   return useMutation(getRemoveOrgMemberMutationOptions(options));
+};
+
+/**
+ * @summary Member-facing Reunion Home (aggregated org profile, announcements, events, circles)
+ */
+export const getGetOrgHomeUrl = (orgId: number) => {
+  return `/api/orgs/${orgId}/home`;
+};
+
+export const getOrgHome = async (
+  orgId: number,
+  options?: RequestInit,
+): Promise<OrgHome> => {
+  return customFetch<OrgHome>(getGetOrgHomeUrl(orgId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetOrgHomeQueryKey = (orgId: number) => {
+  return [`/api/orgs/${orgId}/home`] as const;
+};
+
+export const getGetOrgHomeQueryOptions = <
+  TData = Awaited<ReturnType<typeof getOrgHome>>,
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+>(
+  orgId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOrgHome>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetOrgHomeQueryKey(orgId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getOrgHome>>> = ({
+    signal,
+  }) => getOrgHome(orgId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!orgId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getOrgHome>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetOrgHomeQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getOrgHome>>
+>;
+export type GetOrgHomeQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Member-facing Reunion Home (aggregated org profile, announcements, events, circles)
+ */
+
+export function useGetOrgHome<
+  TData = Awaited<ReturnType<typeof getOrgHome>>,
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+>(
+  orgId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOrgHome>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetOrgHomeQueryOptions(orgId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List organizer announcements (newest first)
+ */
+export const getListOrgAnnouncementsUrl = (orgId: number) => {
+  return `/api/orgs/${orgId}/announcements`;
+};
+
+export const listOrgAnnouncements = async (
+  orgId: number,
+  options?: RequestInit,
+): Promise<OrgAnnouncement[]> => {
+  return customFetch<OrgAnnouncement[]>(getListOrgAnnouncementsUrl(orgId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListOrgAnnouncementsQueryKey = (orgId: number) => {
+  return [`/api/orgs/${orgId}/announcements`] as const;
+};
+
+export const getListOrgAnnouncementsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listOrgAnnouncements>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(
+  orgId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listOrgAnnouncements>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListOrgAnnouncementsQueryKey(orgId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listOrgAnnouncements>>
+  > = ({ signal }) =>
+    listOrgAnnouncements(orgId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!orgId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listOrgAnnouncements>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListOrgAnnouncementsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listOrgAnnouncements>>
+>;
+export type ListOrgAnnouncementsQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary List organizer announcements (newest first)
+ */
+
+export function useListOrgAnnouncements<
+  TData = Awaited<ReturnType<typeof listOrgAnnouncements>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(
+  orgId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listOrgAnnouncements>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListOrgAnnouncementsQueryOptions(orgId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Post an organizer announcement (admin)
+ */
+export const getPostOrgAnnouncementUrl = (orgId: number) => {
+  return `/api/orgs/${orgId}/announcements`;
+};
+
+export const postOrgAnnouncement = async (
+  orgId: number,
+  postOrgAnnouncementBody: PostOrgAnnouncementBody,
+  options?: RequestInit,
+): Promise<OrgAnnouncement> => {
+  return customFetch<OrgAnnouncement>(getPostOrgAnnouncementUrl(orgId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(postOrgAnnouncementBody),
+  });
+};
+
+export const getPostOrgAnnouncementMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postOrgAnnouncement>>,
+    TError,
+    { orgId: number; data: BodyType<PostOrgAnnouncementBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postOrgAnnouncement>>,
+  TError,
+  { orgId: number; data: BodyType<PostOrgAnnouncementBody> },
+  TContext
+> => {
+  const mutationKey = ["postOrgAnnouncement"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postOrgAnnouncement>>,
+    { orgId: number; data: BodyType<PostOrgAnnouncementBody> }
+  > = (props) => {
+    const { orgId, data } = props ?? {};
+
+    return postOrgAnnouncement(orgId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostOrgAnnouncementMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postOrgAnnouncement>>
+>;
+export type PostOrgAnnouncementMutationBody = BodyType<PostOrgAnnouncementBody>;
+export type PostOrgAnnouncementMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Post an organizer announcement (admin)
+ */
+export const usePostOrgAnnouncement = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postOrgAnnouncement>>,
+    TError,
+    { orgId: number; data: BodyType<PostOrgAnnouncementBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postOrgAnnouncement>>,
+  TError,
+  { orgId: number; data: BodyType<PostOrgAnnouncementBody> },
+  TContext
+> => {
+  return useMutation(getPostOrgAnnouncementMutationOptions(options));
+};
+
+/**
+ * @summary Edit an announcement (admin)
+ */
+export const getUpdateOrgAnnouncementUrl = (
+  orgId: number,
+  announcementId: number,
+) => {
+  return `/api/orgs/${orgId}/announcements/${announcementId}`;
+};
+
+export const updateOrgAnnouncement = async (
+  orgId: number,
+  announcementId: number,
+  updateOrgAnnouncementBody: UpdateOrgAnnouncementBody,
+  options?: RequestInit,
+): Promise<OrgAnnouncement> => {
+  return customFetch<OrgAnnouncement>(
+    getUpdateOrgAnnouncementUrl(orgId, announcementId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(updateOrgAnnouncementBody),
+    },
+  );
+};
+
+export const getUpdateOrgAnnouncementMutationOptions = <
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateOrgAnnouncement>>,
+    TError,
+    {
+      orgId: number;
+      announcementId: number;
+      data: BodyType<UpdateOrgAnnouncementBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateOrgAnnouncement>>,
+  TError,
+  {
+    orgId: number;
+    announcementId: number;
+    data: BodyType<UpdateOrgAnnouncementBody>;
+  },
+  TContext
+> => {
+  const mutationKey = ["updateOrgAnnouncement"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateOrgAnnouncement>>,
+    {
+      orgId: number;
+      announcementId: number;
+      data: BodyType<UpdateOrgAnnouncementBody>;
+    }
+  > = (props) => {
+    const { orgId, announcementId, data } = props ?? {};
+
+    return updateOrgAnnouncement(orgId, announcementId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateOrgAnnouncementMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateOrgAnnouncement>>
+>;
+export type UpdateOrgAnnouncementMutationBody =
+  BodyType<UpdateOrgAnnouncementBody>;
+export type UpdateOrgAnnouncementMutationError = ErrorType<
+  | BadRequestResponse
+  | UnauthorizedResponse
+  | ForbiddenResponse
+  | NotFoundResponse
+>;
+
+/**
+ * @summary Edit an announcement (admin)
+ */
+export const useUpdateOrgAnnouncement = <
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateOrgAnnouncement>>,
+    TError,
+    {
+      orgId: number;
+      announcementId: number;
+      data: BodyType<UpdateOrgAnnouncementBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateOrgAnnouncement>>,
+  TError,
+  {
+    orgId: number;
+    announcementId: number;
+    data: BodyType<UpdateOrgAnnouncementBody>;
+  },
+  TContext
+> => {
+  return useMutation(getUpdateOrgAnnouncementMutationOptions(options));
+};
+
+/**
+ * @summary Delete an announcement (admin)
+ */
+export const getDeleteOrgAnnouncementUrl = (
+  orgId: number,
+  announcementId: number,
+) => {
+  return `/api/orgs/${orgId}/announcements/${announcementId}`;
+};
+
+export const deleteOrgAnnouncement = async (
+  orgId: number,
+  announcementId: number,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(
+    getDeleteOrgAnnouncementUrl(orgId, announcementId),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
+};
+
+export const getDeleteOrgAnnouncementMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteOrgAnnouncement>>,
+    TError,
+    { orgId: number; announcementId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteOrgAnnouncement>>,
+  TError,
+  { orgId: number; announcementId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteOrgAnnouncement"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteOrgAnnouncement>>,
+    { orgId: number; announcementId: number }
+  > = (props) => {
+    const { orgId, announcementId } = props ?? {};
+
+    return deleteOrgAnnouncement(orgId, announcementId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteOrgAnnouncementMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteOrgAnnouncement>>
+>;
+
+export type DeleteOrgAnnouncementMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Delete an announcement (admin)
+ */
+export const useDeleteOrgAnnouncement = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteOrgAnnouncement>>,
+    TError,
+    { orgId: number; announcementId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteOrgAnnouncement>>,
+  TError,
+  { orgId: number; announcementId: number },
+  TContext
+> => {
+  return useMutation(getDeleteOrgAnnouncementMutationOptions(options));
+};
+
+/**
+ * @summary List upcoming org events
+ */
+export const getListOrgEventsUrl = (orgId: number) => {
+  return `/api/orgs/${orgId}/events`;
+};
+
+export const listOrgEvents = async (
+  orgId: number,
+  options?: RequestInit,
+): Promise<OrgEvent[]> => {
+  return customFetch<OrgEvent[]>(getListOrgEventsUrl(orgId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListOrgEventsQueryKey = (orgId: number) => {
+  return [`/api/orgs/${orgId}/events`] as const;
+};
+
+export const getListOrgEventsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listOrgEvents>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(
+  orgId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listOrgEvents>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListOrgEventsQueryKey(orgId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listOrgEvents>>> = ({
+    signal,
+  }) => listOrgEvents(orgId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!orgId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listOrgEvents>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListOrgEventsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listOrgEvents>>
+>;
+export type ListOrgEventsQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary List upcoming org events
+ */
+
+export function useListOrgEvents<
+  TData = Awaited<ReturnType<typeof listOrgEvents>>,
+  TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+>(
+  orgId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listOrgEvents>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListOrgEventsQueryOptions(orgId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create an org event (admin)
+ */
+export const getPostOrgEventUrl = (orgId: number) => {
+  return `/api/orgs/${orgId}/events`;
+};
+
+export const postOrgEvent = async (
+  orgId: number,
+  postOrgEventBody: PostOrgEventBody,
+  options?: RequestInit,
+): Promise<OrgEvent> => {
+  return customFetch<OrgEvent>(getPostOrgEventUrl(orgId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(postOrgEventBody),
+  });
+};
+
+export const getPostOrgEventMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postOrgEvent>>,
+    TError,
+    { orgId: number; data: BodyType<PostOrgEventBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postOrgEvent>>,
+  TError,
+  { orgId: number; data: BodyType<PostOrgEventBody> },
+  TContext
+> => {
+  const mutationKey = ["postOrgEvent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postOrgEvent>>,
+    { orgId: number; data: BodyType<PostOrgEventBody> }
+  > = (props) => {
+    const { orgId, data } = props ?? {};
+
+    return postOrgEvent(orgId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostOrgEventMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postOrgEvent>>
+>;
+export type PostOrgEventMutationBody = BodyType<PostOrgEventBody>;
+export type PostOrgEventMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Create an org event (admin)
+ */
+export const usePostOrgEvent = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postOrgEvent>>,
+    TError,
+    { orgId: number; data: BodyType<PostOrgEventBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postOrgEvent>>,
+  TError,
+  { orgId: number; data: BodyType<PostOrgEventBody> },
+  TContext
+> => {
+  return useMutation(getPostOrgEventMutationOptions(options));
+};
+
+/**
+ * @summary Edit an org event (admin)
+ */
+export const getUpdateOrgEventUrl = (orgId: number, eventId: number) => {
+  return `/api/orgs/${orgId}/events/${eventId}`;
+};
+
+export const updateOrgEvent = async (
+  orgId: number,
+  eventId: number,
+  updateOrgEventBody: UpdateOrgEventBody,
+  options?: RequestInit,
+): Promise<OrgEvent> => {
+  return customFetch<OrgEvent>(getUpdateOrgEventUrl(orgId, eventId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateOrgEventBody),
+  });
+};
+
+export const getUpdateOrgEventMutationOptions = <
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateOrgEvent>>,
+    TError,
+    { orgId: number; eventId: number; data: BodyType<UpdateOrgEventBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateOrgEvent>>,
+  TError,
+  { orgId: number; eventId: number; data: BodyType<UpdateOrgEventBody> },
+  TContext
+> => {
+  const mutationKey = ["updateOrgEvent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateOrgEvent>>,
+    { orgId: number; eventId: number; data: BodyType<UpdateOrgEventBody> }
+  > = (props) => {
+    const { orgId, eventId, data } = props ?? {};
+
+    return updateOrgEvent(orgId, eventId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateOrgEventMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateOrgEvent>>
+>;
+export type UpdateOrgEventMutationBody = BodyType<UpdateOrgEventBody>;
+export type UpdateOrgEventMutationError = ErrorType<
+  | BadRequestResponse
+  | UnauthorizedResponse
+  | ForbiddenResponse
+  | NotFoundResponse
+>;
+
+/**
+ * @summary Edit an org event (admin)
+ */
+export const useUpdateOrgEvent = <
+  TError = ErrorType<
+    | BadRequestResponse
+    | UnauthorizedResponse
+    | ForbiddenResponse
+    | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateOrgEvent>>,
+    TError,
+    { orgId: number; eventId: number; data: BodyType<UpdateOrgEventBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateOrgEvent>>,
+  TError,
+  { orgId: number; eventId: number; data: BodyType<UpdateOrgEventBody> },
+  TContext
+> => {
+  return useMutation(getUpdateOrgEventMutationOptions(options));
+};
+
+/**
+ * @summary Delete an org event (admin)
+ */
+export const getDeleteOrgEventUrl = (orgId: number, eventId: number) => {
+  return `/api/orgs/${orgId}/events/${eventId}`;
+};
+
+export const deleteOrgEvent = async (
+  orgId: number,
+  eventId: number,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getDeleteOrgEventUrl(orgId, eventId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteOrgEventMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteOrgEvent>>,
+    TError,
+    { orgId: number; eventId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteOrgEvent>>,
+  TError,
+  { orgId: number; eventId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteOrgEvent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteOrgEvent>>,
+    { orgId: number; eventId: number }
+  > = (props) => {
+    const { orgId, eventId } = props ?? {};
+
+    return deleteOrgEvent(orgId, eventId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteOrgEventMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteOrgEvent>>
+>;
+
+export type DeleteOrgEventMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Delete an org event (admin)
+ */
+export const useDeleteOrgEvent = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteOrgEvent>>,
+    TError,
+    { orgId: number; eventId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteOrgEvent>>,
+  TError,
+  { orgId: number; eventId: number },
+  TContext
+> => {
+  return useMutation(getDeleteOrgEventMutationOptions(options));
+};
+
+/**
+ * @summary Set RSVP for an org event
+ */
+export const getRsvpOrgEventUrl = (orgId: number, eventId: number) => {
+  return `/api/orgs/${orgId}/events/${eventId}/rsvp`;
+};
+
+export const rsvpOrgEvent = async (
+  orgId: number,
+  eventId: number,
+  rsvpOrgEventBody: RsvpOrgEventBody,
+  options?: RequestInit,
+): Promise<RsvpOrgEvent200> => {
+  return customFetch<RsvpOrgEvent200>(getRsvpOrgEventUrl(orgId, eventId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(rsvpOrgEventBody),
+  });
+};
+
+export const getRsvpOrgEventMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rsvpOrgEvent>>,
+    TError,
+    { orgId: number; eventId: number; data: BodyType<RsvpOrgEventBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof rsvpOrgEvent>>,
+  TError,
+  { orgId: number; eventId: number; data: BodyType<RsvpOrgEventBody> },
+  TContext
+> => {
+  const mutationKey = ["rsvpOrgEvent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof rsvpOrgEvent>>,
+    { orgId: number; eventId: number; data: BodyType<RsvpOrgEventBody> }
+  > = (props) => {
+    const { orgId, eventId, data } = props ?? {};
+
+    return rsvpOrgEvent(orgId, eventId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RsvpOrgEventMutationResult = NonNullable<
+  Awaited<ReturnType<typeof rsvpOrgEvent>>
+>;
+export type RsvpOrgEventMutationBody = BodyType<RsvpOrgEventBody>;
+export type RsvpOrgEventMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Set RSVP for an org event
+ */
+export const useRsvpOrgEvent = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rsvpOrgEvent>>,
+    TError,
+    { orgId: number; eventId: number; data: BodyType<RsvpOrgEventBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof rsvpOrgEvent>>,
+  TError,
+  { orgId: number; eventId: number; data: BodyType<RsvpOrgEventBody> },
+  TContext
+> => {
+  return useMutation(getRsvpOrgEventMutationOptions(options));
+};
+
+/**
+ * @summary Create a sub-circle scoped to an org (admin)
+ */
+export const getCreateSubCircleUrl = (orgId: number) => {
+  return `/api/orgs/${orgId}/circles`;
+};
+
+export const createSubCircle = async (
+  orgId: number,
+  createSubCircleBody: CreateSubCircleBody,
+  options?: RequestInit,
+): Promise<OrgHomeCircle> => {
+  return customFetch<OrgHomeCircle>(getCreateSubCircleUrl(orgId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createSubCircleBody),
+  });
+};
+
+export const getCreateSubCircleMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createSubCircle>>,
+    TError,
+    { orgId: number; data: BodyType<CreateSubCircleBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createSubCircle>>,
+  TError,
+  { orgId: number; data: BodyType<CreateSubCircleBody> },
+  TContext
+> => {
+  const mutationKey = ["createSubCircle"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createSubCircle>>,
+    { orgId: number; data: BodyType<CreateSubCircleBody> }
+  > = (props) => {
+    const { orgId, data } = props ?? {};
+
+    return createSubCircle(orgId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateSubCircleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createSubCircle>>
+>;
+export type CreateSubCircleMutationBody = BodyType<CreateSubCircleBody>;
+export type CreateSubCircleMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+>;
+
+/**
+ * @summary Create a sub-circle scoped to an org (admin)
+ */
+export const useCreateSubCircle = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createSubCircle>>,
+    TError,
+    { orgId: number; data: BodyType<CreateSubCircleBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createSubCircle>>,
+  TError,
+  { orgId: number; data: BodyType<CreateSubCircleBody> },
+  TContext
+> => {
+  return useMutation(getCreateSubCircleMutationOptions(options));
 };
 
 /**

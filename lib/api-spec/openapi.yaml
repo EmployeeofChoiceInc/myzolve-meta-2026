@@ -3480,6 +3480,356 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /orgs/{orgId}/home:
+    get:
+      operationId: getOrgHome
+      tags: [orgs]
+      summary: Member-facing Reunion Home (aggregated org profile, announcements, events, circles)
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      responses:
+        "200":
+          description: Reunion Home payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgHome"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /orgs/{orgId}/announcements:
+    get:
+      operationId: listOrgAnnouncements
+      tags: [orgs]
+      summary: List organizer announcements (newest first)
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      responses:
+        "200":
+          description: Announcements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrgAnnouncement"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: postOrgAnnouncement
+      tags: [orgs]
+      summary: Post an organizer announcement (admin)
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: ["string", "null"]
+                body:
+                  type: string
+              required: [body]
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgAnnouncement"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /orgs/{orgId}/announcements/{announcementId}:
+    patch:
+      operationId: updateOrgAnnouncement
+      tags: [orgs]
+      summary: Edit an announcement (admin)
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+        - name: announcementId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: ["string", "null"]
+                body:
+                  type: string
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgAnnouncement"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteOrgAnnouncement
+      tags: [orgs]
+      summary: Delete an announcement (admin)
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+        - name: announcementId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /orgs/{orgId}/events:
+    get:
+      operationId: listOrgEvents
+      tags: [orgs]
+      summary: List upcoming org events
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      responses:
+        "200":
+          description: Events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrgEvent"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: postOrgEvent
+      tags: [orgs]
+      summary: Create an org event (admin)
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: ["string", "null"]
+                location:
+                  type: ["string", "null"]
+                startsAt:
+                  type: string
+                  format: date-time
+                endsAt:
+                  type: ["string", "null"]
+                  format: date-time
+              required: [title, startsAt]
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgEvent"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /orgs/{orgId}/events/{eventId}:
+    patch:
+      operationId: updateOrgEvent
+      tags: [orgs]
+      summary: Edit an org event (admin)
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+        - name: eventId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: ["string", "null"]
+                location:
+                  type: ["string", "null"]
+                startsAt:
+                  type: string
+                  format: date-time
+                endsAt:
+                  type: ["string", "null"]
+                  format: date-time
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgEvent"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteOrgEvent
+      tags: [orgs]
+      summary: Delete an org event (admin)
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+        - name: eventId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /orgs/{orgId}/events/{eventId}/rsvp:
+    post:
+      operationId: rsvpOrgEvent
+      tags: [orgs]
+      summary: Set RSVP for an org event
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+        - name: eventId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [going, maybe, cant]
+              required: [status]
+      responses:
+        "200":
+          description: RSVP recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  eventId: { type: integer }
+                  myRsvp:
+                    type: string
+                    enum: [going, maybe, cant]
+                  rsvpCounts:
+                    $ref: "#/components/schemas/OrgEventRsvpCounts"
+                required: [eventId, myRsvp, rsvpCounts]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /orgs/{orgId}/circles:
+    post:
+      operationId: createSubCircle
+      tags: [orgs]
+      summary: Create a sub-circle scoped to an org (admin)
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                description: { type: ["string", "null"] }
+                accentColor: { type: ["string", "null"] }
+              required: [name]
+      responses:
+        "201":
+          description: Created sub-circle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgHomeCircle"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /org-invites/{token}:
     get:
       operationId: previewOrgInvite
@@ -4693,6 +5043,230 @@ components:
           required: [id, name]
       required: [valid, status, role, org]
 
+    OrgHomeOrg:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        status:
+          type: string
+        isActive:
+          type: boolean
+        comped:
+          type: boolean
+        planName:
+          type: string
+        accentColor:
+          type: ["string", "null"]
+        logoUrl:
+          type: ["string", "null"]
+        welcomeMessage:
+          type: ["string", "null"]
+        coverImageUrl:
+          type: ["string", "null"]
+        heroEventDate:
+          type: ["string", "null"]
+          format: date-time
+        seatLimit:
+          type: integer
+        seatsUsed:
+          type: ["integer", "null"]
+        myRole:
+          type: ["string", "null"]
+      required: [id, name, status, isActive, comped, planName, seatLimit]
+
+    OrgAnnouncement:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: ["string", "null"]
+        body:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        authorName:
+          type: ["string", "null"]
+        authorAvatarObjectPath:
+          type: ["string", "null"]
+      required: [id, body, createdAt]
+
+    OrgEventRsvpCounts:
+      type: object
+      properties:
+        going:
+          type: integer
+        maybe:
+          type: integer
+        cant:
+          type: integer
+      required: [going, maybe, cant]
+
+    OrgEventRsvpAttendee:
+      type: object
+      properties:
+        userId:
+          type: integer
+        displayName:
+          type: ["string", "null"]
+        avatarObjectPath:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [going, maybe, cant]
+      required: [userId, status]
+
+    OrgEvent:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        location:
+          type: ["string", "null"]
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: ["string", "null"]
+          format: date-time
+        rsvpCounts:
+          $ref: "#/components/schemas/OrgEventRsvpCounts"
+        myRsvp:
+          type: ["string", "null"]
+          enum: [going, maybe, cant, null]
+        rsvps:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrgEventRsvpAttendee"
+      required: [id, title, startsAt, rsvpCounts, rsvps]
+
+    OrgHomeCircle:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        privacyMode:
+          type: string
+        accentColor:
+          type: ["string", "null"]
+        memberCount:
+          type: integer
+        isMember:
+          type: boolean
+      required: [id, name, privacyMode, memberCount, isMember]
+
+    OrgMainCirclePost:
+      type: object
+      properties:
+        id:
+          type: integer
+        authorName:
+          type: ["string", "null"]
+        authorAvatarObjectPath:
+          type: ["string", "null"]
+        title:
+          type: ["string", "null"]
+        body:
+          type: string
+        imageObjectPath:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, body, createdAt]
+
+    OrgMainCircleCareDate:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        kind:
+          type: string
+        eventDate:
+          type: string
+          format: date-time
+        nextOccurrence:
+          type: string
+          format: date-time
+        isAnnual:
+          type: boolean
+      required: [id, name, kind, eventDate, nextOccurrence, isAnnual]
+
+    OrgMainCircle:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        memberCount:
+          type: integer
+        recentPosts:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrgMainCirclePost"
+        upcomingCareDates:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrgMainCircleCareDate"
+      required: [id, name, memberCount, recentPosts, upcomingCareDates]
+
+    OrgHomeMember:
+      type: object
+      properties:
+        userId:
+          type: integer
+        role:
+          type: string
+        displayName:
+          type: ["string", "null"]
+        avatarObjectPath:
+          type: ["string", "null"]
+      required: [userId, role]
+
+    OrgHome:
+      type: object
+      properties:
+        org:
+          $ref: "#/components/schemas/OrgHomeOrg"
+        canManage:
+          type: boolean
+        announcements:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrgAnnouncement"
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrgEvent"
+        mainCircle:
+          $ref: "#/components/schemas/OrgMainCircle"
+        subCircles:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrgHomeCircle"
+        memberCount:
+          type: integer
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrgHomeMember"
+      required: [org, canManage, announcements, events, mainCircle, subCircles, memberCount, members]
+
     CreateOrgBody:
       type: object
       properties:
@@ -4714,6 +5288,13 @@ components:
           type: ["string", "null"]
         logoObjectPath:
           type: ["string", "null"]
+        coverImageObjectPath:
+          type: ["string", "null"]
+        welcomeMessage:
+          type: ["string", "null"]
+        heroEventDate:
+          type: ["string", "null"]
+          format: date-time
 
     OrgCheckoutBody:
       type: object

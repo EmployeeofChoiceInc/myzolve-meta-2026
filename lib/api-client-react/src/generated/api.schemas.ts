@@ -1107,6 +1107,158 @@ export interface OrgInvitePreview {
   org: OrgInvitePreviewOrg;
 }
 
+export interface OrgHomeOrg {
+  id: number;
+  name: string;
+  status: string;
+  isActive: boolean;
+  comped: boolean;
+  planName: string;
+  /** @nullable */
+  accentColor?: string | null;
+  /** @nullable */
+  logoUrl?: string | null;
+  /** @nullable */
+  welcomeMessage?: string | null;
+  /** @nullable */
+  coverImageUrl?: string | null;
+  /** @nullable */
+  heroEventDate?: string | null;
+  seatLimit: number;
+  /** @nullable */
+  seatsUsed?: number | null;
+  /** @nullable */
+  myRole?: string | null;
+}
+
+export interface OrgAnnouncement {
+  id: number;
+  /** @nullable */
+  title?: string | null;
+  body: string;
+  createdAt: string;
+  /** @nullable */
+  authorName?: string | null;
+  /** @nullable */
+  authorAvatarObjectPath?: string | null;
+}
+
+export interface OrgEventRsvpCounts {
+  going: number;
+  maybe: number;
+  cant: number;
+}
+
+export type OrgEventRsvpAttendeeStatus =
+  (typeof OrgEventRsvpAttendeeStatus)[keyof typeof OrgEventRsvpAttendeeStatus];
+
+export const OrgEventRsvpAttendeeStatus = {
+  going: "going",
+  maybe: "maybe",
+  cant: "cant",
+} as const;
+
+export interface OrgEventRsvpAttendee {
+  userId: number;
+  /** @nullable */
+  displayName?: string | null;
+  /** @nullable */
+  avatarObjectPath?: string | null;
+  status: OrgEventRsvpAttendeeStatus;
+}
+
+/**
+ * @nullable
+ */
+export type OrgEventMyRsvp =
+  | (typeof OrgEventMyRsvp)[keyof typeof OrgEventMyRsvp]
+  | null;
+
+export const OrgEventMyRsvp = {
+  going: "going",
+  maybe: "maybe",
+  cant: "cant",
+} as const;
+
+export interface OrgEvent {
+  id: number;
+  title: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  location?: string | null;
+  startsAt: string;
+  /** @nullable */
+  endsAt?: string | null;
+  rsvpCounts: OrgEventRsvpCounts;
+  /** @nullable */
+  myRsvp?: OrgEventMyRsvp;
+  rsvps: OrgEventRsvpAttendee[];
+}
+
+export interface OrgHomeCircle {
+  id: number;
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  privacyMode: string;
+  /** @nullable */
+  accentColor?: string | null;
+  memberCount: number;
+  isMember: boolean;
+}
+
+export interface OrgMainCirclePost {
+  id: number;
+  /** @nullable */
+  authorName?: string | null;
+  /** @nullable */
+  authorAvatarObjectPath?: string | null;
+  /** @nullable */
+  title?: string | null;
+  body: string;
+  /** @nullable */
+  imageObjectPath?: string | null;
+  createdAt: string;
+}
+
+export interface OrgMainCircleCareDate {
+  id: number;
+  name: string;
+  kind: string;
+  eventDate: string;
+  nextOccurrence: string;
+  isAnnual: boolean;
+}
+
+export interface OrgMainCircle {
+  id: number;
+  name: string;
+  memberCount: number;
+  recentPosts: OrgMainCirclePost[];
+  upcomingCareDates: OrgMainCircleCareDate[];
+}
+
+export interface OrgHomeMember {
+  userId: number;
+  role: string;
+  /** @nullable */
+  displayName?: string | null;
+  /** @nullable */
+  avatarObjectPath?: string | null;
+}
+
+export interface OrgHome {
+  org: OrgHomeOrg;
+  canManage: boolean;
+  announcements: OrgAnnouncement[];
+  events: OrgEvent[];
+  mainCircle: OrgMainCircle;
+  subCircles: OrgHomeCircle[];
+  memberCount: number;
+  members: OrgHomeMember[];
+}
+
 export type CreateOrgBodyPlan =
   (typeof CreateOrgBodyPlan)[keyof typeof CreateOrgBodyPlan];
 
@@ -1130,6 +1282,12 @@ export interface UpdateOrgBody {
   accentColor?: string | null;
   /** @nullable */
   logoObjectPath?: string | null;
+  /** @nullable */
+  coverImageObjectPath?: string | null;
+  /** @nullable */
+  welcomeMessage?: string | null;
+  /** @nullable */
+  heroEventDate?: string | null;
 }
 
 export interface OrgCheckoutBody {
@@ -2854,6 +3012,76 @@ export type RequestOrgLogoUploadUrlBody = {
 
 export type CreateOrgPortalBody = {
   returnUrl: string;
+};
+
+export type PostOrgAnnouncementBody = {
+  /** @nullable */
+  title?: string | null;
+  body: string;
+};
+
+export type UpdateOrgAnnouncementBody = {
+  /** @nullable */
+  title?: string | null;
+  body?: string;
+};
+
+export type PostOrgEventBody = {
+  title: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  location?: string | null;
+  startsAt: string;
+  /** @nullable */
+  endsAt?: string | null;
+};
+
+export type UpdateOrgEventBody = {
+  title?: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  location?: string | null;
+  startsAt?: string;
+  /** @nullable */
+  endsAt?: string | null;
+};
+
+export type RsvpOrgEventBodyStatus =
+  (typeof RsvpOrgEventBodyStatus)[keyof typeof RsvpOrgEventBodyStatus];
+
+export const RsvpOrgEventBodyStatus = {
+  going: "going",
+  maybe: "maybe",
+  cant: "cant",
+} as const;
+
+export type RsvpOrgEventBody = {
+  status: RsvpOrgEventBodyStatus;
+};
+
+export type RsvpOrgEvent200MyRsvp =
+  (typeof RsvpOrgEvent200MyRsvp)[keyof typeof RsvpOrgEvent200MyRsvp];
+
+export const RsvpOrgEvent200MyRsvp = {
+  going: "going",
+  maybe: "maybe",
+  cant: "cant",
+} as const;
+
+export type RsvpOrgEvent200 = {
+  eventId: number;
+  myRsvp: RsvpOrgEvent200MyRsvp;
+  rsvpCounts: OrgEventRsvpCounts;
+};
+
+export type CreateSubCircleBody = {
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  accentColor?: string | null;
 };
 
 export type AcceptOrgInvite200 = {

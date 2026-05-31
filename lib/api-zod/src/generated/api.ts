@@ -4201,6 +4201,9 @@ export const UpdateOrgBody = zod.object({
   name: zod.string().optional(),
   accentColor: zod.string().nullish(),
   logoObjectPath: zod.string().nullish(),
+  coverImageObjectPath: zod.string().nullish(),
+  welcomeMessage: zod.string().nullish(),
+  heroEventDate: zod.coerce.date().nullish(),
 });
 
 export const UpdateOrgResponse = zod.object({
@@ -4319,6 +4322,331 @@ export const RemoveOrgMemberParams = zod.object({
 
 export const RemoveOrgMemberResponse = zod.object({
   ok: zod.boolean(),
+});
+
+/**
+ * @summary Member-facing Reunion Home (aggregated org profile, announcements, events, circles)
+ */
+export const GetOrgHomeParams = zod.object({
+  orgId: zod.coerce.number(),
+});
+
+export const GetOrgHomeResponse = zod.object({
+  org: zod.object({
+    id: zod.number(),
+    name: zod.string(),
+    status: zod.string(),
+    isActive: zod.boolean(),
+    comped: zod.boolean(),
+    planName: zod.string(),
+    accentColor: zod.string().nullish(),
+    logoUrl: zod.string().nullish(),
+    welcomeMessage: zod.string().nullish(),
+    coverImageUrl: zod.string().nullish(),
+    heroEventDate: zod.coerce.date().nullish(),
+    seatLimit: zod.number(),
+    seatsUsed: zod.number().nullish(),
+    myRole: zod.string().nullish(),
+  }),
+  canManage: zod.boolean(),
+  announcements: zod.array(
+    zod.object({
+      id: zod.number(),
+      title: zod.string().nullish(),
+      body: zod.string(),
+      createdAt: zod.coerce.date(),
+      authorName: zod.string().nullish(),
+      authorAvatarObjectPath: zod.string().nullish(),
+    }),
+  ),
+  events: zod.array(
+    zod.object({
+      id: zod.number(),
+      title: zod.string(),
+      description: zod.string().nullish(),
+      location: zod.string().nullish(),
+      startsAt: zod.coerce.date(),
+      endsAt: zod.coerce.date().nullish(),
+      rsvpCounts: zod.object({
+        going: zod.number(),
+        maybe: zod.number(),
+        cant: zod.number(),
+      }),
+      myRsvp: zod
+        .union([
+          zod.literal("going"),
+          zod.literal("maybe"),
+          zod.literal("cant"),
+          zod.literal(null),
+        ])
+        .nullish(),
+      rsvps: zod.array(
+        zod.object({
+          userId: zod.number(),
+          displayName: zod.string().nullish(),
+          avatarObjectPath: zod.string().nullish(),
+          status: zod.enum(["going", "maybe", "cant"]),
+        }),
+      ),
+    }),
+  ),
+  mainCircle: zod.object({
+    id: zod.number(),
+    name: zod.string(),
+    memberCount: zod.number(),
+    recentPosts: zod.array(
+      zod.object({
+        id: zod.number(),
+        authorName: zod.string().nullish(),
+        authorAvatarObjectPath: zod.string().nullish(),
+        title: zod.string().nullish(),
+        body: zod.string(),
+        imageObjectPath: zod.string().nullish(),
+        createdAt: zod.coerce.date(),
+      }),
+    ),
+    upcomingCareDates: zod.array(
+      zod.object({
+        id: zod.number(),
+        name: zod.string(),
+        kind: zod.string(),
+        eventDate: zod.coerce.date(),
+        nextOccurrence: zod.coerce.date(),
+        isAnnual: zod.boolean(),
+      }),
+    ),
+  }),
+  subCircles: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      description: zod.string().nullish(),
+      privacyMode: zod.string(),
+      accentColor: zod.string().nullish(),
+      memberCount: zod.number(),
+      isMember: zod.boolean(),
+    }),
+  ),
+  memberCount: zod.number(),
+  members: zod.array(
+    zod.object({
+      userId: zod.number(),
+      role: zod.string(),
+      displayName: zod.string().nullish(),
+      avatarObjectPath: zod.string().nullish(),
+    }),
+  ),
+});
+
+/**
+ * @summary List organizer announcements (newest first)
+ */
+export const ListOrgAnnouncementsParams = zod.object({
+  orgId: zod.coerce.number(),
+});
+
+export const ListOrgAnnouncementsResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string().nullish(),
+  body: zod.string(),
+  createdAt: zod.coerce.date(),
+  authorName: zod.string().nullish(),
+  authorAvatarObjectPath: zod.string().nullish(),
+});
+export const ListOrgAnnouncementsResponse = zod.array(
+  ListOrgAnnouncementsResponseItem,
+);
+
+/**
+ * @summary Post an organizer announcement (admin)
+ */
+export const PostOrgAnnouncementParams = zod.object({
+  orgId: zod.coerce.number(),
+});
+
+export const PostOrgAnnouncementBody = zod.object({
+  title: zod.string().nullish(),
+  body: zod.string(),
+});
+
+/**
+ * @summary Edit an announcement (admin)
+ */
+export const UpdateOrgAnnouncementParams = zod.object({
+  orgId: zod.coerce.number(),
+  announcementId: zod.coerce.number(),
+});
+
+export const UpdateOrgAnnouncementBody = zod.object({
+  title: zod.string().nullish(),
+  body: zod.string().optional(),
+});
+
+export const UpdateOrgAnnouncementResponse = zod.object({
+  id: zod.number(),
+  title: zod.string().nullish(),
+  body: zod.string(),
+  createdAt: zod.coerce.date(),
+  authorName: zod.string().nullish(),
+  authorAvatarObjectPath: zod.string().nullish(),
+});
+
+/**
+ * @summary Delete an announcement (admin)
+ */
+export const DeleteOrgAnnouncementParams = zod.object({
+  orgId: zod.coerce.number(),
+  announcementId: zod.coerce.number(),
+});
+
+export const DeleteOrgAnnouncementResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary List upcoming org events
+ */
+export const ListOrgEventsParams = zod.object({
+  orgId: zod.coerce.number(),
+});
+
+export const ListOrgEventsResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  location: zod.string().nullish(),
+  startsAt: zod.coerce.date(),
+  endsAt: zod.coerce.date().nullish(),
+  rsvpCounts: zod.object({
+    going: zod.number(),
+    maybe: zod.number(),
+    cant: zod.number(),
+  }),
+  myRsvp: zod
+    .union([
+      zod.literal("going"),
+      zod.literal("maybe"),
+      zod.literal("cant"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  rsvps: zod.array(
+    zod.object({
+      userId: zod.number(),
+      displayName: zod.string().nullish(),
+      avatarObjectPath: zod.string().nullish(),
+      status: zod.enum(["going", "maybe", "cant"]),
+    }),
+  ),
+});
+export const ListOrgEventsResponse = zod.array(ListOrgEventsResponseItem);
+
+/**
+ * @summary Create an org event (admin)
+ */
+export const PostOrgEventParams = zod.object({
+  orgId: zod.coerce.number(),
+});
+
+export const PostOrgEventBody = zod.object({
+  title: zod.string(),
+  description: zod.string().nullish(),
+  location: zod.string().nullish(),
+  startsAt: zod.coerce.date(),
+  endsAt: zod.coerce.date().nullish(),
+});
+
+/**
+ * @summary Edit an org event (admin)
+ */
+export const UpdateOrgEventParams = zod.object({
+  orgId: zod.coerce.number(),
+  eventId: zod.coerce.number(),
+});
+
+export const UpdateOrgEventBody = zod.object({
+  title: zod.string().optional(),
+  description: zod.string().nullish(),
+  location: zod.string().nullish(),
+  startsAt: zod.coerce.date().optional(),
+  endsAt: zod.coerce.date().nullish(),
+});
+
+export const UpdateOrgEventResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  location: zod.string().nullish(),
+  startsAt: zod.coerce.date(),
+  endsAt: zod.coerce.date().nullish(),
+  rsvpCounts: zod.object({
+    going: zod.number(),
+    maybe: zod.number(),
+    cant: zod.number(),
+  }),
+  myRsvp: zod
+    .union([
+      zod.literal("going"),
+      zod.literal("maybe"),
+      zod.literal("cant"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  rsvps: zod.array(
+    zod.object({
+      userId: zod.number(),
+      displayName: zod.string().nullish(),
+      avatarObjectPath: zod.string().nullish(),
+      status: zod.enum(["going", "maybe", "cant"]),
+    }),
+  ),
+});
+
+/**
+ * @summary Delete an org event (admin)
+ */
+export const DeleteOrgEventParams = zod.object({
+  orgId: zod.coerce.number(),
+  eventId: zod.coerce.number(),
+});
+
+export const DeleteOrgEventResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Set RSVP for an org event
+ */
+export const RsvpOrgEventParams = zod.object({
+  orgId: zod.coerce.number(),
+  eventId: zod.coerce.number(),
+});
+
+export const RsvpOrgEventBody = zod.object({
+  status: zod.enum(["going", "maybe", "cant"]),
+});
+
+export const RsvpOrgEventResponse = zod.object({
+  eventId: zod.number(),
+  myRsvp: zod.enum(["going", "maybe", "cant"]),
+  rsvpCounts: zod.object({
+    going: zod.number(),
+    maybe: zod.number(),
+    cant: zod.number(),
+  }),
+});
+
+/**
+ * @summary Create a sub-circle scoped to an org (admin)
+ */
+export const CreateSubCircleParams = zod.object({
+  orgId: zod.coerce.number(),
+});
+
+export const CreateSubCircleBody = zod.object({
+  name: zod.string(),
+  description: zod.string().nullish(),
+  accentColor: zod.string().nullish(),
 });
 
 /**
