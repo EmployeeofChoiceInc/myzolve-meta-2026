@@ -4130,6 +4130,7 @@ export const ListMyOrgsResponse = zod.object({
       cancelAtPeriodEnd: zod.boolean().optional(),
       graceEndsAt: zod.coerce.date().nullish(),
       isActive: zod.boolean(),
+      comped: zod.boolean(),
       myRole: zod.string().nullish(),
       createdAt: zod.coerce.date(),
     }),
@@ -4160,6 +4161,7 @@ export const GetOrgDashboardResponse = zod.object({
     cancelAtPeriodEnd: zod.boolean().optional(),
     graceEndsAt: zod.coerce.date().nullish(),
     isActive: zod.boolean(),
+    comped: zod.boolean(),
     myRole: zod.string().nullish(),
     createdAt: zod.coerce.date(),
   }),
@@ -4217,6 +4219,7 @@ export const UpdateOrgResponse = zod.object({
   cancelAtPeriodEnd: zod.boolean().optional(),
   graceEndsAt: zod.coerce.date().nullish(),
   isActive: zod.boolean(),
+  comped: zod.boolean(),
   myRole: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });

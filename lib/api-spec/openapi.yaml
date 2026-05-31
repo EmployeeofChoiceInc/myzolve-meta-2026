@@ -4590,6 +4590,8 @@ components:
           format: date-time
         isActive:
           type: boolean
+        comped:
+          type: boolean
         myRole:
           type: ["string", "null"]
         createdAt:
@@ -4605,6 +4607,7 @@ components:
         - status
         - seatLimit
         - isActive
+        - comped
         - createdAt
 
     OrgMember:

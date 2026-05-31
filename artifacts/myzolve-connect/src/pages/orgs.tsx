@@ -59,7 +59,7 @@ function OrgCard({ org }: { org: Org }) {
                 variant={org.isActive ? "secondary" : "outline"}
                 className="rounded-full text-[10px] capitalize"
               >
-                {org.status}
+                {org.comped ? "Complimentary" : org.status}
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">

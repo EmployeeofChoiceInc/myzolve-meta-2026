@@ -255,7 +255,7 @@ export default function OrgDashboardPage() {
               variant={org.isActive ? "secondary" : "outline"}
               className="rounded-full capitalize"
             >
-              {org.status}
+              {org.comped ? "Complimentary" : org.status}
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -273,7 +273,13 @@ export default function OrgDashboardPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          {org.isActive ? (
+          {org.comped ? (
+            <div className="flex items-center gap-2 text-sm text-secondary">
+              <CheckCircle2 className="w-4 h-4" />
+              Complimentary access is active — all seats are unlocked and no
+              payment is needed.
+            </div>
+          ) : org.isActive ? (
             <>
               <div className="flex items-center gap-2 text-sm text-secondary">
                 <CheckCircle2 className="w-4 h-4" />

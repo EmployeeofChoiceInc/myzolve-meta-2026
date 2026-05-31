@@ -1050,6 +1050,7 @@ export interface Org {
   /** @nullable */
   graceEndsAt?: string | null;
   isActive: boolean;
+  comped: boolean;
   /** @nullable */
   myRole?: string | null;
   createdAt: string;

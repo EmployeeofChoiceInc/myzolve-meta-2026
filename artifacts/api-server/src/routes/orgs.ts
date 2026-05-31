@@ -16,6 +16,7 @@ import { validateBody, validateParams } from "../middlewares/validate";
 import { logger } from "../lib/logger";
 import { ORG_PLANS, getOrgPlan } from "../lib/orgPlans";
 import { isOrgSeatActive } from "../lib/orgEntitlement";
+import { isOrgComped, getActiveOrgCompIds } from "../lib/comps";
 import {
   createOrgCheckoutSession,
   createOrgPortalSession,
@@ -70,8 +71,12 @@ const createInviteSchema = z.object({
   role: z.enum(["admin", "member"]).optional().default("member"),
 });
 
-function orgToApi(org: Org, opts: { seatsUsed?: number; myRole?: string | null } = {}) {
+function orgToApi(
+  org: Org,
+  opts: { seatsUsed?: number; myRole?: string | null; isComped?: boolean } = {},
+) {
   const plan = getOrgPlan(org.plan);
+  const comped = opts.isComped ?? false;
   return {
     id: org.id,
     name: org.name,
@@ -87,7 +92,8 @@ function orgToApi(org: Org, opts: { seatsUsed?: number; myRole?: string | null }
     currentPeriodEnd: org.currentPeriodEnd,
     cancelAtPeriodEnd: org.cancelAtPeriodEnd === "true",
     graceEndsAt: org.graceEndsAt,
-    isActive: isOrgSeatActive(org),
+    isActive: isOrgSeatActive(org) || comped,
+    comped,
     myRole: opts.myRole ?? null,
     createdAt: org.createdAt,
   };
@@ -213,10 +219,17 @@ router.get("/orgs/mine", requireAuth, async (req, res) => {
         eq(orgMembersTable.status, "active"),
       ),
     );
+  const compedIds = await getActiveOrgCompIds(rows.map((r) => r.org.id));
   const out = [];
   for (const r of rows) {
     const seatsUsed = await countActiveSeats(r.org.id);
-    out.push(orgToApi(r.org, { seatsUsed, myRole: r.role }));
+    out.push(
+      orgToApi(r.org, {
+        seatsUsed,
+        myRole: r.role,
+        isComped: compedIds.has(r.org.id),
+      }),
+    );
   }
   res.json({ orgs: out });
 });
@@ -270,8 +283,9 @@ router.get(
         ),
       );
 
+    const comped = await isOrgComped(orgId);
     res.json({
-      org: orgToApi(admin.org, { seatsUsed, myRole: admin.role }),
+      org: orgToApi(admin.org, { seatsUsed, myRole: admin.role, isComped: comped }),
       members,
       pendingInvites: invites,
     });
@@ -316,7 +330,8 @@ router.patch(
       .where(eq(orgsTable.id, orgId))
       .returning();
     const seatsUsed = await countActiveSeats(orgId);
-    res.json(orgToApi(updated, { seatsUsed, myRole: admin.role }));
+    const comped = await isOrgComped(orgId);
+    res.json(orgToApi(updated, { seatsUsed, myRole: admin.role, isComped: comped }));
   },
 );
 
@@ -405,6 +420,13 @@ router.post(
     const orgId = Number(req.params.orgId);
     const admin = await requireOrgAdmin(req, res, orgId);
     if (!admin) return;
+    if (await isOrgComped(orgId)) {
+      res.status(400).json({
+        error:
+          "This organization has complimentary access — no payment is needed.",
+      });
+      return;
+    }
     const { seats, successUrl, cancelUrl } = req.body as z.infer<typeof checkoutSchema>;
     const plan = getOrgPlan(admin.org.plan);
     if (!plan) {
@@ -448,6 +470,13 @@ router.post(
     const orgId = Number(req.params.orgId);
     const admin = await requireOrgAdmin(req, res, orgId);
     if (!admin) return;
+    if (await isOrgComped(orgId)) {
+      res.status(400).json({
+        error:
+          "This organization has complimentary access — there is no billing account to manage.",
+      });
+      return;
+    }
     if (!admin.org.stripeCustomerId) {
       res.status(400).json({ error: "No billing account yet. Complete checkout first." });
       return;
