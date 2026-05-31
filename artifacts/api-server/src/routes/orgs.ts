@@ -848,14 +848,27 @@ router.get(
       { going: number; maybe: number; cant: number }
     >();
     const myRsvpMap = new Map<number, string>();
+    type RsvpAttendee = {
+      userId: number;
+      displayName: string | null;
+      avatarObjectPath: string | null;
+      status: string;
+    };
+    const rsvpAttendeesMap = new Map<number, RsvpAttendee[]>();
     if (upcomingEventIds.length > 0) {
+      // Join against users so we can surface who picked each status, not just
+      // aggregate counts. Only org members can reach this route, so the
+      // attendee list inherits org membership visibility.
       const rsvpRows = await db
         .select({
           orgEventId: orgEventRsvpsTable.orgEventId,
           status: orgEventRsvpsTable.status,
           userId: orgEventRsvpsTable.userId,
+          displayName: usersTable.displayName,
+          avatarObjectPath: usersTable.avatarObjectPath,
         })
         .from(orgEventRsvpsTable)
+        .innerJoin(usersTable, eq(usersTable.id, orgEventRsvpsTable.userId))
         .where(inArray(orgEventRsvpsTable.orgEventId, upcomingEventIds));
       for (const r of rsvpRows) {
         const c =
@@ -865,6 +878,14 @@ router.get(
         else if (r.status === "cant") c.cant += 1;
         rsvpCountMap.set(r.orgEventId, c);
         if (r.userId === req.dbUser!.id) myRsvpMap.set(r.orgEventId, r.status);
+        const attendees = rsvpAttendeesMap.get(r.orgEventId) ?? [];
+        attendees.push({
+          userId: r.userId,
+          displayName: r.displayName,
+          avatarObjectPath: r.avatarObjectPath,
+          status: r.status,
+        });
+        rsvpAttendeesMap.set(r.orgEventId, attendees);
       }
     }
 
@@ -877,6 +898,9 @@ router.get(
       endsAt: e.endsAt,
       rsvpCounts: rsvpCountMap.get(e.id) ?? { going: 0, maybe: 0, cant: 0 },
       myRsvp: myRsvpMap.get(e.id) ?? null,
+      rsvps: (rsvpAttendeesMap.get(e.id) ?? []).sort((a, b) =>
+        (a.displayName ?? "").localeCompare(b.displayName ?? ""),
+      ),
     }));
 
     // The reunion's built-in main circle (auto group space). Ensure it exists

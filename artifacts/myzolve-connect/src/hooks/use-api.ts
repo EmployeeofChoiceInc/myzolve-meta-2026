@@ -1253,6 +1253,13 @@ export interface OrgEventRsvpCounts {
   cant: number;
 }
 
+export interface OrgEventRsvpAttendee {
+  userId: number;
+  displayName: string | null;
+  avatarObjectPath: string | null;
+  status: "going" | "maybe" | "cant";
+}
+
 export interface OrgEvent {
   id: number;
   title: string;
@@ -1262,6 +1269,7 @@ export interface OrgEvent {
   endsAt: string | null;
   rsvpCounts: OrgEventRsvpCounts;
   myRsvp: "going" | "maybe" | "cant" | null;
+  rsvps: OrgEventRsvpAttendee[];
 }
 
 export interface OrgHomeCircle {

@@ -44,6 +44,7 @@ import {
   Check,
   X,
   HelpCircle,
+  ChevronDown,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -138,6 +139,11 @@ export default function ReunionHomePage() {
   const [circleDesc, setCircleDesc] = useState("");
   const createSubCircle = useCreateSubCircle(orgId);
   const rsvpEvent = useRsvpOrgEvent(orgId);
+
+  // Which events currently have their attendee list expanded.
+  const [openAttendees, setOpenAttendees] = useState<Record<number, boolean>>(
+    {},
+  );
 
   // Inline Wall composer — post to the reunion's main circle without leaving.
   const mainCircleId = data?.mainCircle.id ?? 0;
@@ -1007,6 +1013,76 @@ export default function ReunionHomePage() {
                         </Button>
                       ))}
                     </div>
+                    {ev.rsvps.length > 0 && (
+                      <div className="pt-1">
+                        <button
+                          type="button"
+                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                          onClick={() =>
+                            setOpenAttendees((prev) => ({
+                              ...prev,
+                              [ev.id]: !prev[ev.id],
+                            }))
+                          }
+                          aria-expanded={!!openAttendees[ev.id]}
+                        >
+                          <ChevronDown
+                            className={`w-3.5 h-3.5 transition-transform ${
+                              openAttendees[ev.id] ? "rotate-180" : ""
+                            }`}
+                          />
+                          {openAttendees[ev.id]
+                            ? "Hide who's coming"
+                            : "See who's coming"}
+                        </button>
+                        {openAttendees[ev.id] && (
+                          <div className="mt-2 flex flex-col gap-2">
+                            {(
+                              [
+                                { key: "going", label: "Going" },
+                                { key: "maybe", label: "Maybe" },
+                                { key: "cant", label: "Can't" },
+                              ] as const
+                            ).map(({ key, label }) => {
+                              const people = ev.rsvps.filter(
+                                (r) => r.status === key,
+                              );
+                              if (people.length === 0) return null;
+                              return (
+                                <div key={key} className="flex flex-col gap-1">
+                                  <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                                    {label} ({people.length})
+                                  </p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {people.map((r) => (
+                                      <div
+                                        key={r.userId}
+                                        className="flex items-center gap-1.5 rounded-full bg-muted/60 pl-0.5 pr-2.5 py-0.5"
+                                      >
+                                        <Avatar className="h-5 w-5">
+                                          <AvatarImage
+                                            src={objectPathToUrl(
+                                              r.avatarObjectPath,
+                                            )}
+                                            alt={r.displayName ?? ""}
+                                          />
+                                          <AvatarFallback className="bg-primary/10 text-primary text-[10px]">
+                                            {initial(r.displayName)}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                        <span className="text-xs">
+                                          {r.displayName ?? "Member"}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))
               )}
