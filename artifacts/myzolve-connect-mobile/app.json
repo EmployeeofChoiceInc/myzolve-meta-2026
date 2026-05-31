@@ -102,7 +102,8 @@
           "cameraPermission": "Allow MyZolve Connect to use the camera to capture photos and short video clips for your circle.",
           "microphonePermission": "Allow MyZolve Connect to record sound for your video clips."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "notification": {
       "icon": "./assets/images/icon.png",
