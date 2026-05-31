@@ -23,8 +23,13 @@ import {
 } from "../lib/permissions";
 import { isPlus } from "../lib/revenuecat";
 import { assertCanJoinAnotherCircle } from "../lib/circleLimits";
+import { assertUserAllowedInCircle } from "../lib/orgMainCircle";
 
 const router = Router();
+
+/** Thrown inside membership transactions when a reunion-scoped circle join is
+ * attempted by a non-member; surfaced as a 403. */
+class OrgMembershipError extends Error {}
 
 const createInvitationSchema = z.object({
   invitedEmail: z.string().email().optional(),
@@ -403,6 +408,40 @@ router.post("/circles/:circleId/invitations", requireAuth, validateParams(circle
     }
   }
 
+  // Org-scoped circles (reunion main + sub-circles) can only be joined by
+  // active members of the reunion. Block invitations to non-members up front.
+  if (invitedEmail) {
+    const invitee = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.email, invitedEmail.toLowerCase()))
+      .limit(1)
+      .then((r) => r[0] ?? null);
+    if (invitee) {
+      const orgGuard = await assertUserAllowedInCircle(circleId, invitee.id);
+      if (orgGuard) {
+        res.status(403).json({ error: orgGuard });
+        return;
+      }
+    } else {
+      // No account yet → cannot be an active reunion member, so block when
+      // the circle is reunion-scoped.
+      const circle = await db
+        .select({ orgId: circlesTable.orgId })
+        .from(circlesTable)
+        .where(eq(circlesTable.id, circleId))
+        .limit(1)
+        .then((r) => r[0] ?? null);
+      if (circle?.orgId != null) {
+        res.status(403).json({
+          error:
+            "This space belongs to a reunion. Invite the person to the reunion first.",
+        });
+        return;
+      }
+    }
+  }
+
   const token = randomBytes(24).toString("hex");
   const expiresAt = addDays(new Date(), expiresInDays);
 
@@ -552,7 +591,9 @@ router.post("/invitations/:token/accept", requireAuth, validateParams(invitation
   const user = req.dbUser!;
   const now = new Date();
 
-  const member = await db.transaction(async (tx) => {
+  let member;
+  try {
+    member = await db.transaction(async (tx) => {
     const existingMembership = await tx
       .select()
       .from(circleMembersTable)
@@ -564,6 +605,16 @@ router.post("/invitations/:token/accept", requireAuth, validateParams(invitation
       )
       .limit(1)
       .then((r) => r[0] ?? null);
+
+    // Reunion-scoped circles require active org membership to join.
+    const orgGuard = await assertUserAllowedInCircle(
+      invitation.circleId,
+      userId,
+      tx,
+    );
+    if (orgGuard) {
+      throw new OrgMembershipError(orgGuard);
+    }
 
     await tx
       .update(circleInvitationsTable)
@@ -594,7 +645,14 @@ router.post("/invitations/:token/accept", requireAuth, validateParams(invitation
       })
       .returning();
     return inserted;
-  });
+    });
+  } catch (err) {
+    if (err instanceof OrgMembershipError) {
+      res.status(403).json({ error: err.message });
+      return;
+    }
+    throw err;
+  }
 
   const joinerName = user.displayName;
   const circleMembers = await db
@@ -899,6 +957,16 @@ router.post(
         res.status(402).json(cap);
         return;
       }
+    }
+
+    // Reunion-scoped circles can only be joined by active org members.
+    const orgGuard = await assertUserAllowedInCircle(
+      circleId,
+      joinRequest.userId,
+    );
+    if (orgGuard) {
+      res.status(403).json({ error: orgGuard });
+      return;
     }
 
     const now = new Date();

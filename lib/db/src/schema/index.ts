@@ -19,5 +19,6 @@ export * from "./wrapups";
 export * from "./orgs";
 export * from "./orgAnnouncements";
 export * from "./orgEvents";
+export * from "./orgEventRsvps";
 export * from "./circleBuilder";
 export * from "./comps";

@@ -2,7 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { Readable } from "stream";
 import { randomBytes } from "crypto";
 import { z } from "zod";
-import { and, eq, count, desc } from "drizzle-orm";
+import { and, eq, count, desc, inArray } from "drizzle-orm";
 import {
   db,
   orgsTable,
@@ -10,13 +10,24 @@ import {
   orgInvitesTable,
   orgAnnouncementsTable,
   orgEventsTable,
+  orgEventRsvpsTable,
   circlesTable,
+  circleMembersTable,
+  circlePostsTable,
+  careDatesTable,
   usersTable,
   type Org,
 } from "@workspace/db";
 import { requireAuth } from "../middlewares/requireAuth";
 import { validateBody, validateParams } from "../middlewares/validate";
 import { logger } from "../lib/logger";
+import { nextOccurrenceFor } from "./careDates";
+import {
+  ensureOrgMainCircle,
+  enrollInOrgMainCircle,
+  getOrgMainCircleId,
+  revokeOrgCircleMemberships,
+} from "../lib/orgMainCircle";
 import { ORG_PLANS, getOrgPlan } from "../lib/orgPlans";
 import { isOrgSeatActive } from "../lib/orgEntitlement";
 import { isOrgComped, getActiveOrgCompIds } from "../lib/comps";
@@ -99,6 +110,25 @@ const orgEventIdParam = z.object({
   orgId: z.coerce.number().int().positive(),
   eventId: z.coerce.number().int().positive(),
 });
+
+const createSubCircleSchema = z.object({
+  name: z.string().min(1).max(120),
+  description: z.string().max(1000).nullable().optional(),
+  accentColor: z.string().max(16).nullable().optional(),
+});
+
+const rsvpSchema = z.object({
+  status: z.enum(["going", "maybe", "cant"]),
+});
+
+/** Today's date as YYYY-MM-DD in UTC (matches careDates' convention). */
+function todayIsoUTC(): string {
+  const now = new Date();
+  const y = now.getUTCFullYear();
+  const m = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(now.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
 
 function orgToApi(
   org: Org,
@@ -261,6 +291,10 @@ router.post("/orgs", requireAuth, validateBody(createOrgSchema), async (req, res
     .insert(orgMembersTable)
     .values({ orgId: org.id, userId: user.id, role: "owner", status: "active" })
     .onConflictDoNothing();
+
+  // Every reunion is a group space: spin up its built-in main circle and
+  // enroll the owner as the circle owner.
+  await ensureOrgMainCircle(org.id, org.name, user.id);
 
   // Onboard the admin by email (best-effort).
   void sendOrgAdminOnboardingEmail(org, user.email, user.displayName).catch(
@@ -706,6 +740,10 @@ router.delete(
       .set({ status: "removed" })
       .where(eq(orgMembersTable.id, memberId));
 
+    // Removing someone from the reunion must also revoke their access to all of
+    // the reunion's group spaces (main circle + sub-circles).
+    await revokeOrgCircleMemberships(orgId, member.userId);
+
     // Drop the seat immediately so the removed member loses Plus right away.
     const removedUser = await db
       .select({ clerkId: usersTable.clerkId })
@@ -799,19 +837,130 @@ router.get(
       .from(orgEventsTable)
       .where(eq(orgEventsTable.orgId, orgId))
       .orderBy(orgEventsTable.startsAt);
-    const events = eventRows
+    const upcomingEventRows = eventRows
       .filter((e) => (e.endsAt ?? e.startsAt).getTime() >= now)
-      .slice(0, 25)
-      .map((e) => ({
-        id: e.id,
-        title: e.title,
-        description: e.description,
-        location: e.location,
-        startsAt: e.startsAt,
-        endsAt: e.endsAt,
-      }));
+      .slice(0, 25);
 
-    const circleRows = await db
+    // RSVP counts + the caller's own RSVP for the upcoming events.
+    const upcomingEventIds = upcomingEventRows.map((e) => e.id);
+    const rsvpCountMap = new Map<
+      number,
+      { going: number; maybe: number; cant: number }
+    >();
+    const myRsvpMap = new Map<number, string>();
+    if (upcomingEventIds.length > 0) {
+      const rsvpRows = await db
+        .select({
+          orgEventId: orgEventRsvpsTable.orgEventId,
+          status: orgEventRsvpsTable.status,
+          userId: orgEventRsvpsTable.userId,
+        })
+        .from(orgEventRsvpsTable)
+        .where(inArray(orgEventRsvpsTable.orgEventId, upcomingEventIds));
+      for (const r of rsvpRows) {
+        const c =
+          rsvpCountMap.get(r.orgEventId) ?? { going: 0, maybe: 0, cant: 0 };
+        if (r.status === "going") c.going += 1;
+        else if (r.status === "maybe") c.maybe += 1;
+        else if (r.status === "cant") c.cant += 1;
+        rsvpCountMap.set(r.orgEventId, c);
+        if (r.userId === req.dbUser!.id) myRsvpMap.set(r.orgEventId, r.status);
+      }
+    }
+
+    const events = upcomingEventRows.map((e) => ({
+      id: e.id,
+      title: e.title,
+      description: e.description,
+      location: e.location,
+      startsAt: e.startsAt,
+      endsAt: e.endsAt,
+      rsvpCounts: rsvpCountMap.get(e.id) ?? { going: 0, maybe: 0, cant: 0 },
+      myRsvp: myRsvpMap.get(e.id) ?? null,
+    }));
+
+    // The reunion's built-in main circle (auto group space). Ensure it exists
+    // for older orgs that predate this feature.
+    const mainCircleId = await ensureOrgMainCircle(
+      orgId,
+      m.org.name,
+      m.org.ownerId,
+    );
+    // Self-heal: guarantee the active member viewing home is enrolled in the
+    // main circle, so legacy members never hit a missing-membership error when
+    // they open it — independent of whether the async startup backfill ran.
+    await enrollInOrgMainCircle(
+      orgId,
+      req.dbUser!.id,
+      m.role === "owner" ? "owner" : m.role === "admin" ? "admin" : "member",
+    );
+    const mainCircleRow = await db
+      .select({ id: circlesTable.id, name: circlesTable.name })
+      .from(circlesTable)
+      .where(eq(circlesTable.id, mainCircleId))
+      .limit(1)
+      .then((r) => r[0] ?? null);
+
+    const [mainMemberCountRow] = await db
+      .select({ cnt: count() })
+      .from(circleMembersTable)
+      .where(
+        and(
+          eq(circleMembersTable.circleId, mainCircleId),
+          eq(circleMembersTable.status, "active"),
+        ),
+      );
+
+    const recentPostRows = await db
+      .select({ post: circlePostsTable, author: usersTable })
+      .from(circlePostsTable)
+      .leftJoin(usersTable, eq(circlePostsTable.authorUserId, usersTable.id))
+      .where(
+        and(
+          eq(circlePostsTable.circleId, mainCircleId),
+          eq(circlePostsTable.status, "active"),
+        ),
+      )
+      .orderBy(desc(circlePostsTable.createdAt))
+      .limit(5);
+
+    const careDateRows = await db
+      .select()
+      .from(careDatesTable)
+      .where(eq(careDatesTable.circleId, mainCircleId));
+    const today = todayIsoUTC();
+    const upcomingCareDates = careDateRows
+      .map((d) => ({
+        id: d.id,
+        name: d.name,
+        kind: d.kind,
+        eventDate: d.eventDate,
+        nextOccurrence: nextOccurrenceFor(d.eventDate, d.isAnnual, today),
+        isAnnual: d.isAnnual,
+      }))
+      .filter((d) => d.nextOccurrence >= today)
+      .sort((a, b) => a.nextOccurrence.localeCompare(b.nextOccurrence))
+      .slice(0, 5);
+
+    const mainCircle = {
+      id: mainCircleId,
+      name: mainCircleRow?.name ?? m.org.name,
+      memberCount: Number(mainMemberCountRow?.cnt ?? 0),
+      recentPosts: recentPostRows.map((r) => ({
+        id: r.post.id,
+        authorName: r.author?.displayName ?? "Someone",
+        authorAvatarObjectPath: r.author?.avatarObjectPath ?? null,
+        title: r.post.title,
+        body: r.post.body,
+        imageObjectPath: r.post.imageObjectPath,
+        createdAt: r.post.createdAt,
+      })),
+      upcomingCareDates,
+    };
+
+    // Sub-circles scoped to this reunion (admin-created spaces). Members see
+    // only the ones they belong to; admins see them all.
+    const subCircleRows = await db
       .select({
         id: circlesTable.id,
         name: circlesTable.name,
@@ -820,7 +969,47 @@ router.get(
         accentColor: circlesTable.accentColor,
       })
       .from(circlesTable)
-      .where(eq(circlesTable.orgId, orgId));
+      .where(
+        and(eq(circlesTable.orgId, orgId), eq(circlesTable.isOrgMain, false)),
+      );
+
+    const myCircleIds = new Set(
+      (
+        await db
+          .select({ circleId: circleMembersTable.circleId })
+          .from(circleMembersTable)
+          .where(
+            and(
+              eq(circleMembersTable.userId, req.dbUser!.id),
+              eq(circleMembersTable.status, "active"),
+            ),
+          )
+      ).map((r) => r.circleId),
+    );
+
+    const subCircles = [];
+    for (const c of subCircleRows) {
+      const isMember = myCircleIds.has(c.id);
+      if (!isMember && !canManage) continue;
+      const [cntRow] = await db
+        .select({ cnt: count() })
+        .from(circleMembersTable)
+        .where(
+          and(
+            eq(circleMembersTable.circleId, c.id),
+            eq(circleMembersTable.status, "active"),
+          ),
+        );
+      subCircles.push({
+        id: c.id,
+        name: c.name,
+        description: c.description,
+        privacyMode: c.privacyMode,
+        accentColor: c.accentColor,
+        memberCount: Number(cntRow?.cnt ?? 0),
+        isMember,
+      });
+    }
 
     const memberRows = await db
       .select({
@@ -857,7 +1046,8 @@ router.get(
         authorAvatarObjectPath: a.authorAvatarObjectPath,
       })),
       events,
-      circles: circleRows,
+      mainCircle,
+      subCircles,
       memberCount: memberRows.length,
       members: memberRows.slice(0, 18).map((mm) => ({
         userId: mm.userId,
@@ -979,6 +1169,103 @@ router.delete(
   },
 );
 
+// POST /orgs/:orgId/events/:eventId/rsvp — set the caller's RSVP (member).
+router.post(
+  "/orgs/:orgId/events/:eventId/rsvp",
+  requireAuth,
+  validateParams(orgEventIdParam),
+  validateBody(rsvpSchema),
+  async (req, res) => {
+    const orgId = Number(req.params.orgId);
+    const eventId = Number(req.params.eventId);
+    const m = await requireOrgMember(req, res, orgId);
+    if (!m) return;
+    const { status } = req.body as z.infer<typeof rsvpSchema>;
+
+    // Confirm the event belongs to this org.
+    const event = await db
+      .select({ id: orgEventsTable.id })
+      .from(orgEventsTable)
+      .where(and(eq(orgEventsTable.id, eventId), eq(orgEventsTable.orgId, orgId)))
+      .limit(1)
+      .then((r) => r[0] ?? null);
+    if (!event) {
+      res.status(404).json({ error: "Event not found" });
+      return;
+    }
+
+    await db
+      .insert(orgEventRsvpsTable)
+      .values({ orgEventId: eventId, userId: req.dbUser!.id, status })
+      .onConflictDoUpdate({
+        target: [orgEventRsvpsTable.orgEventId, orgEventRsvpsTable.userId],
+        set: { status, updatedAt: new Date() },
+      });
+
+    const rsvpRows = await db
+      .select({ status: orgEventRsvpsTable.status })
+      .from(orgEventRsvpsTable)
+      .where(eq(orgEventRsvpsTable.orgEventId, eventId));
+    const counts = { going: 0, maybe: 0, cant: 0 };
+    for (const r of rsvpRows) {
+      if (r.status === "going") counts.going += 1;
+      else if (r.status === "maybe") counts.maybe += 1;
+      else if (r.status === "cant") counts.cant += 1;
+    }
+    res.json({ eventId, myRsvp: status, rsvpCounts: counts });
+  },
+);
+
+// POST /orgs/:orgId/circles — create a sub-circle scoped to the reunion (admin).
+router.post(
+  "/orgs/:orgId/circles",
+  requireAuth,
+  validateParams(orgIdParam),
+  validateBody(createSubCircleSchema),
+  async (req, res) => {
+    const orgId = Number(req.params.orgId);
+    const admin = await requireOrgAdmin(req, res, orgId);
+    if (!admin) return;
+    const { name, description, accentColor } = req.body as z.infer<
+      typeof createSubCircleSchema
+    >;
+
+    const [circle] = await db
+      .insert(circlesTable)
+      .values({
+        name: name.trim(),
+        description: description ?? null,
+        circleType: "family",
+        orgId,
+        isOrgMain: false,
+        accentColor: accentColor ?? admin.org.accentColor ?? null,
+        ownerId: req.dbUser!.id,
+      })
+      .returning();
+
+    await db
+      .insert(circleMembersTable)
+      .values({
+        circleId: circle.id,
+        userId: req.dbUser!.id,
+        role: "owner",
+        status: "active",
+        joinedAt: new Date(),
+      })
+      .onConflictDoNothing();
+
+    res.status(201).json({
+      id: circle.id,
+      name: circle.name,
+      description: circle.description,
+      privacyMode: circle.privacyMode,
+      accentColor: circle.accentColor,
+      memberCount: 1,
+      isMember: true,
+    });
+  },
+);
+
 // GET /org-invites/:token — public preview of an invite (org name + branding).
 router.get(
   "/org-invites/:token",
@@ -1086,6 +1373,10 @@ router.post(
         .update(orgInvitesTable)
         .set({ status: "accepted", acceptedAt: new Date(), acceptedByUserId: user.id })
         .where(eq(orgInvitesTable.id, invite.id));
+      // Ensure they're in the reunion's main circle (idempotent backfill for
+      // members who joined before main circles existed).
+      await ensureOrgMainCircle(org.id, org.name, org.ownerId);
+      await enrollInOrgMainCircle(org.id, user.id, "member");
       bustIsPlusCache(user.clerkId);
       res.json({ orgId: org.id, orgName: org.name });
       return;
@@ -1116,6 +1407,10 @@ router.post(
         })
         .onConflictDoNothing();
     }
+
+    // Enroll the new member in the reunion's main circle (auto group space).
+    await ensureOrgMainCircle(org.id, org.name, org.ownerId);
+    await enrollInOrgMainCircle(org.id, user.id, "member");
 
     await db
       .update(orgInvitesTable)

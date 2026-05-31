@@ -7,11 +7,17 @@ import {
   useDeleteOrgAnnouncement,
   usePostOrgEvent,
   useDeleteOrgEvent,
+  useCreateSubCircle,
+  useRsvpOrgEvent,
+  useCreateCirclePost,
+  useUploadCircleMedia,
   objectPathToUrl,
   type OrgAnnouncement,
   type OrgEvent,
   type OrgHomeCircle,
   type OrgHomeMember,
+  type OrgMainCirclePost,
+  type OrgMainCircleCareDate,
 } from "@/hooks/use-api";
 import { customFetch } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +39,11 @@ import {
   Trash2,
   Image as ImageIcon,
   Sparkles,
+  MessageSquare,
+  Heart,
+  Check,
+  X,
+  HelpCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -120,6 +131,22 @@ export default function ReunionHomePage() {
   const [evLocation, setEvLocation] = useState("");
   const [evStart, setEvStart] = useState("");
   const [evEnd, setEvEnd] = useState("");
+
+  // Sub-circle creation (admins)
+  const [circleOpen, setCircleOpen] = useState(false);
+  const [circleName, setCircleName] = useState("");
+  const [circleDesc, setCircleDesc] = useState("");
+  const createSubCircle = useCreateSubCircle(orgId);
+  const rsvpEvent = useRsvpOrgEvent(orgId);
+
+  // Inline Wall composer — post to the reunion's main circle without leaving.
+  const mainCircleId = data?.mainCircle.id ?? 0;
+  const [postBody, setPostBody] = useState("");
+  const [postPhoto, setPostPhoto] = useState<File | null>(null);
+  const [posting, setPosting] = useState(false);
+  const postPhotoRef = useRef<HTMLInputElement>(null);
+  const createPost = useCreateCirclePost(mainCircleId);
+  const uploadMedia = useUploadCircleMedia(mainCircleId);
 
   // Welcome / hero-date editing
   const [editHero, setEditHero] = useState(false);
@@ -281,6 +308,62 @@ export default function ReunionHomePage() {
           toast({ title: "Could not create event", variant: "destructive" }),
       },
     );
+  }
+
+  function submitSubCircle() {
+    if (!circleName.trim()) return;
+    createSubCircle.mutate(
+      {
+        name: circleName.trim(),
+        description: circleDesc.trim() || null,
+      },
+      {
+        onSuccess: () => {
+          setCircleName("");
+          setCircleDesc("");
+          setCircleOpen(false);
+          toast({ title: "Circle created" });
+        },
+        onError: () =>
+          toast({ title: "Could not create circle", variant: "destructive" }),
+      },
+    );
+  }
+
+  function handleRsvp(eventId: number, status: "going" | "maybe" | "cant") {
+    rsvpEvent.mutate(
+      { eventId, status },
+      {
+        onError: () =>
+          toast({ title: "Could not save RSVP", variant: "destructive" }),
+      },
+    );
+  }
+
+  async function submitWallPost() {
+    const body = postBody.trim();
+    if (!body || !mainCircleId) return;
+    setPosting(true);
+    try {
+      let imageObjectPath: string | undefined;
+      if (postPhoto) {
+        const uploaded = await uploadMedia.mutateAsync({
+          file: postPhoto,
+          fileName: postPhoto.name,
+          mimeType: postPhoto.type || "image/jpeg",
+        });
+        imageObjectPath = uploaded.storageKey;
+      }
+      await createPost.mutateAsync({ body, imageObjectPath });
+      setPostBody("");
+      setPostPhoto(null);
+      if (postPhotoRef.current) postPhotoRef.current.value = "";
+      toast({ title: "Posted to the Wall" });
+    } catch {
+      toast({ title: "Could not post", variant: "destructive" });
+    } finally {
+      setPosting(false);
+    }
   }
 
   return (
@@ -532,21 +615,223 @@ export default function ReunionHomePage() {
             </CardContent>
           </Card>
 
-          {/* Circles / sub-spaces */}
+          {/* Main circle — the reunion's shared Wall */}
           <Card className="rounded-2xl">
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <MessageSquare className="w-5 h-5" /> Wall
+              </CardTitle>
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-full"
+                onClick={() => setLocation(`/circles/${data.mainCircle.id}`)}
+              >
+                Open Wall
+              </Button>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              <p className="text-xs text-muted-foreground">
+                Everyone in {org.name} ({data.mainCircle.memberCount}{" "}
+                {data.mainCircle.memberCount === 1 ? "member" : "members"}) shares
+                this space.
+              </p>
+
+              {/* Inline composer — post to the Wall without leaving home */}
+              <div className="rounded-xl border p-3 flex flex-col gap-2">
+                <Textarea
+                  value={postBody}
+                  onChange={(e) => setPostBody(e.target.value)}
+                  placeholder={`Share something with ${org.name}…`}
+                  className="resize-none rounded-lg min-h-[64px] text-sm"
+                />
+                {postPhoto && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <ImageIcon className="w-3.5 h-3.5" />
+                    <span className="truncate">{postPhoto.name}</span>
+                    <button
+                      type="button"
+                      className="text-destructive"
+                      onClick={() => {
+                        setPostPhoto(null);
+                        if (postPhotoRef.current) postPhotoRef.current.value = "";
+                      }}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+                <input
+                  ref={postPhotoRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => setPostPhoto(e.target.files?.[0] ?? null)}
+                />
+                <div className="flex items-center justify-between">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="rounded-full gap-1.5 text-muted-foreground"
+                    onClick={() => postPhotoRef.current?.click()}
+                    disabled={posting}
+                  >
+                    <ImageIcon className="w-4 h-4" /> Photo
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="rounded-full"
+                    onClick={submitWallPost}
+                    disabled={posting || !postBody.trim()}
+                  >
+                    {posting ? "Posting…" : "Post"}
+                  </Button>
+                </div>
+              </div>
+
+              {data.mainCircle.recentPosts.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">
+                  No posts yet — be the first to share something.
+                </p>
+              ) : (
+                data.mainCircle.recentPosts.map((p: OrgMainCirclePost) => (
+                  <button
+                    key={p.id}
+                    onClick={() => setLocation(`/circles/${data.mainCircle.id}`)}
+                    className="text-left rounded-xl border p-3 hover:bg-muted/50 transition-colors flex items-start gap-3"
+                  >
+                    <Avatar className="h-9 w-9 shrink-0">
+                      <AvatarImage
+                        src={objectPathToUrl(p.authorAvatarObjectPath)}
+                        alt={p.authorName ?? ""}
+                      />
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                        {initial(p.authorName)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium">
+                        {p.authorName ?? "Someone"}
+                      </p>
+                      {p.title && (
+                        <p className="text-sm font-medium truncate">{p.title}</p>
+                      )}
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {p.body}
+                      </p>
+                    </div>
+                  </button>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Care Calendar — upcoming dates from the main circle */}
+          <Card className="rounded-2xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Heart className="w-5 h-5" /> Care Calendar
+              </CardTitle>
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-full"
+                onClick={() => setLocation(`/circles/${data.mainCircle.id}`)}
+              >
+                View all
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {data.mainCircle.upcomingCareDates.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">
+                  No upcoming care dates.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {data.mainCircle.upcomingCareDates.map(
+                    (d: OrgMainCircleCareDate) => (
+                      <div
+                        key={d.id}
+                        className="rounded-xl border p-3 flex items-center justify-between gap-2"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm truncate">{d.name}</p>
+                          <p className="text-xs text-muted-foreground capitalize">
+                            {d.kind}
+                          </p>
+                        </div>
+                        <p className="text-xs font-medium text-primary shrink-0">
+                          {formatLongDate(d.nextOccurrence)}
+                        </p>
+                      </div>
+                    ),
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Sub-circles scoped to this reunion */}
+          <Card className="rounded-2xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Layers className="w-5 h-5" /> Circles
               </CardTitle>
+              {canManage && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-full"
+                  onClick={() => setCircleOpen((v) => !v)}
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              )}
             </CardHeader>
-            <CardContent>
-              {data.circles.length === 0 ? (
+            <CardContent className="flex flex-col gap-3">
+              {circleOpen && canManage && (
+                <div className="flex flex-col gap-2 rounded-xl border p-3 bg-muted/30">
+                  <Input
+                    placeholder="Circle name"
+                    value={circleName}
+                    onChange={(e) => setCircleName(e.target.value)}
+                  />
+                  <Textarea
+                    placeholder="What's this circle for? (optional)"
+                    value={circleDesc}
+                    onChange={(e) => setCircleDesc(e.target.value)}
+                    rows={2}
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="rounded-full"
+                      onClick={submitSubCircle}
+                      disabled={createSubCircle.isPending || !circleName.trim()}
+                    >
+                      Create circle
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="rounded-full"
+                      onClick={() => setCircleOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {data.subCircles.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-2">
                   No circles in this space yet.
                 </p>
               ) : (
                 <div className="grid sm:grid-cols-2 gap-3">
-                  {data.circles.map((c: OrgHomeCircle) => (
+                  {data.subCircles.map((c: OrgHomeCircle) => (
                     <button
                       key={c.id}
                       onClick={() => setLocation(`/circles/${c.id}`)}
@@ -561,7 +846,18 @@ export default function ReunionHomePage() {
                         {initial(c.name)}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-medium text-sm truncate">{c.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm truncate">{c.name}</p>
+                          {!c.isMember && (
+                            <Badge variant="secondary" className="text-[10px]">
+                              Admin
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {c.memberCount}{" "}
+                          {c.memberCount === 1 ? "member" : "members"}
+                        </p>
                         {c.description && (
                           <p className="text-xs text-muted-foreground line-clamp-2">
                             {c.description}
@@ -687,6 +983,30 @@ export default function ReunionHomePage() {
                         {ev.description}
                       </p>
                     )}
+                    <div className="flex items-center gap-1.5 pt-1">
+                      {(
+                        [
+                          { key: "going", label: "Going", Icon: Check },
+                          { key: "maybe", label: "Maybe", Icon: HelpCircle },
+                          { key: "cant", label: "Can't", Icon: X },
+                        ] as const
+                      ).map(({ key, label, Icon }) => (
+                        <Button
+                          key={key}
+                          size="sm"
+                          variant={ev.myRsvp === key ? "default" : "outline"}
+                          className="rounded-full h-7 px-2.5 text-xs gap-1"
+                          disabled={rsvpEvent.isPending}
+                          onClick={() => handleRsvp(ev.id, key)}
+                        >
+                          <Icon className="w-3 h-3" />
+                          {label}
+                          <span className="opacity-70">
+                            {ev.rsvpCounts[key]}
+                          </span>
+                        </Button>
+                      ))}
+                    </div>
                   </div>
                 ))
               )}

@@ -1,5 +1,5 @@
-import { db, circleMembersTable } from "@workspace/db";
-import { and, count, eq } from "drizzle-orm";
+import { db, circleMembersTable, circlesTable } from "@workspace/db";
+import { and, count, eq, isNull } from "drizzle-orm";
 import { isPlus } from "./revenuecat";
 
 /**
@@ -11,13 +11,18 @@ import { isPlus } from "./revenuecat";
 export const FREE_CIRCLE_LIMIT = 2;
 
 export async function countActiveMemberships(userId: number): Promise<number> {
+  // Org/reunion-scoped circles never count against the personal cap — org
+  // members already receive Plus (unlimited circles), and the auto-enrolled
+  // main circle must not push anyone over the free limit.
   const [row] = await db
     .select({ cnt: count() })
     .from(circleMembersTable)
+    .innerJoin(circlesTable, eq(circleMembersTable.circleId, circlesTable.id))
     .where(
       and(
         eq(circleMembersTable.userId, userId),
         eq(circleMembersTable.status, "active"),
+        isNull(circlesTable.orgId),
       ),
     );
   return Number(row?.cnt ?? 0);

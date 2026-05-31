@@ -1,4 +1,5 @@
 import { pgTable, text, serial, timestamp, integer, boolean, uniqueIndex } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -37,6 +38,10 @@ export const circlesTable = pgTable("circles", {
   // avoid an import cycle (orgs.ts already references users; circles also
   // references users). Validated server-side (creator must be an org member).
   orgId: integer("org_id"),
+  // True for the single auto-created "main" circle of a reunion/org — the
+  // whole-reunion shared space every member is auto-enrolled in. Sub-circles
+  // scoped to the same org keep this false.
+  isOrgMain: boolean("is_org_main").notNull().default(false),
   ownerId: integer("owner_id")
     .notNull()
     .references(() => usersTable.id),
@@ -47,7 +52,14 @@ export const circlesTable = pgTable("circles", {
     .notNull()
     .defaultNow()
     .$onUpdate(() => new Date()),
-});
+}, (table) => [
+  // At most one main circle per org. Partial unique index lets sub-circles
+  // (is_org_main = false) and personal circles (org_id null) coexist freely
+  // while guaranteeing the "single main circle" invariant under concurrency.
+  uniqueIndex("circles_org_main_uniq")
+    .on(table.orgId)
+    .where(sql`${table.isOrgMain} = true`),
+]);
 
 export const circleMembersTable = pgTable("circle_members", {
   id: serial("id").primaryKey(),

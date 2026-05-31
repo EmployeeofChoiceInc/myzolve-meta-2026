@@ -1,6 +1,6 @@
-import { useListCircles, useCreateCircle, getListCirclesQueryKey } from "@workspace/api-client-react";
+import { useListCircles, useCreateCircle, useListMyOrgs, getListCirclesQueryKey } from "@workspace/api-client-react";
 import { Link, useLocation } from "wouter";
-import { Plus, Users, Heart } from "lucide-react";
+import { Plus, Users, Heart, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -34,6 +34,8 @@ const CIRCLE_TYPE_LABELS: Record<string, string> = {
 
 export default function CirclesPage() {
   const { data: circles, isLoading } = useListCircles();
+  const { data: myOrgs } = useListMyOrgs();
+  const reunions = myOrgs?.orgs ?? [];
   const createCircle = useCreateCircle();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -152,6 +154,67 @@ export default function CirclesPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {reunions.length > 0 && (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight flex items-center gap-2">
+              <Building2 className="w-5 h-5" /> Your reunions
+            </h2>
+            <p className="text-muted-foreground text-sm mt-0.5">
+              Group spaces you belong to.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {reunions.map((org) => (
+              <Card
+                key={org.id}
+                onClick={() => setLocation(`/orgs/${org.id}/home`)}
+                className="rounded-3xl hover:shadow-md transition-shadow cursor-pointer h-full border-border/50 flex flex-col"
+              >
+                <CardHeader className="pb-3 flex-1">
+                  <div className="flex items-center gap-3 mb-1">
+                    <div
+                      className="w-11 h-11 rounded-2xl flex items-center justify-center overflow-hidden shrink-0 text-white"
+                      style={{ backgroundColor: org.accentColor || "#2563eb" }}
+                    >
+                      {org.logoUrl ? (
+                        <img
+                          src={org.logoUrl}
+                          alt={org.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Building2 className="w-5 h-5" />
+                      )}
+                    </div>
+                    <CardTitle className="text-lg truncate">{org.name}</CardTitle>
+                  </div>
+                  <CardDescription className="text-sm">
+                    {org.planName}
+                    {org.myRole ? ` · ${org.myRole}` : ""}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-0 pb-5">
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <Users className="w-4 h-4 mr-1.5" />
+                    <span>
+                      {org.seatsUsed ?? 0} member
+                      {(org.seatsUsed ?? 0) !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {reunions.length > 0 && (
+        <h2 className="text-xl font-semibold tracking-tight pt-2">
+          Your circles
+        </h2>
+      )}
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

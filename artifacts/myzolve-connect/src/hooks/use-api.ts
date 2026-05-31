@@ -1247,6 +1247,12 @@ export interface OrgAnnouncement {
   authorAvatarObjectPath: string | null;
 }
 
+export interface OrgEventRsvpCounts {
+  going: number;
+  maybe: number;
+  cant: number;
+}
+
 export interface OrgEvent {
   id: number;
   title: string;
@@ -1254,6 +1260,8 @@ export interface OrgEvent {
   location: string | null;
   startsAt: string;
   endsAt: string | null;
+  rsvpCounts: OrgEventRsvpCounts;
+  myRsvp: "going" | "maybe" | "cant" | null;
 }
 
 export interface OrgHomeCircle {
@@ -1262,6 +1270,35 @@ export interface OrgHomeCircle {
   description: string | null;
   privacyMode: string;
   accentColor: string | null;
+  memberCount: number;
+  isMember: boolean;
+}
+
+export interface OrgMainCirclePost {
+  id: number;
+  authorName: string | null;
+  authorAvatarObjectPath: string | null;
+  title: string | null;
+  body: string;
+  imageObjectPath: string | null;
+  createdAt: string;
+}
+
+export interface OrgMainCircleCareDate {
+  id: number;
+  name: string;
+  kind: string;
+  eventDate: string;
+  nextOccurrence: string;
+  isAnnual: boolean;
+}
+
+export interface OrgMainCircle {
+  id: number;
+  name: string;
+  memberCount: number;
+  recentPosts: OrgMainCirclePost[];
+  upcomingCareDates: OrgMainCircleCareDate[];
 }
 
 export interface OrgHomeMember {
@@ -1276,7 +1313,8 @@ export interface OrgHome {
   canManage: boolean;
   announcements: OrgAnnouncement[];
   events: OrgEvent[];
-  circles: OrgHomeCircle[];
+  mainCircle: OrgMainCircle;
+  subCircles: OrgHomeCircle[];
   memberCount: number;
   members: OrgHomeMember[];
 }
@@ -1291,6 +1329,42 @@ export function useOrgHome(orgId: number) {
     queryFn: () => customFetch<OrgHome>(`/api/orgs/${orgId}/home`),
     enabled: Number.isFinite(orgId) && orgId > 0,
     retry: false,
+  });
+}
+
+export function useCreateSubCircle(orgId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      name: string;
+      description?: string | null;
+      accentColor?: string | null;
+    }) =>
+      customFetch<OrgHomeCircle>(`/api/orgs/${orgId}/circles`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: orgHomeKey(orgId) });
+    },
+  });
+}
+
+export function useRsvpOrgEvent(orgId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { eventId: number; status: "going" | "maybe" | "cant" }) =>
+      customFetch<{
+        eventId: number;
+        myRsvp: "going" | "maybe" | "cant";
+        rsvpCounts: OrgEventRsvpCounts;
+      }>(`/api/orgs/${orgId}/events/${data.eventId}/rsvp`, {
+        method: "POST",
+        body: JSON.stringify({ status: data.status }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: orgHomeKey(orgId) });
+    },
   });
 }
 
