@@ -154,6 +154,46 @@ export default function CirclesScreen() {
           </Row>
         </Pressable>
 
+        <Pressable
+          onPress={() => router.push("/reunions")}
+          testID="link-reunions"
+          style={({ pressed }) => ({
+            backgroundColor: c.card,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: c.border,
+            padding: 14,
+            marginBottom: 16,
+            opacity: pressed ? 0.85 : 1,
+          })}
+        >
+          <Row gap={12} align="center">
+            <View
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 19,
+                backgroundColor: c.primarySoft,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Feather name="briefcase" size={18} color={c.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <AppText weight="semibold">Your reunions</AppText>
+              <AppText
+                variant="caption"
+                color={c.mutedForeground}
+                style={{ marginTop: 2 }}
+              >
+                Open the group spaces you belong to.
+              </AppText>
+            </View>
+            <Feather name="chevron-right" size={18} color={c.mutedForeground} />
+          </Row>
+        </Pressable>
+
         {isLoading ? (
           <View style={{ gap: 12 }}>
             <Skeleton height={120} />

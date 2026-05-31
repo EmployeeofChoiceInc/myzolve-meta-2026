@@ -187,6 +187,8 @@ function RootLayoutNav() {
         draw its own custom header (which they all already do).
       */}
       <Stack.Screen name="circle/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="reunions/index" options={{ headerShown: false }} />
+      <Stack.Screen name="reunions/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="request/[id]" options={{ title: t("navigation.request") }} />
       <Stack.Screen name="service/[id]" options={{ title: t("navigation.service") }} />
       <Stack.Screen name="profile/[userId]" options={{ title: t("tabs.profile") }} />
