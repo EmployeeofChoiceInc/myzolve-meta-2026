@@ -173,8 +173,8 @@ function ClerkProviderWithRoutes() {
           <Route path="/terms" component={TermsPage} />
           <Route path="/circle-builder" component={CircleBuilderPage} />
           <Route path="/admin"><ProtectedRoute component={AdminHubPage} /></Route>
-          <Route path="/admin/circle-builders"><ProtectedRoute component={AdminCircleBuildersPage} /></Route>
-          <Route path="/admin/comps"><ProtectedRoute component={AdminCompsPage} /></Route>
+          <Route path="/admin/circle-builders"><Redirect to="/admin" /></Route>
+          <Route path="/admin/comps"><Redirect to="/admin" /></Route>
           <Route path="/dashboard"><ProtectedRoute component={DashboardPage} /></Route>
           <Route path="/circles"><ProtectedRoute component={CirclesPage} /></Route>
           <Route path="/circles/:id"><ProtectedRoute component={CircleDetailPage} /></Route>

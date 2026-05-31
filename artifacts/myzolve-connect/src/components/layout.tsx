@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Heart, Home, Users, Bell, Settings, LogOut, Menu, Check, Compass, MessageCircle, Star, Flag, X as XIcon, UserPlus2, Search, Building2, Gift } from "lucide-react";
+import { Heart, Home, Users, Bell, Settings, LogOut, Menu, Check, Compass, MessageCircle, Star, Flag, X as XIcon, UserPlus2, Search, Building2, ShieldAlert } from "lucide-react";
 import { useClerk, useUser } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -436,7 +436,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { icon: Star, label: "Plus", href: "/plus", plus: true },
     { icon: Building2, label: "Organizations", href: "/orgs" },
     ...(isAdmin
-      ? [{ icon: Gift, label: "Comps", href: "/admin/comps" } as NavItem]
+      ? [{ icon: ShieldAlert, label: "Admin", href: "/admin" } as NavItem]
       : []),
   ];
 
