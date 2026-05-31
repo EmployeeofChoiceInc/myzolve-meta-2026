@@ -11,6 +11,7 @@ import {
   useRsvpOrgEvent,
   useCreateCirclePost,
   useUploadCircleMedia,
+  useAttachments,
   objectPathToUrl,
   type OrgAnnouncement,
   type OrgEvent,
@@ -21,6 +22,7 @@ import {
 } from "@/hooks/use-api";
 import { customFetch } from "@workspace/api-client-react";
 import { ReactionBar, CommentsSection } from "@/components/post-interactions";
+import { MediaAttachmentList } from "@/components/media-attachment-display";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -102,6 +104,52 @@ function Countdown({ target, accent }: { target: string; accent?: string }) {
         </div>
       ))}
       <div className="ml-1 text-sm opacity-90">until the big day</div>
+    </div>
+  );
+}
+
+/** A single Wall preview post — mirrors the full Wall by showing the post's
+ *  inline image plus its full attachment set (photos, voice, video). */
+function WallPreviewPost({
+  post,
+  circleId,
+}: {
+  post: OrgMainCirclePost;
+  circleId: number;
+}) {
+  const { data: attachments } = useAttachments(circleId, "circle_post", post.id);
+  return (
+    <div className="rounded-xl border p-3 flex flex-col gap-3">
+      <div className="flex items-start gap-3">
+        <Avatar className="h-9 w-9 shrink-0">
+          <AvatarImage
+            src={objectPathToUrl(post.authorAvatarObjectPath)}
+            alt={post.authorName ?? ""}
+          />
+          <AvatarFallback className="bg-primary/10 text-primary text-xs">
+            {initial(post.authorName)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0">
+          <p className="text-xs font-medium">{post.authorName ?? "Someone"}</p>
+          {post.title && <p className="text-sm font-medium">{post.title}</p>}
+          <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+            {post.body}
+          </p>
+          {post.imageObjectPath && (
+            <img
+              src={objectPathToUrl(post.imageObjectPath)}
+              alt="Post attachment"
+              className="mt-2 rounded-xl w-full object-cover max-h-64"
+            />
+          )}
+          <MediaAttachmentList attachments={attachments} circleId={circleId} />
+        </div>
+      </div>
+      <div className="space-y-3 pl-12">
+        <ReactionBar circleId={circleId} postId={post.id} />
+        <CommentsSection circleId={circleId} postId={post.id} />
+      </div>
     </div>
   );
 }
@@ -704,50 +752,11 @@ export default function ReunionHomePage() {
                 </p>
               ) : (
                 data.mainCircle.recentPosts.map((p: OrgMainCirclePost) => (
-                  <div
+                  <WallPreviewPost
                     key={p.id}
-                    className="rounded-xl border p-3 flex flex-col gap-3"
-                  >
-                    <div className="flex items-start gap-3">
-                      <Avatar className="h-9 w-9 shrink-0">
-                        <AvatarImage
-                          src={objectPathToUrl(p.authorAvatarObjectPath)}
-                          alt={p.authorName ?? ""}
-                        />
-                        <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                          {initial(p.authorName)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium">
-                          {p.authorName ?? "Someone"}
-                        </p>
-                        {p.title && (
-                          <p className="text-sm font-medium">{p.title}</p>
-                        )}
-                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                          {p.body}
-                        </p>
-                        {p.imageObjectPath && (
-                          <img
-                            src={objectPathToUrl(p.imageObjectPath)}
-                            alt="Post attachment"
-                            className="mt-2 rounded-xl w-full object-cover max-h-64"
-                          />
-                        )}
-                      </div>
-                    </div>
-                    <div className="space-y-3 pl-12">
-                      <ReactionBar
-                        circleId={data.mainCircle.id}
-                        postId={p.id}
-                      />
-                      <CommentsSection
-                        circleId={data.mainCircle.id}
-                        postId={p.id}
-                      />
-                    </div>
-                  </div>
+                    post={p}
+                    circleId={data.mainCircle.id}
+                  />
                 ))
               )}
             </CardContent>
