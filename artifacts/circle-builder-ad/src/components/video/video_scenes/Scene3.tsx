@@ -47,11 +47,11 @@ export function Scene3() {
           Founding<br/>Ambassadors
         </motion.h2>
 
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap gap-4 max-w-[60vw]">
           {roles.map((role, i) => (
             <motion.div
               key={role}
-              className="px-6 py-3 bg-white/60 border border-[var(--color-primary)]/20 shadow-sm rounded-full text-[var(--color-text-primary)] font-medium text-[1.5vw] font-body"
+              className="px-6 py-3 bg-white/60 border border-[var(--color-primary)]/20 shadow-sm rounded-full text-[var(--color-text-primary)] font-medium text-[1.4vw] font-body whitespace-nowrap"
               initial={{ opacity: 0, scale: 0.8, y: 20 }}
               animate={phase >= 2 ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.8, y: 20 }}
               transition={{ 

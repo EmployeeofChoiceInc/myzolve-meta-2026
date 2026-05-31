@@ -29,14 +29,14 @@ export function Scene5() {
       <div className="absolute inset-0 bg-gradient-to-b from-[var(--color-bg-light)]/60 to-[var(--color-bg-light)]/90" />
 
       <div className="z-10 text-center flex flex-col items-center w-full max-w-4xl">
-        <motion.div 
-          className="w-[10vw] h-[10vw] border-[0.3vw] border-[var(--color-primary)] rounded-full mb-[3vw] flex items-center justify-center bg-white/50 backdrop-blur-md shadow-xl"
-          initial={{ scale: 0, rotate: -90 }}
-          animate={phase >= 1 ? { scale: 1, rotate: 0 } : { scale: 0, rotate: -90 }}
-          transition={{ type: "spring", stiffness: 200, damping: 20 }}
-        >
-          <div className="w-[5vw] h-[5vw] bg-[var(--color-accent)] rounded-full shadow-inner" />
-        </motion.div>
+        <motion.img
+          src={`${import.meta.env.BASE_URL}images/founder-peach-badge.png`}
+          alt="Founding Ambassador peach badge"
+          className="w-[15vw] h-[15vw] object-contain mb-[2vw] drop-shadow-2xl"
+          initial={{ scale: 0, rotate: -12 }}
+          animate={phase >= 1 ? { scale: 1, rotate: 0 } : { scale: 0, rotate: -12 }}
+          transition={{ type: "spring", stiffness: 200, damping: 18 }}
+        />
 
         <motion.h1 
           className="text-[5vw] font-display leading-tight mb-[1vw] text-[var(--color-text-primary)]"

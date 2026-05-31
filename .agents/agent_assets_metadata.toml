@@ -36,6 +36,12 @@ uri = "file://artifacts/circle-builder-ad-vertical/public/images/founder-badge.p
 type = "image"
 title = "Premium founder badge"
 
+[[generated]]
+id = "JudNO1th1jdRBWgQYCNOE"
+uri = "file://artifacts/circle-builder-ad/public/images/founder-peach-badge.png"
+type = "image"
+title = "peach founder badge"
+
 [[outputs]]
 id = "dHXnu7TW8seIluGsfhFFS"
 uri = "file://exports/app-store/iphone-6.9/01-onboarding.png"
