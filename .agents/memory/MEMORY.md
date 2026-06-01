@@ -9,3 +9,4 @@
 - [MyZolve admin identity](myzolve-admin-identity.md) — admin = VERIFICATION_ADMIN_EMAIL env allow-list (no isAdmin column, no /me flag); web detects via GET /admin/check.
 - [Org/Reunion group space](org-group-space.md) — orgs reuse Circles: auto main circle (isOrgMain) + sub-circles; circles with orgId set must never count against FREE_CIRCLE_LIMIT.
 - [isOrgMain in circle list](isOrgMain-circles-list.md) — filter isOrgMain client-side only (not server-side); global exclusion breaks dashboard onboarding (circles.length===0) and live mobile app.
+- [EAS iOS build — standalone pnpm workspace fix](eas-ios-build-fix.md) — Replit blocks git ops so EAS_NO_VCS=1 is required; must add vendor/ + pnpm-workspace.yaml + pnpm-lock.yaml to mobile dir.
