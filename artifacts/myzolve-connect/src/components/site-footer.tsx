@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Heart, Apple } from "lucide-react";
+import { Apple } from "lucide-react";
 
 const APP_STORE_URL =
   "https://apps.apple.com/us/app/myzolve-connect-mobile/id6762488844";
@@ -10,7 +10,7 @@ export default function SiteFooter() {
     <footer className="border-t border-border/60 bg-background/60 mt-auto">
       <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm">
         <div className="flex items-center gap-2 text-muted-foreground">
-          <Heart className="w-4 h-4 fill-current text-primary" />
+          <img src={`${import.meta.env.BASE_URL}logo-mark.png`} alt="" className="h-5 w-5 object-contain" />
           <span className="font-medium text-foreground">MyZolve Connect</span>
           <span className="text-muted-foreground/70">— a sub-brand by</span>
           <a

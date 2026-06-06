@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Heart, Home, Users, Bell, Settings, LogOut, Menu, Check, Compass, MessageCircle, Star, Flag, X as XIcon, UserPlus2, Search, Building2, ShieldAlert } from "lucide-react";
+import { Home, Users, Bell, Settings, LogOut, Menu, Check, Compass, MessageCircle, Star, Flag, X as XIcon, UserPlus2, Search, Building2, ShieldAlert } from "lucide-react";
 import { useClerk, useUser } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -485,9 +485,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <div className="min-h-[100dvh] flex flex-col md:flex-row bg-background">
       {/* Mobile Header */}
       <header className="md:hidden flex items-center justify-between p-4 border-b bg-card">
-        <Link href="/dashboard" className="flex items-center gap-2 text-primary font-semibold text-lg">
-          <Heart className="w-6 h-6 fill-current" />
-          MyZolve Connect
+        <Link href="/dashboard" className="flex items-center">
+          <img src={`${import.meta.env.BASE_URL}logo-wordmark.png`} alt="MyZolve Connect" className="h-9 w-auto" />
         </Link>
         <div className="flex items-center gap-2">
           <NotificationDrawer />
@@ -508,9 +507,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-[280px] shrink-0 border-r bg-card p-6">
-        <Link href="/dashboard" className="flex items-center gap-2 text-primary font-semibold text-xl mb-10 px-2">
-          <Heart className="w-7 h-7 fill-current" />
-          MyZolve Connect
+        <Link href="/dashboard" className="flex items-center mb-10 px-2">
+          <img src={`${import.meta.env.BASE_URL}logo-wordmark.png`} alt="MyZolve Connect" className="h-10 w-auto" />
         </Link>
         <nav className="flex flex-col gap-2 flex-1">
           <NavLinks />
