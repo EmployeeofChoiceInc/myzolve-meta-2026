@@ -15,7 +15,7 @@ export default function LandingPage() {
         <img
           src={`${BASE}logo-wordmark.png`}
           alt="MyZolve Connect"
-          className="h-14 w-auto"
+          className="h-20 w-auto"
         />
         <div className="flex items-center gap-4">
           <Link href="/sign-in">
