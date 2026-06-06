@@ -19,7 +19,9 @@ function findWorkspaceRoot(startDir) {
   throw new Error("Could not find workspace root (no pnpm-workspace.yaml found)");
 }
 
-const workspaceRoot = findWorkspaceRoot(projectRoot);
+// Start from the parent directory so the mobile-local pnpm-workspace.yaml
+// (added for EAS builds) is skipped and we always resolve to the repo root.
+const workspaceRoot = findWorkspaceRoot(path.dirname(projectRoot));
 const basePath = (process.env.BASE_PATH || "/").replace(/\/+$/, "");
 
 function exitWithError(message) {
