@@ -221,6 +221,10 @@ async function downloadFile(url, outputPath) {
     const response = await fetch(url, { signal: controller.signal });
 
     if (!response.ok) {
+      let body = "";
+      try { body = await response.text(); } catch { /* ignore */ }
+      // Log the first 3000 chars of the error body so bundling errors appear in build logs
+      console.error(`[Bundle Error] HTTP ${response.status} from Metro:\n${body.slice(0, 3000)}`);
       throw new Error(`HTTP ${response.status}`);
     }
 
