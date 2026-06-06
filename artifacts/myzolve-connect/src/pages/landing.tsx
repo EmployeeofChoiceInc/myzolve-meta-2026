@@ -31,7 +31,7 @@ export default function LandingPage() {
         {/* Hero */}
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/10 text-secondary text-sm font-medium mb-8">
           <Leaf className="w-4 h-4" />
-          For families, neighbors &amp; resilient communities
+          For families, neighbors &amp; resilient circles
         </div>
 
         <h1 className="text-5xl lg:text-7xl font-bold tracking-tight text-foreground max-w-4xl mb-6">
@@ -92,9 +92,9 @@ export default function LandingPage() {
             <div className="w-12 h-12 bg-accent text-accent-foreground rounded-2xl flex items-center justify-center mb-6">
               <Users className="w-6 h-6" />
             </div>
-            <h3 className="text-xl font-semibold mb-3">Trusted Spaces</h3>
+            <h3 className="text-xl font-semibold mb-3">Your Circle, Your Rules</h3>
             <p className="text-muted-foreground leading-relaxed">
-              Private, invitation-only circles for family, neighbors, faith communities, or any group that looks out for each other. Your network, your rules — no algorithm in sight.
+              Build private, invitation-only circles for family, neighbors, faith communities, or any group that looks out for each other. No algorithm decides who's in — you do.
             </p>
           </div>
         </div>
