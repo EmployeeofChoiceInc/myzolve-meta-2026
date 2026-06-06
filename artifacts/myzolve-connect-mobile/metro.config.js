@@ -18,11 +18,19 @@ if (!existingFolders.has(workspaceRoot)) {
   config.watchFolders = [workspaceRoot, ...existingFolders];
 }
 
-// Fix 2: Ensure workspace root's node_modules is in nodeModulesPaths so
-// Metro resolves packages from the correct location.
+// Fix 2: Ensure the mobile's own node_modules AND the workspace root's
+// node_modules are in nodeModulesPaths.
+//
+// When Metro resolves imports in files outside projectRoot (e.g.
+// lib/api-client-react/src/generated/api.ts), it walks up the directory
+// tree from that file's location. It never crosses into sibling directories
+// like artifacts/myzolve-connect-mobile/node_modules, which is where
+// react/compiler-runtime.js (injected by the React Compiler transform) lives.
+// Adding projectRoot/node_modules to nodeModulesPaths fixes that lookup.
 config.resolver = {
   ...config.resolver,
   nodeModulesPaths: [
+    path.join(projectRoot, "node_modules"),
     path.join(workspaceRoot, "node_modules"),
     ...(config.resolver?.nodeModulesPaths || []),
   ].filter((v, i, a) => a.indexOf(v) === i),

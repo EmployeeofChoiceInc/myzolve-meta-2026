@@ -17,7 +17,7 @@ A self-contained mini pnpm workspace lives inside `artifacts/myzolve-connect-mob
 EAS detects `pnpm-workspace.yaml` → uses pnpm → `Scope: all 3 workspace projects` → installs 1143 packages → build succeeds.
 
 ## Side-effect on Replit deployment builds (also fixed)
-The local `pnpm-workspace.yaml` caused two cascading failures in the Replit deployment build:
+The local `pnpm-workspace.yaml` caused three cascading failures in the Replit deployment build:
 
 ### 1. `scripts/build.js` — wrong workspaceRoot
 `findWorkspaceRoot(projectRoot)` walks up looking for `pnpm-workspace.yaml`. It now stops at the mobile dir instead of the repo root. This changes the Metro bundle URL from:
@@ -42,6 +42,20 @@ if (!new Set(config.watchFolders || []).has(workspaceRoot)) {
 ```
 
 **Why both fixes are needed:** build.js computes the URL; metro.config.js controls which URL Metro can serve. They must agree on the workspace root.
+
+### 3. `metro.config.js` — react/compiler-runtime unresolvable from lib/ files
+The React Compiler (`transform.reactCompiler=true` in production manifests) transforms `lib/api-client-react/src/generated/api.ts` (which uses `useQuery`/`useMutation`). It injects `import "react/compiler-runtime"` at the top. Metro resolves this import by walking up from `lib/api-client-react/src/generated/` — it never reaches `artifacts/myzolve-connect-mobile/node_modules/react/compiler-runtime.js`.
+
+**Fix:** Add `projectRoot/node_modules` (the mobile's own node_modules) as the FIRST entry in `nodeModulesPaths`:
+```javascript
+config.resolver.nodeModulesPaths = [
+  path.join(projectRoot, "node_modules"),   // mobile's node_modules — has react/compiler-runtime
+  path.join(workspaceRoot, "node_modules"), // repo root node_modules
+  ...(config.resolver?.nodeModulesPaths || []),
+].filter((v, i, a) => a.indexOf(v) === i);
+```
+
+**Why:** Metro's `nodeModulesPaths` supplements the standard directory-walk resolution. Without `projectRoot/node_modules`, files from outside projectRoot (like lib/) that import mobile-installed packages fail at bundle time, not at dev time (dev mode doesn't enable the React Compiler transform).
 
 ## How to apply after changes to lib packages
 If `lib/api-client-react` or `lib/tutorial-content` change, refresh the vendor copies:
