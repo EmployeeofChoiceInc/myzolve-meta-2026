@@ -12,11 +12,16 @@ export default function LandingPage() {
   return (
     <div className="min-h-[100dvh] flex flex-col bg-background">
       <header className="flex items-center justify-between p-6 lg:px-12">
-        <img
-          src={`${BASE}logo-wordmark.png`}
-          alt="MyZolve Connect"
-          className="h-20 w-auto"
-        />
+        <div className="flex items-center gap-3">
+          <img
+            src={`${BASE}logo-mark.png`}
+            alt=""
+            className="h-12 w-12 object-contain"
+          />
+          <span className="text-2xl font-bold tracking-tight text-foreground">
+            MyZolve <span className="text-primary">Connect</span>
+          </span>
+        </div>
         <div className="flex items-center gap-4">
           <Link href="/sign-in">
             <Button variant="ghost" className="text-muted-foreground hover:text-foreground">Log in</Button>
