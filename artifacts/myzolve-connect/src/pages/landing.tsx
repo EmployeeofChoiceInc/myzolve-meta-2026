@@ -50,7 +50,7 @@ export default function LandingPage() {
         </h1>
 
         <p className="text-xl text-muted-foreground max-w-2xl mb-12 leading-relaxed">
-          When the world feels uncertain, the people around you are what matter most. MyZolve Connect gives your family, neighbors, and trusted circle the tools to support each other — from everyday help to the moments that call for something more.
+          The people around you are your greatest resource. MyZolve Connect helps your family, neighbors, and trusted circle actually know each other — and show up when it counts.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full justify-center max-w-xl">
@@ -90,7 +90,7 @@ export default function LandingPage() {
             </div>
             <h3 className="text-xl font-semibold mb-3">Community Resilience</h3>
             <p className="text-muted-foreground leading-relaxed">
-              Share skills, coordinate resources, and prepare together. From everyday favors to building a genuinely self-sufficient neighborhood — your circle becomes your safety net.
+              Share what you know, offer what you have, and deepen the connections that matter. The more your circle actually knows each other, the more powerful it becomes — for small favors and the moments that really count.
             </p>
           </div>
           <div className="bg-card p-8 rounded-3xl shadow-sm border border-card-border">
@@ -114,13 +114,13 @@ export default function LandingPage() {
             <div className="relative">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/15 text-secondary text-sm font-medium mb-5">
                 <Leaf className="w-4 h-4" />
-                Going "off-grid" doesn't mean going alone
+                Real roots. Real people.
               </div>
               <h2 className="text-3xl lg:text-4xl font-bold mb-4 max-w-2xl">
                 The strongest communities are built before they're needed.
               </h2>
               <p className="text-lg text-muted-foreground max-w-xl mb-8">
-                Whether you're simplifying life, preparing your family for the unexpected, or just deepening roots in your community — your circle is the foundation. Start building it today.
+                Whether you're deepening roots in your neighborhood, looking out for your family, or simply finding the people you can count on — your circle is the foundation. Start building it today.
               </p>
               <Link href="/sign-up">
                 <Button size="lg" className="rounded-full text-lg h-14 px-8">
