@@ -22,3 +22,5 @@ export * from "./orgEvents";
 export * from "./orgEventRsvps";
 export * from "./circleBuilder";
 export * from "./comps";
+export * from "./memberSkills";
+export * from "./memberResources";

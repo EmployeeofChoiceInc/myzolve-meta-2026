@@ -9,7 +9,9 @@ import {
   getGetUserPublicProfileQueryKey,
   getListMyUserConnectionsQueryKey,
   getListMyUserBlocksQueryKey,
+  getListCircleMembersQueryKey,
   useListMyUserBlocks,
+  useListCircleMembers,
   getListNotificationsQueryKey,
   useAcceptUserConnection,
   useBlockUser,
@@ -39,10 +41,22 @@ export default function ProfileDetailScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const qc = useQueryClient();
-  const params = useLocalSearchParams<{ userId: string }>();
+  const params = useLocalSearchParams<{ userId: string; circleId?: string }>();
   const userId = Number(params.userId);
+  const circleIdParam = Array.isArray(params.circleId)
+    ? params.circleId[0]
+    : params.circleId;
+  const circleId = circleIdParam ? Number(circleIdParam) : 0;
+  const hasCircleContext = Number.isSafeInteger(circleId) && circleId > 0;
   const { data: me } = useGetMe();
   const { data: profile, isLoading } = useGetUserPublicProfile(userId);
+  const { data: circleMembers } = useListCircleMembers(circleId, {
+    query: {
+      enabled: hasCircleContext,
+      queryKey: getListCircleMembersQueryKey(circleId),
+    },
+  });
+  const circleMember = circleMembers?.find((member) => member.userId === userId);
   const { data: blocksList } = useListMyUserBlocks();
   const isMe = me?.id === userId;
   const isBlockedByMe = !!blocksList?.some((b) => b.blockedUser.id === userId);
@@ -375,6 +389,56 @@ export default function ProfileDetailScreen() {
               {profile.bio ? (
                 <Card style={{ marginBottom: 12 }}>
                   <AppText>{profile.bio}</AppText>
+                </Card>
+              ) : null}
+
+              {circleMember ? (
+                <Card style={{ marginBottom: 12 }} testID="profile-circle-capacity">
+                  <AppText variant="title" style={{ marginBottom: 12 }}>
+                    Skills & resources
+                  </AppText>
+                  <AppText variant="label" color={c.mutedForeground} style={{ marginBottom: 6 }}>
+                    Skills
+                  </AppText>
+                  {circleMember.skills?.length ? (
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                      {circleMember.skills.map((skill) => (
+                        <Pill
+                          key={skill.id}
+                          label={skill.label}
+                          bg={c.primarySoft}
+                          fg={c.primary}
+                        />
+                      ))}
+                    </View>
+                  ) : (
+                    <AppText variant="caption" color={c.mutedForeground}>
+                      No skills listed.
+                    </AppText>
+                  )}
+                  <AppText
+                    variant="label"
+                    color={c.mutedForeground}
+                    style={{ marginTop: 14, marginBottom: 6 }}
+                  >
+                    Resources
+                  </AppText>
+                  {circleMember.resources?.length ? (
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                      {circleMember.resources.map((resource) => (
+                        <Pill
+                          key={resource.id}
+                          label={`${resource.label}${resource.isAvailable ? "" : " · unavailable"}`}
+                          bg={resource.isAvailable ? c.primarySoft : c.muted}
+                          fg={resource.isAvailable ? c.primary : c.mutedForeground}
+                        />
+                      ))}
+                    </View>
+                  ) : (
+                    <AppText variant="caption" color={c.mutedForeground}>
+                      No resources listed.
+                    </AppText>
+                  )}
                 </Card>
               ) : null}
 

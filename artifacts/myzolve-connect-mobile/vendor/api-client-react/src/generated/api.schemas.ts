@@ -9,6 +9,140 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface LifeDemoMember {
+  id: string;
+  name: string;
+  relationship: string;
+  availability: string;
+  strengths: string[];
+}
+
+export interface LifeDemoHousehold {
+  id: string;
+  name: string;
+  description: string;
+  /** @minItems 1 */
+  members: LifeDemoMember[];
+}
+
+export interface LifeDemoScenario {
+  id: string;
+  title: string;
+  description: string;
+}
+
+export interface LifeDemoFixtures {
+  households: LifeDemoHousehold[];
+  scenarios: LifeDemoScenario[];
+}
+
+export interface LifePlanInput {
+  /** @minLength 1 */
+  householdId: string;
+  /**
+   * @minLength 10
+   * @maxLength 2000
+   */
+  scenarioDescription: string;
+}
+
+export type LifeTaskSuggestionPriority =
+  (typeof LifeTaskSuggestionPriority)[keyof typeof LifeTaskSuggestionPriority];
+
+export const LifeTaskSuggestionPriority = {
+  urgent: "urgent",
+  soon: "soon",
+  flexible: "flexible",
+} as const;
+
+export type LifeTaskSuggestionStatus =
+  (typeof LifeTaskSuggestionStatus)[keyof typeof LifeTaskSuggestionStatus];
+
+export const LifeTaskSuggestionStatus = {
+  suggested: "suggested",
+  approved: "approved",
+  completed: "completed",
+} as const;
+
+export interface LifeTaskSuggestion {
+  id: string;
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  title: string;
+  /**
+   * @minLength 1
+   * @maxLength 500
+   */
+  description: string;
+  /** @nullable */
+  assignedMemberId: string | null;
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  timing: string;
+  /**
+   * @minLength 1
+   * @maxLength 300
+   */
+  rationale: string;
+  priority: LifeTaskSuggestionPriority;
+  status: LifeTaskSuggestionStatus;
+  reviewRequired: boolean;
+}
+
+export interface LifePlan {
+  id: string;
+  /** @minimum 1 */
+  version: number;
+  householdId: string;
+  scenarioDescription: string;
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  title: string;
+  /**
+   * @minLength 1
+   * @maxLength 600
+   */
+  summary: string;
+  assumptions: string[];
+  clarificationQuestions: string[];
+  /** @maxItems 20 */
+  tasks: LifeTaskSuggestion[];
+  generatedAt: string;
+}
+
+export interface LifeReplanInput {
+  /** @minLength 1 */
+  householdId: string;
+  /**
+   * @minLength 10
+   * @maxLength 2000
+   */
+  scenarioDescription: string;
+  /**
+   * @minLength 10
+   * @maxLength 2000
+   */
+  changedCircumstances: string;
+  plan: LifePlan;
+  /**
+   * @minItems 1
+   * @maxItems 20
+   */
+  affectedTaskIds: string[];
+}
+
+export interface LifeReplanResult {
+  plan: LifePlan;
+  preservedTaskIds: string[];
+  refreshedTaskIds: string[];
+}
+
 export interface ErrorResponse {
   error: string;
 }
@@ -716,6 +850,17 @@ export const CircleMemberStatus = {
   removed: "removed",
 } as const;
 
+export interface CircleMemberSkill {
+  id: number;
+  label: string;
+}
+
+export interface CircleMemberResource {
+  id: number;
+  label: string;
+  isAvailable: boolean;
+}
+
 export interface CircleMember {
   id: number;
   circleId: number;
@@ -731,6 +876,59 @@ export interface CircleMember {
   /** @nullable */
   joinedAt?: string | null;
   createdAt: string;
+  skills?: CircleMemberSkill[];
+  resources?: CircleMemberResource[];
+}
+
+export interface MemberSkill {
+  id: number;
+  userId: number;
+  label: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MemberSkillInput {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  label: string;
+}
+
+export interface MemberSkillUpdate {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  label: string;
+}
+
+export interface MemberResource {
+  id: number;
+  userId: number;
+  label: string;
+  isAvailable: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MemberResourceInput {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  label: string;
+  isAvailable?: boolean;
+}
+
+export interface MemberResourceUpdate {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  label?: string;
+  isAvailable?: boolean;
 }
 
 export type UpdateCircleMemberBodyRole =
@@ -2788,6 +2986,11 @@ export type PaymentRequiredResponse = PaywallError;
  */
 export type ConflictResponse = ErrorResponse;
 
+/**
+ * LIFE demo model request limit reached
+ */
+export type TooManyRequestsResponse = ErrorResponse;
+
 export type UpdateMyCircleVisibilityBody = {
   showOnProfile: boolean;
 };
@@ -2837,6 +3040,14 @@ export type RequestUserConnectionBody = {
   receiverUserId: number;
   /** @maxLength 280 */
   message?: string;
+};
+
+export type SearchCircleSkillsParams = {
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  q: string;
 };
 
 export type ListSupportRequestsParams = {

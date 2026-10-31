@@ -850,6 +850,17 @@ export const CircleMemberStatus = {
   removed: "removed",
 } as const;
 
+export interface CircleMemberSkill {
+  id: number;
+  label: string;
+}
+
+export interface CircleMemberResource {
+  id: number;
+  label: string;
+  isAvailable: boolean;
+}
+
 export interface CircleMember {
   id: number;
   circleId: number;
@@ -865,6 +876,59 @@ export interface CircleMember {
   /** @nullable */
   joinedAt?: string | null;
   createdAt: string;
+  skills?: CircleMemberSkill[];
+  resources?: CircleMemberResource[];
+}
+
+export interface MemberSkill {
+  id: number;
+  userId: number;
+  label: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MemberSkillInput {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  label: string;
+}
+
+export interface MemberSkillUpdate {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  label: string;
+}
+
+export interface MemberResource {
+  id: number;
+  userId: number;
+  label: string;
+  isAvailable: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MemberResourceInput {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  label: string;
+  isAvailable?: boolean;
+}
+
+export interface MemberResourceUpdate {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  label?: string;
+  isAvailable?: boolean;
 }
 
 export type UpdateCircleMemberBodyRole =
@@ -2976,6 +3040,14 @@ export type RequestUserConnectionBody = {
   receiverUserId: number;
   /** @maxLength 280 */
   message?: string;
+};
+
+export type SearchCircleSkillsParams = {
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  q: string;
 };
 
 export type ListSupportRequestsParams = {

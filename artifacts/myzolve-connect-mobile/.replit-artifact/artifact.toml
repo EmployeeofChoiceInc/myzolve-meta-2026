@@ -16,7 +16,7 @@ paths = [ "/mobile/" ]
 localPort = 24315
 
 [services.development]
-run = "pnpm --filter @workspace/myzolve-connect-mobile run dev"
+run = "pnpm run dev"
 
 [services.production]
 build = [ "pnpm", "--filter", "@workspace/myzolve-connect-mobile", "run", "build" ]

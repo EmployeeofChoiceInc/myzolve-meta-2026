@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
-import { validateBody, validateParams, circleIdParam, memberIdParam, circleAndMemberIdParam, invitationIdParam, invitationTokenParam, joinRequestIdParam } from "../middlewares/validate";
+import { validateBody, validateParams, validateQuery, circleIdParam, memberIdParam, circleAndMemberIdParam, invitationIdParam, invitationTokenParam, joinRequestIdParam } from "../middlewares/validate";
 import { db } from "@workspace/db";
 import {
   circleMembersTable,
@@ -9,9 +9,11 @@ import {
   circleInvitationsTable,
   circleJoinRequestsTable,
   usersTable,
+  memberSkillsTable,
+  memberResourcesTable,
   type CircleMember,
 } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { addDays } from "date-fns";
 import { createAuditLog, createNotification } from "../lib/helpers";
@@ -45,6 +47,10 @@ const updateMemberSchema = z.object({
   role: z.enum(ASSIGNABLE_ROLES),
 });
 
+const circleSkillsSearchSchema = z.object({
+  q: z.string().trim().min(1).max(100),
+});
+
 function memberToApi(
   member: CircleMember,
   user: { displayName: string; email: string; avatarObjectPath: string | null } | null,
@@ -61,6 +67,90 @@ function memberToApi(
     joinedAt: member.joinedAt,
     createdAt: member.createdAt,
   };
+}
+
+async function listCircleMembersWithCapacity(circleId: number) {
+  const members = await db
+    .select({
+      member: circleMembersTable,
+      user: usersTable,
+    })
+    .from(circleMembersTable)
+    .leftJoin(usersTable, eq(circleMembersTable.userId, usersTable.id))
+    .where(
+      and(
+        eq(circleMembersTable.circleId, circleId),
+        eq(circleMembersTable.status, "active"),
+      ),
+    );
+
+  const userIds = [
+    ...new Set(
+      members
+        .map((row) => row.member.userId)
+        .filter((userId): userId is number => userId !== null),
+    ),
+  ];
+  const skills = userIds.length
+    ? await db
+        .select({
+          id: memberSkillsTable.id,
+          userId: memberSkillsTable.userId,
+          label: memberSkillsTable.label,
+        })
+        .from(memberSkillsTable)
+        .where(inArray(memberSkillsTable.userId, userIds))
+    : [];
+  const resources = userIds.length
+    ? await db
+        .select({
+          id: memberResourcesTable.id,
+          userId: memberResourcesTable.userId,
+          label: memberResourcesTable.label,
+          isAvailable: memberResourcesTable.isAvailable,
+        })
+        .from(memberResourcesTable)
+        .where(inArray(memberResourcesTable.userId, userIds))
+    : [];
+
+  const skillsByUserId = new Map<number, Array<{ id: number; label: string }>>();
+  for (const skill of skills) {
+    const userSkills = skillsByUserId.get(skill.userId) ?? [];
+    userSkills.push({ id: skill.id, label: skill.label });
+    skillsByUserId.set(skill.userId, userSkills);
+  }
+
+  const resourcesByUserId = new Map<
+    number,
+    Array<{ id: number; label: string; isAvailable: boolean }>
+  >();
+  for (const resource of resources) {
+    const userResources = resourcesByUserId.get(resource.userId) ?? [];
+    userResources.push({
+      id: resource.id,
+      label: resource.label,
+      isAvailable: resource.isAvailable,
+    });
+    resourcesByUserId.set(resource.userId, userResources);
+  }
+
+  return members.map((row) => {
+    const userId = row.member.userId;
+    return {
+      ...memberToApi(
+        row.member,
+        row.user
+          ? {
+              displayName: row.user.displayName,
+              email: row.user.email,
+              avatarObjectPath: row.user.avatarObjectPath ?? null,
+            }
+          : null,
+      ),
+      skills: userId === null ? [] : skillsByUserId.get(userId) ?? [],
+      resources: userId === null ? [] : resourcesByUserId.get(userId) ?? [],
+    };
+  });
 }
 
 router.get("/circles/:circleId/members", requireAuth, validateParams(circleIdParam), async (req, res) => {
@@ -85,35 +175,47 @@ router.get("/circles/:circleId/members", requireAuth, validateParams(circleIdPar
     return;
   }
 
-  const members = await db
-    .select({
-      member: circleMembersTable,
-      user: usersTable,
-    })
-    .from(circleMembersTable)
-    .leftJoin(usersTable, eq(circleMembersTable.userId, usersTable.id))
-    .where(
-      and(
-        eq(circleMembersTable.circleId, circleId),
-        eq(circleMembersTable.status, "active"),
-      ),
-    );
-
-  res.json(
-    members.map((row) =>
-      memberToApi(
-        row.member,
-        row.user
-          ? {
-              displayName: row.user.displayName,
-              email: row.user.email,
-              avatarObjectPath: row.user.avatarObjectPath ?? null,
-            }
-          : null,
-      ),
-    ),
-  );
+  res.json(await listCircleMembersWithCapacity(circleId));
 });
+
+router.get(
+  "/circles/:circleId/skills-search",
+  requireAuth,
+  validateParams(circleIdParam),
+  validateQuery(circleSkillsSearchSchema),
+  async (req, res) => {
+    const userId = req.dbUser!.id;
+    const circleId = Number(req.params.circleId);
+    const { q } = req.query as z.infer<typeof circleSkillsSearchSchema>;
+    const myMembership = await db
+      .select({ id: circleMembersTable.id })
+      .from(circleMembersTable)
+      .where(
+        and(
+          eq(circleMembersTable.circleId, circleId),
+          eq(circleMembersTable.userId, userId),
+          eq(circleMembersTable.status, "active"),
+        ),
+      )
+      .limit(1)
+      .then((rows) => rows[0]);
+
+    if (!myMembership) {
+      res.status(404).json({ error: "Circle not found" });
+      return;
+    }
+
+    const normalizedQuery = q.toLowerCase();
+    const matchingMembers = (await listCircleMembersWithCapacity(circleId)).filter(
+      (member) =>
+        member.skills.some((skill) => skill.label.toLowerCase().includes(normalizedQuery)) ||
+        member.resources.some((resource) =>
+          resource.label.toLowerCase().includes(normalizedQuery),
+        ),
+    );
+    res.json(matchingMembers);
+  },
+);
 
 router.patch(
   "/circles/:circleId/members/:memberId",

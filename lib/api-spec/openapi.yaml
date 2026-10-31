@@ -126,6 +126,194 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /me/skills:
+    get:
+      operationId: listMySkills
+      tags: [me]
+      summary: List the caller's skills
+      security: [{ clerk: [] }]
+      responses:
+        "200":
+          description: The caller's skills
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MemberSkill"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createMySkill
+      tags: [me]
+      summary: Add a skill to the caller's profile
+      security: [{ clerk: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberSkillInput"
+      responses:
+        "201":
+          description: Skill added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberSkill"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Duplicate skill or profile skill limit reached
+
+  /me/skills/{skillId}:
+    patch:
+      operationId: updateMySkill
+      tags: [me]
+      summary: Update one of the caller's skills
+      security: [{ clerk: [] }]
+      parameters:
+        - name: skillId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberSkillUpdate"
+      responses:
+        "200":
+          description: Updated skill
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberSkill"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteMySkill
+      tags: [me]
+      summary: Remove one of the caller's skills
+      security: [{ clerk: [] }]
+      parameters:
+        - name: skillId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "204":
+          description: Skill removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /me/resources:
+    get:
+      operationId: listMyResources
+      tags: [me]
+      summary: List the caller's shareable resources
+      security: [{ clerk: [] }]
+      responses:
+        "200":
+          description: The caller's resources
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MemberResource"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createMyResource
+      tags: [me]
+      summary: Add a shareable resource to the caller's profile
+      security: [{ clerk: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberResourceInput"
+      responses:
+        "201":
+          description: Resource added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberResource"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Duplicate resource or profile resource limit reached
+
+  /me/resources/{resourceId}:
+    patch:
+      operationId: updateMyResource
+      tags: [me]
+      summary: Update one of the caller's resources
+      security: [{ clerk: [] }]
+      parameters:
+        - name: resourceId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberResourceUpdate"
+      responses:
+        "200":
+          description: Updated resource
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberResource"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteMyResource
+      tags: [me]
+      summary: Remove one of the caller's resources
+      security: [{ clerk: [] }]
+      parameters:
+        - name: resourceId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "204":
+          description: Resource removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /me/circle-visibility:
     get:
       operationId: listMyCircleVisibility
@@ -797,6 +985,37 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/CircleMember"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /circles/{circleId}/skills-search:
+    get:
+      operationId: searchCircleSkills
+      tags: [members]
+      summary: Search member skills and shareable resources in a circle
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+      responses:
+        "200":
+          description: Matching active circle members and their capability details
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CircleMember"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -4884,6 +5103,14 @@ components:
         createdAt:
           type: string
           format: date-time
+        skills:
+          type: array
+          items:
+            $ref: "#/components/schemas/CircleMemberSkill"
+        resources:
+          type: array
+          items:
+            $ref: "#/components/schemas/CircleMemberResource"
       required:
         - id
         - circleId
@@ -4891,6 +5118,103 @@ components:
         - role
         - status
         - createdAt
+
+    MemberSkill:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        label:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, userId, label, createdAt, updatedAt]
+
+    MemberSkillInput:
+      type: object
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 80
+      required: [label]
+
+    MemberSkillUpdate:
+      type: object
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 80
+      required: [label]
+
+    MemberResource:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        label:
+          type: string
+        isAvailable:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, userId, label, isAvailable, createdAt, updatedAt]
+
+    MemberResourceInput:
+      type: object
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 80
+        isAvailable:
+          type: boolean
+          default: true
+      required: [label]
+
+    MemberResourceUpdate:
+      type: object
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 80
+        isAvailable:
+          type: boolean
+      minProperties: 1
+
+    CircleMemberSkill:
+      type: object
+      properties:
+        id:
+          type: integer
+        label:
+          type: string
+      required: [id, label]
+
+    CircleMemberResource:
+      type: object
+      properties:
+        id:
+          type: integer
+        label:
+          type: string
+        isAvailable:
+          type: boolean
+      required: [id, label, isAvailable]
 
     UpdateCircleMemberBody:
       type: object

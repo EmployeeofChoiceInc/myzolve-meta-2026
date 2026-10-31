@@ -47,135 +47,158 @@ id = "dHXnu7TW8seIluGsfhFFS"
 uri = "file://exports/app-store/iphone-6.9/01-onboarding.png"
 type = "image"
 title = "iPhone 6.9\" — 01 Onboarding"
+logical_id = "2f944a4b-2f9d-44f6-8035-133dae9aa28b"
 
 [[outputs]]
 id = "yfOAKc53e_wCWvQ2OS57Y"
 uri = "file://exports/app-store/iphone-6.9/02-sign-in.png"
 type = "image"
 title = "iPhone 6.9\" — 02 Sign in"
+logical_id = "451744d5-2578-4605-9a5d-8e0b6d2fa7d6"
 
 [[outputs]]
 id = "vSYK7UzvmtozaAJ91WzKP"
 uri = "file://exports/app-store/iphone-6.9/03-discover.png"
 type = "image"
 title = "iPhone 6.9\" — 03 Discover"
+logical_id = "33bd2945-70f4-47e3-842e-454166a314f1"
 
 [[outputs]]
 id = "vXlkte_4RNOsWDl4AEv7e"
 uri = "file://exports/app-store/iphone-6.9/04-messages.png"
 type = "image"
 title = "iPhone 6.9\" — 04 Messages"
+logical_id = "dd8962ec-e1ac-438f-be0e-bdebdb75e1cc"
 
 [[outputs]]
 id = "B6OiQAJWrI2guhPGT-l9u"
 uri = "file://exports/app-store/iphone-6.9/05-profile.png"
 type = "image"
 title = "iPhone 6.9\" — 05 Profile"
+logical_id = "60e23fee-5748-4456-941f-7eda339e8a0e"
 
 [[outputs]]
 id = "W-9MMVlOhwZf2FYEqZjE8"
 uri = "file://exports/app-store/iphone-6.9/06-settings.png"
 type = "image"
 title = "iPhone 6.9\" — 06 Settings"
+logical_id = "4784cde4-f1c9-4b3b-bc67-26b18182e214"
 
 [[outputs]]
 id = "ReERBStJz8qZsvXIViihk"
 uri = "file://exports/app-store/iphone-6.5/01-onboarding.png"
 type = "image"
 title = "iPhone 6.5\" — 01 Onboarding"
+logical_id = "bba4cdaa-a5ca-484e-b392-a02db8fce435"
 
 [[outputs]]
 id = "zwtZRfmkhwdKuh-VGxyqX"
 uri = "file://exports/app-store/iphone-6.5/02-sign-in.png"
 type = "image"
 title = "iPhone 6.5\" — 02 Sign in"
+logical_id = "06762f6d-4abd-4840-96cf-2c48b48f9a9f"
 
 [[outputs]]
 id = "s4fpxPVIO0y1ghOXU2smg"
 uri = "file://exports/app-store/iphone-6.5/03-discover.png"
 type = "image"
 title = "iPhone 6.5\" — 03 Discover"
+logical_id = "1ec552b7-7ea6-4ca8-b40f-852f863b79ab"
 
 [[outputs]]
 id = "ggTJBQ4NIvcPNbM8Asmap"
 uri = "file://exports/app-store/iphone-6.5/04-messages.png"
 type = "image"
 title = "iPhone 6.5\" — 04 Messages"
+logical_id = "e3ad3de9-294e-4993-969a-bee33a75814a"
 
 [[outputs]]
 id = "HMmzDA2ljy0715Ai1gI6C"
 uri = "file://exports/app-store/iphone-6.5/05-profile.png"
 type = "image"
 title = "iPhone 6.5\" — 05 Profile"
+logical_id = "7132706f-3960-45bb-a520-f28c2b8bef47"
 
 [[outputs]]
 id = "mbQwqg6i9nXCKHvCvpyfs"
 uri = "file://exports/app-store/iphone-6.5/06-settings.png"
 type = "image"
 title = "iPhone 6.5\" — 06 Settings"
+logical_id = "0f54d2fa-f47d-49e5-8a64-4fa9e94d4780"
 
 [[outputs]]
 id = "PZQsuyAnLOTaAbKoJ-ncS"
 uri = "file://artifacts/myzolve-connect-ad/public/images/family.jpg"
 type = "image"
 title = "diverse multi-generational family laughing together in a warm sunlit home, natural, candid"
+logical_id = "e7873d27-a2a1-41d3-a450-be41db63d568"
 
 [[outputs]]
 id = "caZr7ax61fdKpwzUrUnnS"
 uri = "file://artifacts/myzolve-connect-ad/public/images/friends.jpg"
 type = "image"
 title = "diverse group of close friends sharing a meal and laughing together warmly, natural candid photography"
+logical_id = "b10ee8f5-c8ca-4fbc-8334-fd69984eb309"
 
 [[outputs]]
 id = "7T5hMGVCUC8dBO3Mm1dug"
 uri = "file://artifacts/myzolve-connect-mobile/store/whats-new-1.0.6.md"
 type = "text"
 title = "What's New — MyZolve Connect 1.0.6"
+logical_id = "b698ddd7-a659-42ca-aa89-25bbc0ad4956"
 
 [[outputs]]
 id = "330OcSZr8ddjBtzALyysN"
 uri = "file://artifacts/circle-builder-ad/public/audio/bg_music.mp3"
 type = "audio"
 title = "warm background music (widescreen)"
+logical_id = "db34feaf-563c-4def-9701-243e8a0eb408"
 
 [[outputs]]
 id = "OkhOoCQni5e0PjzQb_H5V"
 uri = "file://artifacts/circle-builder-ad-vertical/public/audio/bg_music.mp3"
 type = "audio"
 title = "warm background music (vertical)"
+logical_id = "afa845d3-f313-4c47-a383-ae4f37b49764"
 
 [[outputs]]
 id = "bFd3GVvvuqhvC1SjBcd9x"
 uri = "file://artifacts/circle-builder-ad/public/images/gathering_1.jpg"
 type = "image"
 title = "golden hour community gathering, real people talking and laughing together, warm sunlit"
+logical_id = "ccd35556-ca7b-407c-9ae2-4237bc232734"
 
 [[outputs]]
 id = "d89e5fVfiGU3F9U7mSzAF"
 uri = "file://artifacts/circle-builder-ad/public/images/gathering_2.jpg"
 type = "image"
 title = "golden hour community gathering, real people talking and laughing together, warm sunlit"
+logical_id = "e30da963-80d5-431a-9f0f-4a970a6d6c73"
 
 [[outputs]]
 id = "0qEAtn_3UHwsFNJDdAF4D"
 uri = "file://artifacts/circle-builder-ad/public/images/gathering_3.jpg"
 type = "image"
 title = "golden hour community gathering, real people talking and laughing together, warm sunlit"
+logical_id = "5d129729-6461-4989-960a-4b3ee41652b2"
 
 [[outputs]]
 id = "2ElR7iMv5BbNGoYXMLB1P"
 uri = "file://artifacts/circle-builder-ad-vertical/public/images/gathering-1.jpg"
 type = "image"
 title = "golden hour outdoor community gathering people laughing shared meal sunlit warm"
+logical_id = "31196dde-6aab-4c93-b03e-35ff2f6cba4c"
 
 [[outputs]]
 id = "r3o33N3_KiJmgNvN1YWlA"
 uri = "file://artifacts/circle-builder-ad-vertical/public/images/gathering-2.jpg"
 type = "image"
 title = "diverse group of friends or neighbors talking and laughing on a porch sunset golden hour"
+logical_id = "6a9f6c00-bb48-48d0-a18f-629496a0f22e"
 
 [[outputs]]
 id = "oVf1a2BKWI9q8G882MyuT"
 uri = "file://artifacts/circle-builder-ad-vertical/public/images/gathering-3.jpg"
 type = "image"
 title = "people sitting in a circle outdoors warm light community gathering"
+logical_id = "ab38734d-ab86-40f4-980d-274849f213ec"

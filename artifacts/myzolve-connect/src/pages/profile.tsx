@@ -59,10 +59,17 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import {
+  getListCircleMembersQueryKey,
+  useListCircleMembers,
+} from "@workspace/api-client-react";
 
 export default function ProfilePage() {
   const { userId } = useParams<{ userId: string }>();
   const targetUserId = parseInt(userId!);
+  const circleIdFromUrl = new URLSearchParams(window.location.search).get("circleId");
+  const circleId = circleIdFromUrl ? Number(circleIdFromUrl) : 0;
+  const hasCircleContext = Number.isSafeInteger(circleId) && circleId > 0;
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
@@ -71,6 +78,13 @@ export default function ProfilePage() {
     isNaN(targetUserId) ? null : targetUserId,
   );
   const { data: myBlocks } = useMyBlocks();
+  const { data: circleMembers } = useListCircleMembers(circleId, {
+    query: {
+      enabled: hasCircleContext,
+      queryKey: getListCircleMembersQueryKey(circleId),
+    },
+  });
+  const circleMember = circleMembers?.find((member) => member.userId === targetUserId);
 
   const requestConnection = useRequestConnection();
   const acceptConnection = useAcceptConnection();
@@ -297,6 +311,45 @@ export default function ProfilePage() {
 
             {profile.bio && (
               <p className="text-sm text-foreground/80 leading-relaxed">{profile.bio}</p>
+            )}
+
+            {circleMember && (
+              <Card className="border-border/60 bg-background/70 shadow-none">
+                <CardContent className="space-y-4 p-4">
+                  <div>
+                    <h2 className="text-sm font-semibold">Skills</h2>
+                    {circleMember.skills?.length ? (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {circleMember.skills.map((skill) => (
+                          <Badge key={skill.id} variant="secondary" className="rounded-full">
+                            {skill.label}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-1 text-sm text-muted-foreground">No skills listed.</p>
+                    )}
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-semibold">Resources</h2>
+                    {circleMember.resources?.length ? (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {circleMember.resources.map((resource) => (
+                          <Badge
+                            key={resource.id}
+                            variant={resource.isAvailable ? "outline" : "secondary"}
+                            className="rounded-full"
+                          >
+                            {resource.label}{resource.isAvailable ? "" : " · unavailable"}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-1 text-sm text-muted-foreground">No resources listed.</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             )}
 
             <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">

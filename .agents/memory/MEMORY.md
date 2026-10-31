@@ -12,3 +12,4 @@
 - [EAS iOS build — standalone pnpm workspace fix](eas-ios-build-fix.md) — Replit blocks git ops so EAS_NO_VCS=1 is required; must add vendor/ + pnpm-workspace.yaml + pnpm-lock.yaml to mobile dir.
 - [MyZolve LIFE hackathon baseline](meta-hackathon-baseline.md) — Keep pre-existing Connect functionality distinct from hackathon work and protect production until the isolated approach is established.
 - [Muse Spark structured-output budgets](meta-muse-output-budget.md) — internal reasoning uses completion tokens; leave headroom and reject `finish_reason=length` before parsing JSON.
+- [Mobile artifact dev workflow](mobile-artifact-workflow.md) — run Expo with `pnpm run dev` from the artifact workspace; managed package filtering can fail unexpectedly.

@@ -7,9 +7,12 @@ import {
   useRemoveCircleMember,
   getListCircleInvitationsQueryKey,
   getListCircleMembersQueryKey,
+  getSearchCircleSkillsQueryKey,
   useGetCircle,
   useCreateCircleInvitation,
-  type CircleInvitation
+  useSearchCircleSkills,
+  type CircleInvitation,
+  type CircleMember,
 } from "@workspace/api-client-react";
 import { useJoinRequests, useApproveJoinRequest, useDeclineJoinRequest, useMyPlusStatus } from "@/hooks/use-api";
 import { ArrowLeft, UserPlus, Mail, ShieldAlert, Link2, Copy, MoreHorizontal, UserMinus, Shield, UserCheck } from "lucide-react";
@@ -41,14 +44,6 @@ const inviteFormSchema = z.object({
   customMessage: z.string().optional(),
 });
 
-type CircleMember = {
-  id: number;
-  userId: number;
-  displayName: string | null;
-  email: string | null;
-  role: string;
-};
-
 export default function MembersPage() {
   const { id } = useParams<{ id: string }>();
   const circleId = parseInt(id!);
@@ -57,6 +52,7 @@ export default function MembersPage() {
   const [open, setOpen] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [roleDialogMember, setRoleDialogMember] = useState<CircleMember | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const { data: circle } = useGetCircle(circleId, {
     query: { enabled: !!circleId, queryKey: ["circle", circleId] as const }
@@ -65,6 +61,24 @@ export default function MembersPage() {
   const { data: members, isLoading: membersLoading } = useListCircleMembers(circleId, {
     query: { enabled: !!circleId, queryKey: getListCircleMembersQueryKey(circleId) }
   });
+  const normalizedSearch = searchTerm.trim();
+  const {
+    data: searchResults,
+    isLoading: searchLoading,
+    isError: searchError,
+  } = useSearchCircleSkills(
+    circleId,
+    { q: normalizedSearch },
+    {
+      query: {
+        enabled: circleId > 0 && normalizedSearch.length > 0,
+        queryKey: getSearchCircleSkillsQueryKey(circleId, { q: normalizedSearch }),
+      },
+    },
+  );
+  const visibleMembers = normalizedSearch ? searchResults ?? [] : members ?? [];
+  const totalSkills = members?.reduce((total, member) => total + (member.skills?.length ?? 0), 0) ?? 0;
+  const totalResources = members?.reduce((total, member) => total + (member.resources?.length ?? 0), 0) ?? 0;
 
   const { data: invitations, isLoading: invitationsLoading } = useListCircleInvitations(circleId, {
     query: { enabled: !!circleId, queryKey: getListCircleInvitationsQueryKey(circleId) }
@@ -298,32 +312,82 @@ export default function MembersPage() {
           <Card className="rounded-3xl border-border/50 shadow-none">
             <CardHeader className="pb-4">
               <CardTitle>Active Members</CardTitle>
+              <p className="text-sm text-muted-foreground" data-testid="circle-capacity-summary">
+                {totalSkills} skills · {totalResources} resources across members
+              </p>
             </CardHeader>
             <CardContent className="p-0">
+              <div className="space-y-2 border-b border-border/50 p-4 sm:px-6">
+                <Input
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Search skills or resources"
+                  aria-label="Search circle skills and resources"
+                  data-testid="input-circle-capacity-search"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Search this circle only, such as “first aid” or “truck”.
+                </p>
+              </div>
               {membersLoading ? (
                 <div className="p-8 text-center text-muted-foreground">Loading members...</div>
+              ) : normalizedSearch && searchLoading ? (
+                <div className="p-8 text-center text-muted-foreground">Searching skills and resources...</div>
+              ) : normalizedSearch && searchError ? (
+                <div className="p-8 text-center text-destructive">Could not search this circle right now.</div>
+              ) : visibleMembers.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  {normalizedSearch ? "No members match that search." : "No active members yet."}
+                </div>
               ) : (
                 <div className="divide-y divide-border/50">
-                  {(members as CircleMember[] | undefined)?.map((member) => (
-                    <div key={member.id} className="p-4 sm:px-6 flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <Link href={`/profile/${member.userId}`}>
-                          <Avatar className="h-10 w-10 border cursor-pointer">
-                            <AvatarFallback className="bg-primary/10 text-primary">
-                              {member.displayName?.charAt(0) || "U"}
-                            </AvatarFallback>
-                          </Avatar>
-                        </Link>
-                        <div>
-                          <Link href={`/profile/${member.userId}`}>
-                            <p className="font-medium text-foreground hover:underline cursor-pointer">{member.displayName}</p>
-                          </Link>
+                  {visibleMembers.map((member) => {
+                    const profileHref = member.userId
+                      ? `/profile/${member.userId}?circleId=${circleId}`
+                      : null;
+                    const avatar = (
+                      <Avatar className="h-10 w-10 border cursor-pointer">
+                        <AvatarFallback className="bg-primary/10 text-primary">
+                          {member.displayName?.charAt(0) || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                    );
+                    return (
+                    <div key={member.id} className="p-4 sm:px-6 flex items-center justify-between gap-4">
+                      <div className="flex min-w-0 flex-1 items-center gap-4">
+                          {profileHref ? <Link href={profileHref}>{avatar}</Link> : avatar}
+                        <div className="min-w-0">
+                          {profileHref ? (
+                            <Link href={profileHref}>
+                              <p className="font-medium text-foreground hover:underline cursor-pointer">{member.displayName}</p>
+                            </Link>
+                          ) : (
+                            <p className="font-medium text-foreground">{member.displayName}</p>
+                          )}
                           {displayEmail(member.email) ? (
                             <p className="text-sm text-muted-foreground">{displayEmail(member.email)}</p>
                           ) : null}
+                          {((member.skills?.length ?? 0) > 0 || (member.resources?.length ?? 0) > 0) && (
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {member.skills?.map((skill) => (
+                                <Badge key={`skill-${skill.id}`} variant="secondary" className="rounded-full text-xs">
+                                  Skill · {skill.label}
+                                </Badge>
+                              ))}
+                              {member.resources?.map((resource) => (
+                                <Badge
+                                  key={`resource-${resource.id}`}
+                                  variant={resource.isAvailable ? "outline" : "secondary"}
+                                  className="rounded-full text-xs"
+                                >
+                                  Resource · {resource.label}{resource.isAvailable ? "" : " · unavailable"}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex shrink-0 items-center gap-2">
                         <Badge
                           variant="outline"
                           className={`rounded-full px-2.5 py-0.5 capitalize border-transparent ${rolePillClasses(member.role)}`}
@@ -359,7 +423,8 @@ export default function MembersPage() {
                         )}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>

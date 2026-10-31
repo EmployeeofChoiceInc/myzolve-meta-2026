@@ -80,6 +80,11 @@ import type {
   LedgerExport,
   LedgerProView,
   LedgerSummary,
+  LifeDemoFixtures,
+  LifePlan,
+  LifePlanInput,
+  LifeReplanInput,
+  LifeReplanResult,
   ListAuditLogParams,
   ListCommentsParams,
   ListDisputesParams,
@@ -95,6 +100,12 @@ import type {
   MarkNotificationRead200,
   MarkWrapupRead200,
   MatchServiceBody,
+  MemberResource,
+  MemberResourceInput,
+  MemberResourceUpdate,
+  MemberSkill,
+  MemberSkillInput,
+  MemberSkillUpdate,
   NotFoundResponse,
   NotificationList,
   NotificationPreference,
@@ -129,12 +140,14 @@ import type {
   ReviewCopilotPostBody,
   RsvpOrgEvent200,
   RsvpOrgEventBody,
+  SearchCircleSkillsParams,
   SearchUsersParams,
   ServiceBoardSummary,
   ServicePost,
   SupportRequest,
   SupportRequestDetail,
   ToggleReactionBody,
+  TooManyRequestsResponse,
   TransferOwnershipBody,
   UnauthorizedResponse,
   UnregisterDeviceToken200,
@@ -481,6 +494,690 @@ export const useDeleteMe = <
   TContext
 > => {
   return useMutation(getDeleteMeMutationOptions(options));
+};
+
+/**
+ * @summary List the caller's skills
+ */
+export const getListMySkillsUrl = () => {
+  return `/api/me/skills`;
+};
+
+export const listMySkills = async (
+  options?: RequestInit,
+): Promise<MemberSkill[]> => {
+  return customFetch<MemberSkill[]>(getListMySkillsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListMySkillsQueryKey = () => {
+  return [`/api/me/skills`] as const;
+};
+
+export const getListMySkillsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMySkills>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMySkills>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListMySkillsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listMySkills>>> = ({
+    signal,
+  }) => listMySkills({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMySkills>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListMySkillsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMySkills>>
+>;
+export type ListMySkillsQueryError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary List the caller's skills
+ */
+
+export function useListMySkills<
+  TData = Awaited<ReturnType<typeof listMySkills>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMySkills>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListMySkillsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Add a skill to the caller's profile
+ */
+export const getCreateMySkillUrl = () => {
+  return `/api/me/skills`;
+};
+
+export const createMySkill = async (
+  memberSkillInput: MemberSkillInput,
+  options?: RequestInit,
+): Promise<MemberSkill> => {
+  return customFetch<MemberSkill>(getCreateMySkillUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(memberSkillInput),
+  });
+};
+
+export const getCreateMySkillMutationOptions = <
+  TError = ErrorType<BadRequestResponse | UnauthorizedResponse | void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createMySkill>>,
+    TError,
+    { data: BodyType<MemberSkillInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createMySkill>>,
+  TError,
+  { data: BodyType<MemberSkillInput> },
+  TContext
+> => {
+  const mutationKey = ["createMySkill"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createMySkill>>,
+    { data: BodyType<MemberSkillInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createMySkill(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateMySkillMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createMySkill>>
+>;
+export type CreateMySkillMutationBody = BodyType<MemberSkillInput>;
+export type CreateMySkillMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | void
+>;
+
+/**
+ * @summary Add a skill to the caller's profile
+ */
+export const useCreateMySkill = <
+  TError = ErrorType<BadRequestResponse | UnauthorizedResponse | void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createMySkill>>,
+    TError,
+    { data: BodyType<MemberSkillInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createMySkill>>,
+  TError,
+  { data: BodyType<MemberSkillInput> },
+  TContext
+> => {
+  return useMutation(getCreateMySkillMutationOptions(options));
+};
+
+/**
+ * @summary Update one of the caller's skills
+ */
+export const getUpdateMySkillUrl = (skillId: number) => {
+  return `/api/me/skills/${skillId}`;
+};
+
+export const updateMySkill = async (
+  skillId: number,
+  memberSkillUpdate: MemberSkillUpdate,
+  options?: RequestInit,
+): Promise<MemberSkill> => {
+  return customFetch<MemberSkill>(getUpdateMySkillUrl(skillId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(memberSkillUpdate),
+  });
+};
+
+export const getUpdateMySkillMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMySkill>>,
+    TError,
+    { skillId: number; data: BodyType<MemberSkillUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateMySkill>>,
+  TError,
+  { skillId: number; data: BodyType<MemberSkillUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateMySkill"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateMySkill>>,
+    { skillId: number; data: BodyType<MemberSkillUpdate> }
+  > = (props) => {
+    const { skillId, data } = props ?? {};
+
+    return updateMySkill(skillId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateMySkillMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateMySkill>>
+>;
+export type UpdateMySkillMutationBody = BodyType<MemberSkillUpdate>;
+export type UpdateMySkillMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Update one of the caller's skills
+ */
+export const useUpdateMySkill = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMySkill>>,
+    TError,
+    { skillId: number; data: BodyType<MemberSkillUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateMySkill>>,
+  TError,
+  { skillId: number; data: BodyType<MemberSkillUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateMySkillMutationOptions(options));
+};
+
+/**
+ * @summary Remove one of the caller's skills
+ */
+export const getDeleteMySkillUrl = (skillId: number) => {
+  return `/api/me/skills/${skillId}`;
+};
+
+export const deleteMySkill = async (
+  skillId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteMySkillUrl(skillId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteMySkillMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteMySkill>>,
+    TError,
+    { skillId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteMySkill>>,
+  TError,
+  { skillId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteMySkill"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteMySkill>>,
+    { skillId: number }
+  > = (props) => {
+    const { skillId } = props ?? {};
+
+    return deleteMySkill(skillId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteMySkillMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteMySkill>>
+>;
+
+export type DeleteMySkillMutationError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Remove one of the caller's skills
+ */
+export const useDeleteMySkill = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteMySkill>>,
+    TError,
+    { skillId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteMySkill>>,
+  TError,
+  { skillId: number },
+  TContext
+> => {
+  return useMutation(getDeleteMySkillMutationOptions(options));
+};
+
+/**
+ * @summary List the caller's shareable resources
+ */
+export const getListMyResourcesUrl = () => {
+  return `/api/me/resources`;
+};
+
+export const listMyResources = async (
+  options?: RequestInit,
+): Promise<MemberResource[]> => {
+  return customFetch<MemberResource[]>(getListMyResourcesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListMyResourcesQueryKey = () => {
+  return [`/api/me/resources`] as const;
+};
+
+export const getListMyResourcesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMyResources>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMyResources>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListMyResourcesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listMyResources>>> = ({
+    signal,
+  }) => listMyResources({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMyResources>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListMyResourcesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMyResources>>
+>;
+export type ListMyResourcesQueryError = ErrorType<UnauthorizedResponse>;
+
+/**
+ * @summary List the caller's shareable resources
+ */
+
+export function useListMyResources<
+  TData = Awaited<ReturnType<typeof listMyResources>>,
+  TError = ErrorType<UnauthorizedResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMyResources>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListMyResourcesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Add a shareable resource to the caller's profile
+ */
+export const getCreateMyResourceUrl = () => {
+  return `/api/me/resources`;
+};
+
+export const createMyResource = async (
+  memberResourceInput: MemberResourceInput,
+  options?: RequestInit,
+): Promise<MemberResource> => {
+  return customFetch<MemberResource>(getCreateMyResourceUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(memberResourceInput),
+  });
+};
+
+export const getCreateMyResourceMutationOptions = <
+  TError = ErrorType<BadRequestResponse | UnauthorizedResponse | void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createMyResource>>,
+    TError,
+    { data: BodyType<MemberResourceInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createMyResource>>,
+  TError,
+  { data: BodyType<MemberResourceInput> },
+  TContext
+> => {
+  const mutationKey = ["createMyResource"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createMyResource>>,
+    { data: BodyType<MemberResourceInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createMyResource(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateMyResourceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createMyResource>>
+>;
+export type CreateMyResourceMutationBody = BodyType<MemberResourceInput>;
+export type CreateMyResourceMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | void
+>;
+
+/**
+ * @summary Add a shareable resource to the caller's profile
+ */
+export const useCreateMyResource = <
+  TError = ErrorType<BadRequestResponse | UnauthorizedResponse | void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createMyResource>>,
+    TError,
+    { data: BodyType<MemberResourceInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createMyResource>>,
+  TError,
+  { data: BodyType<MemberResourceInput> },
+  TContext
+> => {
+  return useMutation(getCreateMyResourceMutationOptions(options));
+};
+
+/**
+ * @summary Update one of the caller's resources
+ */
+export const getUpdateMyResourceUrl = (resourceId: number) => {
+  return `/api/me/resources/${resourceId}`;
+};
+
+export const updateMyResource = async (
+  resourceId: number,
+  memberResourceUpdate: MemberResourceUpdate,
+  options?: RequestInit,
+): Promise<MemberResource> => {
+  return customFetch<MemberResource>(getUpdateMyResourceUrl(resourceId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(memberResourceUpdate),
+  });
+};
+
+export const getUpdateMyResourceMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMyResource>>,
+    TError,
+    { resourceId: number; data: BodyType<MemberResourceUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateMyResource>>,
+  TError,
+  { resourceId: number; data: BodyType<MemberResourceUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateMyResource"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateMyResource>>,
+    { resourceId: number; data: BodyType<MemberResourceUpdate> }
+  > = (props) => {
+    const { resourceId, data } = props ?? {};
+
+    return updateMyResource(resourceId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateMyResourceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateMyResource>>
+>;
+export type UpdateMyResourceMutationBody = BodyType<MemberResourceUpdate>;
+export type UpdateMyResourceMutationError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Update one of the caller's resources
+ */
+export const useUpdateMyResource = <
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMyResource>>,
+    TError,
+    { resourceId: number; data: BodyType<MemberResourceUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateMyResource>>,
+  TError,
+  { resourceId: number; data: BodyType<MemberResourceUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateMyResourceMutationOptions(options));
+};
+
+/**
+ * @summary Remove one of the caller's resources
+ */
+export const getDeleteMyResourceUrl = (resourceId: number) => {
+  return `/api/me/resources/${resourceId}`;
+};
+
+export const deleteMyResource = async (
+  resourceId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteMyResourceUrl(resourceId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteMyResourceMutationOptions = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteMyResource>>,
+    TError,
+    { resourceId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteMyResource>>,
+  TError,
+  { resourceId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteMyResource"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteMyResource>>,
+    { resourceId: number }
+  > = (props) => {
+    const { resourceId } = props ?? {};
+
+    return deleteMyResource(resourceId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteMyResourceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteMyResource>>
+>;
+
+export type DeleteMyResourceMutationError = ErrorType<
+  UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Remove one of the caller's resources
+ */
+export const useDeleteMyResource = <
+  TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteMyResource>>,
+    TError,
+    { resourceId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteMyResource>>,
+  TError,
+  { resourceId: number },
+  TContext
+> => {
+  return useMutation(getDeleteMyResourceMutationOptions(options));
 };
 
 /**
@@ -2704,6 +3401,132 @@ export function useListCircleMembers<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListCircleMembersQueryOptions(circleId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Search member skills and shareable resources in a circle
+ */
+export const getSearchCircleSkillsUrl = (
+  circleId: number,
+  params: SearchCircleSkillsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/circles/${circleId}/skills-search?${stringifiedParams}`
+    : `/api/circles/${circleId}/skills-search`;
+};
+
+export const searchCircleSkills = async (
+  circleId: number,
+  params: SearchCircleSkillsParams,
+  options?: RequestInit,
+): Promise<CircleMember[]> => {
+  return customFetch<CircleMember[]>(
+    getSearchCircleSkillsUrl(circleId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getSearchCircleSkillsQueryKey = (
+  circleId: number,
+  params?: SearchCircleSkillsParams,
+) => {
+  return [
+    `/api/circles/${circleId}/skills-search`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getSearchCircleSkillsQueryOptions = <
+  TData = Awaited<ReturnType<typeof searchCircleSkills>>,
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | NotFoundResponse
+  >,
+>(
+  circleId: number,
+  params: SearchCircleSkillsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof searchCircleSkills>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getSearchCircleSkillsQueryKey(circleId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof searchCircleSkills>>
+  > = ({ signal }) =>
+    searchCircleSkills(circleId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!circleId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof searchCircleSkills>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type SearchCircleSkillsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof searchCircleSkills>>
+>;
+export type SearchCircleSkillsQueryError = ErrorType<
+  BadRequestResponse | UnauthorizedResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Search member skills and shareable resources in a circle
+ */
+
+export function useSearchCircleSkills<
+  TData = Awaited<ReturnType<typeof searchCircleSkills>>,
+  TError = ErrorType<
+    BadRequestResponse | UnauthorizedResponse | NotFoundResponse
+  >,
+>(
+  circleId: number,
+  params: SearchCircleSkillsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof searchCircleSkills>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getSearchCircleSkillsQueryOptions(
+    circleId,
+    params,
+    options,
+  );
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -14045,4 +14868,266 @@ export const useAcceptOrgInvite = <
   TContext
 > => {
   return useMutation(getAcceptOrgInviteMutationOptions(options));
+};
+
+/**
+ * Returns fabricated households and scenarios only. No Connect member data is used.
+ * @summary Get synthetic LIFE demo households and scenarios
+ */
+export const getGetLifeDemoFixturesUrl = () => {
+  return `/api/life/demo-fixtures`;
+};
+
+export const getLifeDemoFixtures = async (
+  options?: RequestInit,
+): Promise<LifeDemoFixtures> => {
+  return customFetch<LifeDemoFixtures>(getGetLifeDemoFixturesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetLifeDemoFixturesQueryKey = () => {
+  return [`/api/life/demo-fixtures`] as const;
+};
+
+export const getGetLifeDemoFixturesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getLifeDemoFixtures>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getLifeDemoFixtures>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetLifeDemoFixturesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getLifeDemoFixtures>>
+  > = ({ signal }) => getLifeDemoFixtures({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getLifeDemoFixtures>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetLifeDemoFixturesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getLifeDemoFixtures>>
+>;
+export type GetLifeDemoFixturesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get synthetic LIFE demo households and scenarios
+ */
+
+export function useGetLifeDemoFixtures<
+  TData = Awaited<ReturnType<typeof getLifeDemoFixtures>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getLifeDemoFixtures>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetLifeDemoFixturesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Sends the synthetic household and scenario to Meta from the server. Plans are not persisted.
+ * @summary Generate a structured response plan for a synthetic household
+ */
+export const getGenerateLifePlanUrl = () => {
+  return `/api/life/plans`;
+};
+
+export const generateLifePlan = async (
+  lifePlanInput: LifePlanInput,
+  options?: RequestInit,
+): Promise<LifePlan> => {
+  return customFetch<LifePlan>(getGenerateLifePlanUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(lifePlanInput),
+  });
+};
+
+export const getGenerateLifePlanMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | TooManyRequestsResponse | ErrorResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateLifePlan>>,
+    TError,
+    { data: BodyType<LifePlanInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateLifePlan>>,
+  TError,
+  { data: BodyType<LifePlanInput> },
+  TContext
+> => {
+  const mutationKey = ["generateLifePlan"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateLifePlan>>,
+    { data: BodyType<LifePlanInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return generateLifePlan(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateLifePlanMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateLifePlan>>
+>;
+export type GenerateLifePlanMutationBody = BodyType<LifePlanInput>;
+export type GenerateLifePlanMutationError = ErrorType<
+  BadRequestResponse | TooManyRequestsResponse | ErrorResponse
+>;
+
+/**
+ * @summary Generate a structured response plan for a synthetic household
+ */
+export const useGenerateLifePlan = <
+  TError = ErrorType<
+    BadRequestResponse | TooManyRequestsResponse | ErrorResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateLifePlan>>,
+    TError,
+    { data: BodyType<LifePlanInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateLifePlan>>,
+  TError,
+  { data: BodyType<LifePlanInput> },
+  TContext
+> => {
+  return useMutation(getGenerateLifePlanMutationOptions(options));
+};
+
+/**
+ * Unselected tasks are preserved exactly. Approved and completed tasks cannot be replaced.
+ * @summary Refresh selected suggested tasks after circumstances change
+ */
+export const getReplanLifePlanUrl = () => {
+  return `/api/life/plans/replan`;
+};
+
+export const replanLifePlan = async (
+  lifeReplanInput: LifeReplanInput,
+  options?: RequestInit,
+): Promise<LifeReplanResult> => {
+  return customFetch<LifeReplanResult>(getReplanLifePlanUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(lifeReplanInput),
+  });
+};
+
+export const getReplanLifePlanMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | TooManyRequestsResponse | ErrorResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof replanLifePlan>>,
+    TError,
+    { data: BodyType<LifeReplanInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof replanLifePlan>>,
+  TError,
+  { data: BodyType<LifeReplanInput> },
+  TContext
+> => {
+  const mutationKey = ["replanLifePlan"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof replanLifePlan>>,
+    { data: BodyType<LifeReplanInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return replanLifePlan(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReplanLifePlanMutationResult = NonNullable<
+  Awaited<ReturnType<typeof replanLifePlan>>
+>;
+export type ReplanLifePlanMutationBody = BodyType<LifeReplanInput>;
+export type ReplanLifePlanMutationError = ErrorType<
+  BadRequestResponse | TooManyRequestsResponse | ErrorResponse
+>;
+
+/**
+ * @summary Refresh selected suggested tasks after circumstances change
+ */
+export const useReplanLifePlan = <
+  TError = ErrorType<
+    BadRequestResponse | TooManyRequestsResponse | ErrorResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof replanLifePlan>>,
+    TError,
+    { data: BodyType<LifeReplanInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof replanLifePlan>>,
+  TError,
+  { data: BodyType<LifeReplanInput> },
+  TContext
+> => {
+  return useMutation(getReplanLifePlanMutationOptions(options));
 };

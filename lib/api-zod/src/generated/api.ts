@@ -130,6 +130,114 @@ export const UpdateMeResponse = zod.object({
 });
 
 /**
+ * @summary List the caller's skills
+ */
+export const ListMySkillsResponseItem = zod.object({
+  id: zod.number(),
+  userId: zod.number(),
+  label: zod.string(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListMySkillsResponse = zod.array(ListMySkillsResponseItem);
+
+/**
+ * @summary Add a skill to the caller's profile
+ */
+export const createMySkillBodyLabelMax = 80;
+
+export const CreateMySkillBody = zod.object({
+  label: zod.string().min(1).max(createMySkillBodyLabelMax),
+});
+
+/**
+ * @summary Update one of the caller's skills
+ */
+
+export const UpdateMySkillParams = zod.object({
+  skillId: zod.coerce.number().min(1),
+});
+
+export const updateMySkillBodyLabelMax = 80;
+
+export const UpdateMySkillBody = zod.object({
+  label: zod.string().min(1).max(updateMySkillBodyLabelMax),
+});
+
+export const UpdateMySkillResponse = zod.object({
+  id: zod.number(),
+  userId: zod.number(),
+  label: zod.string(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Remove one of the caller's skills
+ */
+
+export const DeleteMySkillParams = zod.object({
+  skillId: zod.coerce.number().min(1),
+});
+
+/**
+ * @summary List the caller's shareable resources
+ */
+export const ListMyResourcesResponseItem = zod.object({
+  id: zod.number(),
+  userId: zod.number(),
+  label: zod.string(),
+  isAvailable: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListMyResourcesResponse = zod.array(ListMyResourcesResponseItem);
+
+/**
+ * @summary Add a shareable resource to the caller's profile
+ */
+export const createMyResourceBodyLabelMax = 80;
+
+export const createMyResourceBodyIsAvailableDefault = true;
+
+export const CreateMyResourceBody = zod.object({
+  label: zod.string().min(1).max(createMyResourceBodyLabelMax),
+  isAvailable: zod.boolean().default(createMyResourceBodyIsAvailableDefault),
+});
+
+/**
+ * @summary Update one of the caller's resources
+ */
+
+export const UpdateMyResourceParams = zod.object({
+  resourceId: zod.coerce.number().min(1),
+});
+
+export const updateMyResourceBodyLabelMax = 80;
+
+export const UpdateMyResourceBody = zod.object({
+  label: zod.string().min(1).max(updateMyResourceBodyLabelMax).optional(),
+  isAvailable: zod.boolean().optional(),
+});
+
+export const UpdateMyResourceResponse = zod.object({
+  id: zod.number(),
+  userId: zod.number(),
+  label: zod.string(),
+  isAvailable: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Remove one of the caller's resources
+ */
+
+export const DeleteMyResourceParams = zod.object({
+  resourceId: zod.coerce.number().min(1),
+});
+
+/**
  * @summary List the caller's per-circle "show on profile" overrides
  */
 export const ListMyCircleVisibilityResponseItem = zod.object({
@@ -1149,9 +1257,80 @@ export const ListCircleMembersResponseItem = zod.object({
   status: zod.enum(["active", "pending", "removed"]),
   joinedAt: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
+  skills: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        label: zod.string(),
+      }),
+    )
+    .optional(),
+  resources: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        label: zod.string(),
+        isAvailable: zod.boolean(),
+      }),
+    )
+    .optional(),
 });
 export const ListCircleMembersResponse = zod.array(
   ListCircleMembersResponseItem,
+);
+
+/**
+ * @summary Search member skills and shareable resources in a circle
+ */
+export const SearchCircleSkillsParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const searchCircleSkillsQueryQMax = 100;
+
+export const SearchCircleSkillsQueryParams = zod.object({
+  q: zod.coerce.string().min(1).max(searchCircleSkillsQueryQMax),
+});
+
+export const SearchCircleSkillsResponseItem = zod.object({
+  id: zod.number(),
+  circleId: zod.number(),
+  userId: zod.number().nullish(),
+  displayName: zod.string(),
+  email: zod.string().nullish(),
+  avatarObjectPath: zod.string().nullish(),
+  role: zod.enum([
+    "owner",
+    "admin",
+    "host",
+    "treasurer",
+    "scribe",
+    "member",
+    "guest",
+  ]),
+  status: zod.enum(["active", "pending", "removed"]),
+  joinedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  skills: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        label: zod.string(),
+      }),
+    )
+    .optional(),
+  resources: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        label: zod.string(),
+        isAvailable: zod.boolean(),
+      }),
+    )
+    .optional(),
+});
+export const SearchCircleSkillsResponse = zod.array(
+  SearchCircleSkillsResponseItem,
 );
 
 /**
@@ -1187,6 +1366,23 @@ export const UpdateCircleMemberResponse = zod.object({
   status: zod.enum(["active", "pending", "removed"]),
   joinedAt: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
+  skills: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        label: zod.string(),
+      }),
+    )
+    .optional(),
+  resources: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        label: zod.string(),
+        isAvailable: zod.boolean(),
+      }),
+    )
+    .optional(),
 });
 
 /**
@@ -1379,6 +1575,23 @@ export const AcceptInvitationResponse = zod.object({
   status: zod.enum(["active", "pending", "removed"]),
   joinedAt: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
+  skills: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        label: zod.string(),
+      }),
+    )
+    .optional(),
+  resources: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        label: zod.string(),
+        isAvailable: zod.boolean(),
+      }),
+    )
+    .optional(),
 });
 
 /**
@@ -1534,6 +1747,23 @@ export const TransferCircleOwnershipResponse = zod.object({
   status: zod.enum(["active", "pending", "removed"]),
   joinedAt: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
+  skills: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        label: zod.string(),
+      }),
+    )
+    .optional(),
+  resources: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        label: zod.string(),
+        isAvailable: zod.boolean(),
+      }),
+    )
+    .optional(),
 });
 
 /**

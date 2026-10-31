@@ -3,7 +3,7 @@ import { z } from "zod";
 import { randomBytes } from "node:crypto";
 import { clerkClient } from "@clerk/express";
 import { requireAuth } from "../middlewares/requireAuth";
-import { validateBody } from "../middlewares/validate";
+import { validateBody, validateParams } from "../middlewares/validate";
 import { db } from "@workspace/db";
 import {
   usersTable,
@@ -11,6 +11,8 @@ import {
   circleMembersTable,
   orgsTable,
   orgMembersTable,
+  memberSkillsTable,
+  memberResourcesTable,
 } from "@workspace/db";
 import { and, asc, count, eq, ne } from "drizzle-orm";
 import { validateAndConsumePendingUpload } from "../lib/uploadTokens";
@@ -41,6 +43,24 @@ const updateProfileSchema = z.object({
   phoneDiscoverable: z.boolean().optional(),
   profileShowCirclesDefault: z.boolean().optional(),
 });
+
+const memberSkillInputSchema = z.object({
+  label: z.string().trim().min(1).max(80),
+});
+const memberSkillUpdateSchema = memberSkillInputSchema;
+const memberResourceInputSchema = z.object({
+  label: z.string().trim().min(1).max(80),
+  isAvailable: z.boolean().optional().default(true),
+});
+const memberResourceUpdateSchema = z
+  .object({
+    label: z.string().trim().min(1).max(80).optional(),
+    isAvailable: z.boolean().optional(),
+  })
+  .refine((data) => data.label !== undefined || data.isAvailable !== undefined);
+const skillIdParam = z.object({ skillId: z.coerce.number().int().positive() });
+const resourceIdParam = z.object({ resourceId: z.coerce.number().int().positive() });
+const MAX_PROFILE_ENTRIES = 30;
 
 type UserOrg = { id: number; name: string; role: string } | null;
 
@@ -97,6 +117,207 @@ router.get("/me", requireAuth, async (req, res) => {
   const org = await getUserOrg(req.dbUser!.id);
   res.json(userToApi(req.dbUser!, org));
 });
+
+router.get("/me/skills", requireAuth, async (req, res) => {
+  const skills = await db
+    .select()
+    .from(memberSkillsTable)
+    .where(eq(memberSkillsTable.userId, req.dbUser!.id))
+    .orderBy(asc(memberSkillsTable.label), asc(memberSkillsTable.id));
+  res.json(skills);
+});
+
+router.post(
+  "/me/skills",
+  requireAuth,
+  validateBody(memberSkillInputSchema),
+  async (req, res) => {
+    const userId = req.dbUser!.id;
+    const { label } = req.body as z.infer<typeof memberSkillInputSchema>;
+    const existing = await db
+      .select({ label: memberSkillsTable.label })
+      .from(memberSkillsTable)
+      .where(eq(memberSkillsTable.userId, userId));
+
+    if (existing.some((entry) => entry.label.toLowerCase() === label.toLowerCase())) {
+      res.status(409).json({ error: "duplicate_skill" });
+      return;
+    }
+    if (existing.length >= MAX_PROFILE_ENTRIES) {
+      res.status(409).json({ error: "skill_limit_reached" });
+      return;
+    }
+
+    const [created] = await db
+      .insert(memberSkillsTable)
+      .values({ userId, label })
+      .returning();
+    res.status(201).json(created);
+  },
+);
+
+router.patch(
+  "/me/skills/:skillId",
+  requireAuth,
+  validateParams(skillIdParam),
+  validateBody(memberSkillUpdateSchema),
+  async (req, res) => {
+    const userId = req.dbUser!.id;
+    const skillId = Number(req.params.skillId);
+    const { label } = req.body as z.infer<typeof memberSkillUpdateSchema>;
+    const existingSkills = await db
+      .select({ id: memberSkillsTable.id, label: memberSkillsTable.label })
+      .from(memberSkillsTable)
+      .where(eq(memberSkillsTable.userId, userId));
+    const current = existingSkills.find((skill) => skill.id === skillId);
+
+    if (!current) {
+      res.status(404).json({ error: "skill_not_found" });
+      return;
+    }
+    if (
+      existingSkills.some(
+        (skill) => skill.id !== skillId && skill.label.toLowerCase() === label.toLowerCase(),
+      )
+    ) {
+      res.status(409).json({ error: "duplicate_skill" });
+      return;
+    }
+
+    const [updated] = await db
+      .update(memberSkillsTable)
+      .set({ label })
+      .where(and(eq(memberSkillsTable.id, skillId), eq(memberSkillsTable.userId, userId)))
+      .returning();
+    res.json(updated);
+  },
+);
+
+router.delete(
+  "/me/skills/:skillId",
+  requireAuth,
+  validateParams(skillIdParam),
+  async (req, res) => {
+    const skillId = Number(req.params.skillId);
+    const [removed] = await db
+      .delete(memberSkillsTable)
+      .where(and(eq(memberSkillsTable.id, skillId), eq(memberSkillsTable.userId, req.dbUser!.id)))
+      .returning({ id: memberSkillsTable.id });
+
+    if (!removed) {
+      res.status(404).json({ error: "skill_not_found" });
+      return;
+    }
+    res.status(204).end();
+  },
+);
+
+router.get("/me/resources", requireAuth, async (req, res) => {
+  const resources = await db
+    .select()
+    .from(memberResourcesTable)
+    .where(eq(memberResourcesTable.userId, req.dbUser!.id))
+    .orderBy(asc(memberResourcesTable.label), asc(memberResourcesTable.id));
+  res.json(resources);
+});
+
+router.post(
+  "/me/resources",
+  requireAuth,
+  validateBody(memberResourceInputSchema),
+  async (req, res) => {
+    const userId = req.dbUser!.id;
+    const { label, isAvailable } = req.body as z.infer<typeof memberResourceInputSchema>;
+    const existing = await db
+      .select({ label: memberResourcesTable.label })
+      .from(memberResourcesTable)
+      .where(eq(memberResourcesTable.userId, userId));
+
+    if (existing.some((entry) => entry.label.toLowerCase() === label.toLowerCase())) {
+      res.status(409).json({ error: "duplicate_resource" });
+      return;
+    }
+    if (existing.length >= MAX_PROFILE_ENTRIES) {
+      res.status(409).json({ error: "resource_limit_reached" });
+      return;
+    }
+
+    const [created] = await db
+      .insert(memberResourcesTable)
+      .values({ userId, label, isAvailable })
+      .returning();
+    res.status(201).json(created);
+  },
+);
+
+router.patch(
+  "/me/resources/:resourceId",
+  requireAuth,
+  validateParams(resourceIdParam),
+  validateBody(memberResourceUpdateSchema),
+  async (req, res) => {
+    const userId = req.dbUser!.id;
+    const resourceId = Number(req.params.resourceId);
+    const updates = req.body as z.infer<typeof memberResourceUpdateSchema>;
+    const existingResources = await db
+      .select({ id: memberResourcesTable.id, label: memberResourcesTable.label })
+      .from(memberResourcesTable)
+      .where(eq(memberResourcesTable.userId, userId));
+    const current = existingResources.find((resource) => resource.id === resourceId);
+
+    if (!current) {
+      res.status(404).json({ error: "resource_not_found" });
+      return;
+    }
+    if (
+      updates.label &&
+      existingResources.some(
+        (resource) =>
+          resource.id !== resourceId &&
+          resource.label.toLowerCase() === updates.label!.toLowerCase(),
+      )
+    ) {
+      res.status(409).json({ error: "duplicate_resource" });
+      return;
+    }
+
+    const [updated] = await db
+      .update(memberResourcesTable)
+      .set(updates)
+      .where(
+        and(
+          eq(memberResourcesTable.id, resourceId),
+          eq(memberResourcesTable.userId, userId),
+        ),
+      )
+      .returning();
+    res.json(updated);
+  },
+);
+
+router.delete(
+  "/me/resources/:resourceId",
+  requireAuth,
+  validateParams(resourceIdParam),
+  async (req, res) => {
+    const resourceId = Number(req.params.resourceId);
+    const [removed] = await db
+      .delete(memberResourcesTable)
+      .where(
+        and(
+          eq(memberResourcesTable.id, resourceId),
+          eq(memberResourcesTable.userId, req.dbUser!.id),
+        ),
+      )
+      .returning({ id: memberResourcesTable.id });
+
+    if (!removed) {
+      res.status(404).json({ error: "resource_not_found" });
+      return;
+    }
+    res.status(204).end();
+  },
+);
 
 router.patch("/me", requireAuth, validateBody(updateProfileSchema), async (req, res) => {
   const user = req.dbUser!;

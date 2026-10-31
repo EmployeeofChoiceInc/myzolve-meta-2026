@@ -23,6 +23,7 @@ import {
 } from "@/components/UI";
 import { useColors } from "@/hooks/useColors";
 import { safeBack } from "@/lib/safeBack";
+import { ProfileCapacityEditor } from "@/components/ProfileCapacityEditor";
 import {
   MAX_AVATAR_BYTES,
   useAvatarUpload,
@@ -404,6 +405,8 @@ export default function EditProfileScreen() {
                   testID="input-location"
                 />
               </Field>
+
+              <ProfileCapacityEditor />
 
               <Field label="Pronouns (optional)">
                 <Input

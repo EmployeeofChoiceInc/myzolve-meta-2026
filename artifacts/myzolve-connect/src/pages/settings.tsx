@@ -27,6 +27,7 @@ import {
 import { Camera, Star, ChevronRight, UserCheck, UserPlus, Trash2, Users, Sparkles, Check, X as XIcon, Inbox, ShieldOff, Eye, EyeOff } from "lucide-react";
 import { Link } from "wouter";
 import { PlusBadge } from "@/components/plus-badge";
+import { MemberCapacityManager } from "@/components/member-capacity-manager";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useCopilot } from "@/lib/copilot";
@@ -489,6 +490,8 @@ export default function SettingsPage() {
           </Form>
         </CardContent>
       </Card>
+
+      <MemberCapacityManager />
 
       <PlusSummaryCard />
 

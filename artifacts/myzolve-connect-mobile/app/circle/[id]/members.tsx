@@ -8,9 +8,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   getListCircleInvitationsQueryKey,
   getListCircleMembersQueryKey,
+  getSearchCircleSkillsQueryKey,
   useCreateCircleInvitation,
   useListCircleInvitations,
   useListCircleMembers,
+  useSearchCircleSkills,
 } from "@workspace/api-client-react";
 
 import {
@@ -44,6 +46,32 @@ export default function MembersScreen() {
   const circleId = Number(params.id);
   const qc = useQueryClient();
   const { data: members, isLoading } = useListCircleMembers(circleId);
+  const [searchTerm, setSearchTerm] = useState("");
+  const normalizedSearch = searchTerm.trim();
+  const {
+    data: searchResults,
+    isLoading: searchLoading,
+    isError: searchError,
+  } = useSearchCircleSkills(
+    circleId,
+    { q: normalizedSearch },
+    {
+      query: {
+        enabled: circleId > 0 && normalizedSearch.length > 0,
+        queryKey: getSearchCircleSkillsQueryKey(circleId, { q: normalizedSearch }),
+      },
+    },
+  );
+  const memberList = members ?? [];
+  const visibleMembers = normalizedSearch ? searchResults ?? [] : memberList;
+  const totalSkills = memberList.reduce(
+    (total, member) => total + (member.skills?.length ?? 0),
+    0,
+  );
+  const totalResources = memberList.reduce(
+    (total, member) => total + (member.resources?.length ?? 0),
+    0,
+  );
   const { data: invitations } = useListCircleInvitations(circleId);
   const invite = useCreateCircleInvitation();
 
@@ -94,17 +122,43 @@ export default function MembersScreen() {
         <AppText color={c.mutedForeground} style={{ marginTop: 4, marginBottom: 20 }}>
           The people who make this circle.
         </AppText>
+        <AppText
+          variant="caption"
+          color={c.mutedForeground}
+          style={{ marginBottom: 12 }}
+          testID="circle-capacity-summary"
+        >
+          {totalSkills} skills · {totalResources} resources across members
+        </AppText>
+        <Field label="Search skills and resources">
+          <Input
+            value={searchTerm}
+            onChangeText={setSearchTerm}
+            placeholder="Try “first aid” or “truck”"
+            maxLength={100}
+            testID="input-circle-capacity-search"
+          />
+        </Field>
 
         {isLoading ? (
           <Skeleton height={120} />
-        ) : !members || members.length === 0 ? (
-          <Empty icon="users" title="No members yet" />
+        ) : normalizedSearch && searchLoading ? (
+          <AppText color={c.mutedForeground}>Searching this circle…</AppText>
+        ) : normalizedSearch && searchError ? (
+          <AppText color={c.destructive}>Could not search this circle right now.</AppText>
+        ) : visibleMembers.length === 0 ? (
+          <Empty
+            icon={normalizedSearch ? "search" : "users"}
+            title={normalizedSearch ? "No matching skills or resources" : "No members yet"}
+          />
         ) : (
           <View style={{ gap: 10 }}>
-            {members.map((m) => (
+            {visibleMembers.map((m) => (
               <PressableCard
                 key={m.id}
-                onPress={() => m.userId && router.push(`/profile/${m.userId}`)}
+                onPress={() =>
+                  m.userId && router.push(`/profile/${m.userId}?circleId=${circleId}`)
+                }
               >
                 <Row gap={12} align="center">
                   <Avatar
@@ -139,6 +193,33 @@ export default function MembersScreen() {
                     );
                   })()}
                 </Row>
+                {((m.skills?.length ?? 0) > 0 || (m.resources?.length ?? 0) > 0) ? (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      flexWrap: "wrap",
+                      gap: 6,
+                      marginTop: 12,
+                    }}
+                  >
+                    {m.skills?.map((skill) => (
+                      <Pill
+                        key={`skill-${skill.id}`}
+                        label={`Skill · ${skill.label}`}
+                        bg={c.primarySoft}
+                        fg={c.primary}
+                      />
+                    ))}
+                    {m.resources?.map((resource) => (
+                      <Pill
+                        key={`resource-${resource.id}`}
+                        label={`Resource · ${resource.label}${resource.isAvailable ? "" : " · unavailable"}`}
+                        bg={resource.isAvailable ? c.primarySoft : c.muted}
+                        fg={resource.isAvailable ? c.primary : c.mutedForeground}
+                      />
+                    ))}
+                  </View>
+                ) : null}
                 {explainedRoleId === m.id &&
                 ROLE_DESCRIPTIONS[m.role as CircleRole] ? (
                   <View
