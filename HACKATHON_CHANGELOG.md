@@ -31,4 +31,11 @@ This log records work completed during the Meta Global AI Developer Hackathon wi
 - Verified the fixtures and invalid-household rejection through the API; live Meta-backed generation and re-planning both returned validated plans. Checked that unchanged, approved, and completed tasks remain identical, that approved tasks are rejected as regeneration targets, and that a full 20-task plan stays within its limit after re-planning. Frontend and API typechecks passed; desktop and mobile previews were inspected.
 - **Production behavior changed:** None.
 
+## 2026-10-31 — LIFE planner resilience tests
+
+- Added automated synthetic coverage for an ordinary school-closure plan, incomplete details, conflicting availability, invalid or truncated model output, unknown assignees, timeouts, and provider API failures.
+- Verified that fixture responses contain only the supplied fictional households, plan generation labels actions as suggestions, and selective re-planning cannot replace approved or completed tasks.
+- Documented repeatable LIFE demo inputs and the local test commands in `artifacts/api-server/LIFE_TESTING.md`. The test suite uses fixed mocked responses and makes no live model calls.
+- **Production behavior changed:** None.
+
 Append a dated entry for each subsequent hackathon change. Distinguish documentation, infrastructure, and demo functionality; link to the relevant commit or file when available. Do not backdate work or claim existing Connect behavior as a LIFE feature.
