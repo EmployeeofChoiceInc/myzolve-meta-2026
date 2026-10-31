@@ -30,7 +30,7 @@ The existing “co-pilot” feature authorizes a trusted human to help a member 
 
 ## What is not in the baseline
 
-The inspected application source contains no MyZolve LIFE scenario intake, AI-generated resilience plan, AI-proposed task assignments, plan approval/editing flow, circumstance-driven replanning, or Meta Model API client. No Meta/Muse API configuration or integration was identified. Meta account access and API credentials therefore remain **unverified**.
+The inspected application source contains no MyZolve LIFE scenario intake, AI-generated resilience plan, AI-proposed task assignments, plan approval/editing flow, circumstance-driven replanning, or Meta Model API client. The initial baseline audit did not identify Meta/Muse API configuration or an integration, so account access was **unverified at that point**. A later access check and synthetic plan evaluation are recorded below and in `HACKATHON_CHANGELOG.md`; no model client or product feature was added to the baseline application.
 
 The LIFE demo should use synthetic households and scenarios. It must not use production member data without a separately approved, privacy-reviewed integration.
 
@@ -59,4 +59,16 @@ References:
 - [Meta Model API models](https://developer.meta.ai/docs/models)
 - [Meta Model API structured output](https://developer.meta.ai/docs/features/structured-output)
 - [Meta Model API reasoning](https://developer.meta.ai/docs/reasoning)
+
+## Post-baseline Meta Model API access check
+
+On 2026-10-31, a secured `MODEL_API_KEY` was used for live requests to `https://api.meta.ai/v1/chat/completions` with model ID `muse-spark-1.3`. All three completed synthetic scenarios returned HTTP 200 and passed local validation against the same strict JSON Schema. Scenarios covered a caregiver's unexpected hospitalization, a two-day school closure with overlapping work schedules, and conflicting caregiver availability. The conflict case returned clarification questions rather than inventing availability.
+
+This confirms that the supplied key can access Muse Spark 1.3 from this workspace at the time of the check. It does not establish that another Meta account has access, guarantee ongoing availability, or add a Meta integration or application-side client. The key remains in Replit Secrets; it was not written to source, logs, or this document. No Connect code or production behavior was changed.
+
+Meta's published Standard-tier limits for Muse Spark 1.3 are 3,000 requests per minute and 4,000,000 tokens per minute per team/model. Its published context window is 1,048,576 tokens. Published Standard pricing is $1.25 per 1M input tokens, $0.15 per 1M cached input tokens, and $4.25 per 1M output tokens. Actual account billing and access policy should be checked in Meta's Model API dashboard. The test responses exposed a request-limit header of 3,000; no rate-limit error occurred. Meta documents HTTP 401 for missing/invalid/revoked credentials, 403 for insufficient permissions, 402 for billing requirements, 429 for rate limiting (honor `Retry-After`), and 5xx/503/504 service errors as retry candidates according to its error-handling guidance.
+
+API setup steps: sign in to the [Meta Model API dashboard](https://developer.meta.ai/), create a key under **API keys**, and save it as the Replit Secret `MODEL_API_KEY`. Send it only as a Bearer token to the API; never put it in source or a client bundle. Meta currently documents structured output via `response_format` with `type: "json_schema"` and a schema; recursive schemas are not supported.
+
+Test harness note: an initial request capped at 300 completion tokens ended with `finish_reason: length`; the school-closure scenario also truncated at a 1,400-token cap. These were incomplete model responses, not authentication or provider errors. Retrying that case with a 3,000-token cap completed and passed schema validation. Keep a sufficient completion budget and reject/handle truncated JSON rather than returning it as a plan.
 

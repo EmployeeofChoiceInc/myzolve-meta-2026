@@ -11,4 +11,13 @@ This log records work completed during the Meta Global AI Developer Hackathon wi
 - **Meta Model API calls added:** None.
 - **Production behavior changed:** None.
 
+## 2026-10-31 — Meta Model API access and synthetic plan checks
+
+- Confirmed the secured `MODEL_API_KEY` can call Meta Model API's `muse-spark-1.3` through `https://api.meta.ai/v1/chat/completions` (HTTP 200). The key remains in Replit Secrets; it is not in source, logs, or this changelog.
+- Sent three fabricated family-disruption scenarios: a caregiver hospitalized for three days, a two-day school closure with overlapping work shifts, and conflicting caregiver availability. Each completed response passed local validation against a strict JSON Schema for a summary, assumptions, suggested tasks, and clarifying questions. The conflict scenario flagged the mismatch and asked for clarification.
+- One initial low-token test and a 1,400-completion-token run ended with `finish_reason: length`; the latter produced truncated JSON. Retrying the school-closure scenario with a 3,000-token completion cap completed and passed validation. No authentication, permission, billing, or rate-limit error occurred. The successful calls exposed a request-limit header of 3,000.
+- Meta's published Standard-tier limits for Muse Spark 1.3 are 3,000 requests/minute and 4,000,000 tokens/minute per team/model, with a 1,048,576-token context window. Published prices are $1.25/1M input tokens, $0.15/1M cached input tokens, and $4.25/1M output tokens. Limits and actual account access may vary by team or account; check the Meta dashboard. Meta documents 401 for missing/invalid/revoked keys, 403 for insufficient permission, 402 for billing requirements, 429 with `Retry-After`, and retryable service errors.
+- Access setup: create a key in the [Meta Model API dashboard](https://developer.meta.ai/) under **API keys**, then store it as the Replit Secret `MODEL_API_KEY`. No Meta integration or product API client was added. No Connect source or production behavior changed.
+- References: [authentication](https://developer.meta.ai/docs/getting-started/authentication), [models](https://developer.meta.ai/docs/models), [structured output](https://developer.meta.ai/docs/features/structured-output), [pricing and rate limits](https://developer.meta.ai/docs/pricing-rate-limits), and [error handling](https://developer.meta.ai/docs/error-handling).
+
 Append a dated entry for each subsequent hackathon change. Distinguish documentation, infrastructure, and demo functionality; link to the relevant commit or file when available. Do not backdate work or claim existing Connect behavior as a LIFE feature.

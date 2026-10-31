@@ -11,3 +11,4 @@
 - [isOrgMain in circle list](isOrgMain-circles-list.md) — filter isOrgMain client-side only (not server-side); global exclusion breaks dashboard onboarding (circles.length===0) and live mobile app.
 - [EAS iOS build — standalone pnpm workspace fix](eas-ios-build-fix.md) — Replit blocks git ops so EAS_NO_VCS=1 is required; must add vendor/ + pnpm-workspace.yaml + pnpm-lock.yaml to mobile dir.
 - [MyZolve LIFE hackathon baseline](meta-hackathon-baseline.md) — Keep pre-existing Connect functionality distinct from hackathon work and protect production until the isolated approach is established.
+- [Muse Spark structured-output budgets](meta-muse-output-budget.md) — internal reasoning uses completion tokens; leave headroom and reject `finish_reason=length` before parsing JSON.
