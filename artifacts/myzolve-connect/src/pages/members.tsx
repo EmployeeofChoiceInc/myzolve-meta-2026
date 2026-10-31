@@ -11,11 +11,13 @@ import {
   useGetCircle,
   useCreateCircleInvitation,
   useSearchCircleSkills,
+  customFetch,
+  type CircleContinuityPacket,
   type CircleInvitation,
   type CircleMember,
 } from "@workspace/api-client-react";
 import { useJoinRequests, useApproveJoinRequest, useDeclineJoinRequest, useMyPlusStatus } from "@/hooks/use-api";
-import { ArrowLeft, UserPlus, Mail, ShieldAlert, Link2, Copy, MoreHorizontal, UserMinus, Shield, UserCheck } from "lucide-react";
+import { ArrowLeft, UserPlus, Mail, ShieldAlert, Link2, Copy, MoreHorizontal, UserMinus, Shield, UserCheck, FileDown } from "lucide-react";
 import { RolePickerDialog } from "@/components/role-picker-dialog";
 import { PlusBadge } from "@/components/plus-badge";
 import { rolePillClasses, ROLE_LABELS, isPlusGatedRole, type AssignableRole, type CircleRole } from "@/lib/circle-roles";
@@ -37,6 +39,7 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { displayEmail } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { downloadContinuityPacketPdf } from "@/lib/continuity-packet-pdf";
 
 const inviteFormSchema = z.object({
   invitedEmail: z.string().email("Please enter a valid email").optional().or(z.literal("")),
@@ -53,6 +56,7 @@ export default function MembersPage() {
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [roleDialogMember, setRoleDialogMember] = useState<CircleMember | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [packetLoading, setPacketLoading] = useState(false);
 
   const { data: circle } = useGetCircle(circleId, {
     query: { enabled: !!circleId, queryKey: ["circle", circleId] as const }
@@ -193,6 +197,24 @@ export default function MembersPage() {
     }
   }
 
+  async function downloadPacket() {
+    setPacketLoading(true);
+    try {
+      const packet = await customFetch<CircleContinuityPacket>(
+        `/api/circles/${circleId}/continuity-packet`,
+      );
+      await downloadContinuityPacketPdf(packet);
+      toast({ title: "Continuity packet downloaded" });
+    } catch {
+      toast({
+        title: "Could not download the continuity packet",
+        variant: "destructive",
+      });
+    } finally {
+      setPacketLoading(false);
+    }
+  }
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 max-w-5xl mx-auto">
       <div className="flex items-center gap-2 mb-2">
@@ -207,6 +229,19 @@ export default function MembersPage() {
           <p className="text-muted-foreground mt-1">The people in this trusted space.</p>
         </div>
         
+        {isAdminOrOwner && (
+          <Button
+            variant="outline"
+            className="rounded-full"
+            onClick={downloadPacket}
+            disabled={packetLoading}
+            data-testid="download-circle-continuity-packet"
+          >
+            <FileDown className="mr-2 h-4 w-4" />
+            {packetLoading ? "Preparing PDF..." : "Download Continuity Packet"}
+          </Button>
+        )}
+
         {isAdminOrOwner && (
           <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setInviteLink(null); }}>
             <DialogTrigger asChild>

@@ -963,6 +963,54 @@ export const DeleteCircleParams = zod.object({
 });
 
 /**
+ * Returns roster, contact details, skills, resources, shared wall notes, and any saved meeting locations. Owner/admin only.
+ * @summary Get printable circle continuity packet data
+ */
+export const GetCircleContinuityPacketParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const GetCircleContinuityPacketResponse = zod.object({
+  generatedAt: zod.coerce.date(),
+  circle: zod.object({
+    id: zod.number(),
+    name: zod.string(),
+    logoUrl: zod.string().nullable(),
+    accentColor: zod.string().nullable(),
+  }),
+  members: zod.array(
+    zod.object({
+      userId: zod.number().nullable(),
+      name: zod.string(),
+      role: zod.string(),
+      email: zod.string().nullable(),
+      phone: zod
+        .string()
+        .nullable()
+        .describe(
+          "Only populated when the member has enabled phone discoverability.",
+        ),
+      skills: zod.array(zod.string()),
+      resources: zod.array(
+        zod.object({
+          label: zod.string(),
+          isAvailable: zod.boolean(),
+        }),
+      ),
+    }),
+  ),
+  meetingLocations: zod.array(zod.string()),
+  sharedNotes: zod.array(
+    zod.object({
+      title: zod.string().nullish(),
+      body: zod.string(),
+      authorName: zod.string(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
  * @summary Get circle overview statistics
  */
 export const GetCircleStatsParams = zod.object({
@@ -4485,6 +4533,54 @@ export const UpdateOrgResponse = zod.object({
   comped: zod.boolean(),
   myRole: zod.string().nullish(),
   createdAt: zod.coerce.date(),
+});
+
+/**
+ * Returns the full active org roster and main-circle continuity information. Owner/admin only.
+ * @summary Get printable organization continuity packet data
+ */
+export const GetOrgContinuityPacketParams = zod.object({
+  orgId: zod.coerce.number(),
+});
+
+export const GetOrgContinuityPacketResponse = zod.object({
+  generatedAt: zod.coerce.date(),
+  org: zod.object({
+    id: zod.number(),
+    name: zod.string(),
+    logoUrl: zod.string().nullable(),
+    accentColor: zod.string().nullable(),
+  }),
+  members: zod.array(
+    zod.object({
+      userId: zod.number().nullable(),
+      name: zod.string(),
+      role: zod.string(),
+      email: zod.string().nullable(),
+      phone: zod
+        .string()
+        .nullable()
+        .describe(
+          "Only populated when the member has enabled phone discoverability.",
+        ),
+      skills: zod.array(zod.string()),
+      resources: zod.array(
+        zod.object({
+          label: zod.string(),
+          isAvailable: zod.boolean(),
+        }),
+      ),
+    }),
+  ),
+  meetingLocations: zod.array(zod.string()),
+  sharedNotes: zod.array(
+    zod.object({
+      title: zod.string().nullish(),
+      body: zod.string(),
+      authorName: zod.string(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
 });
 
 /**

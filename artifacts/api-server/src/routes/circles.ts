@@ -7,6 +7,7 @@ import {
   circlesTable,
   circleMembersTable,
   circleJoinRequestsTable,
+  placeholderMembersTable,
   usersTable,
   type Circle,
 } from "@workspace/db";
@@ -18,13 +19,17 @@ import { isPlus } from "../lib/revenuecat";
 import { isAllowedAccentColor, MAX_WELCOME_MESSAGE_LEN } from "../lib/circleLook";
 import { getOrgBrandingMap } from "../lib/orgEntitlement";
 import { validateAndConsumePendingUpload } from "../lib/uploadTokens";
+import { withMemberCapacity } from "../lib/continuityPacket";
+import { GetCircleContinuityPacketResponse } from "@workspace/api-zod";
 import {
   supportRequestsTable,
   servicePostsTable,
   activityFeedItemsTable,
   supportContributionsTable,
+  circlePostsTable,
 } from "@workspace/db";
 import { createNotification } from "../lib/helpers";
+import { desc } from "drizzle-orm";
 
 /**
  * Returns true if the requesting user's email matches the configured
@@ -461,6 +466,141 @@ router.get("/circles/:circleId", requireAuth, validateParams(circleIdParam), asy
     ),
   );
 });
+
+router.get(
+  "/circles/:circleId/continuity-packet",
+  requireAuth,
+  validateParams(circleIdParam),
+  async (req, res): Promise<void> => {
+    const userId = req.dbUser!.id;
+    const circleId = Number(req.params.circleId);
+    const circle = await db
+      .select()
+      .from(circlesTable)
+      .where(eq(circlesTable.id, circleId))
+      .limit(1)
+      .then((rows) => rows[0] ?? null);
+
+    if (!circle) {
+      res.status(404).json({ error: "Circle not found" });
+      return;
+    }
+
+    const membership = await db
+      .select({ role: circleMembersTable.role })
+      .from(circleMembersTable)
+      .where(
+        and(
+          eq(circleMembersTable.circleId, circleId),
+          eq(circleMembersTable.userId, userId),
+          eq(circleMembersTable.status, "active"),
+        ),
+      )
+      .limit(1)
+      .then((rows) => rows[0] ?? null);
+
+    if (circle.ownerId !== userId && !isOwnerOrAdmin(membership?.role)) {
+      res.status(membership ? 403 : 404).json({
+        error: membership ? "Only circle owners and admins can download this packet" : "Circle not found",
+      });
+      return;
+    }
+
+    const memberRows = await db
+      .select({
+        userId: usersTable.id,
+        name: usersTable.displayName,
+        role: circleMembersTable.role,
+        email: usersTable.email,
+        phone: usersTable.phone,
+        phoneDiscoverable: usersTable.phoneDiscoverable,
+      })
+      .from(circleMembersTable)
+      .innerJoin(usersTable, eq(circleMembersTable.userId, usersTable.id))
+      .where(
+        and(
+          eq(circleMembersTable.circleId, circleId),
+          eq(circleMembersTable.status, "active"),
+        ),
+      )
+      .orderBy(usersTable.displayName);
+
+    const members = await withMemberCapacity(
+      memberRows.map((member) => ({
+        userId: member.userId,
+        name: member.name,
+        role: member.role,
+        email: member.email || null,
+        phone: member.phoneDiscoverable ? member.phone : null,
+      })),
+    );
+    const placeholders = await db
+      .select({
+        name: placeholderMembersTable.displayName,
+        relationship: placeholderMembersTable.relationship,
+        email: placeholderMembersTable.email,
+      })
+      .from(placeholderMembersTable)
+      .where(
+        and(
+          eq(placeholderMembersTable.circleId, circleId),
+          eq(placeholderMembersTable.status, "unlinked"),
+        ),
+      )
+      .orderBy(placeholderMembersTable.displayName);
+    const packetMembers = [
+      ...members,
+      ...placeholders.map((placeholder) => ({
+        userId: null,
+        name: placeholder.name,
+        role: placeholder.relationship
+          ? `placeholder (${placeholder.relationship})`
+          : "placeholder",
+        email: placeholder.email,
+        phone: null,
+        skills: [],
+        resources: [],
+      })),
+    ].sort((a, b) => a.name.localeCompare(b.name));
+
+    const sharedNotes = await db
+      .select({
+        title: circlePostsTable.title,
+        body: circlePostsTable.body,
+        authorName: usersTable.displayName,
+        createdAt: circlePostsTable.createdAt,
+      })
+      .from(circlePostsTable)
+      .innerJoin(usersTable, eq(circlePostsTable.authorUserId, usersTable.id))
+      .where(
+        and(
+          eq(circlePostsTable.circleId, circleId),
+          eq(circlePostsTable.status, "active"),
+        ),
+      )
+      .orderBy(desc(circlePostsTable.createdAt));
+
+    const orgBranding = await brandingForCircle(circle);
+    const packet = {
+      generatedAt: new Date().toISOString(),
+      circle: {
+        id: circle.id,
+        name: circle.name,
+        logoUrl:
+          circle.photoUrl ??
+          (circle.orgId && orgBranding?.logoObjectPath
+            ? `/api/orgs/${circle.orgId}/logo`
+            : null),
+        accentColor: circle.accentColor ?? orgBranding?.accentColor ?? null,
+      },
+      members: packetMembers,
+      meetingLocations: [],
+      sharedNotes,
+    };
+
+    res.json(GetCircleContinuityPacketResponse.parse(packet));
+  },
+);
 
 router.post(
   "/circles/:circleId/welcome/dismiss",

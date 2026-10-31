@@ -832,6 +832,29 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /circles/{circleId}/continuity-packet:
+    get:
+      operationId: getCircleContinuityPacket
+      tags: [circles]
+      summary: Get printable circle continuity packet data
+      description: Returns roster, contact details, skills, resources, shared wall notes, and any saved meeting locations. Owner/admin only.
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      responses:
+        "200":
+          description: Circle continuity packet data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CircleContinuityPacket"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /circles/{circleId}/stats:
     get:
       operationId: getCircleStats
@@ -3528,6 +3551,29 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+
+  /orgs/{orgId}/continuity-packet:
+    get:
+      operationId: getOrgContinuityPacket
+      tags: [orgs]
+      summary: Get printable organization continuity packet data
+      description: Returns the full active org roster and main-circle continuity information. Owner/admin only.
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/orgId"
+      responses:
+        "200":
+          description: Organization continuity packet data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgContinuityPacket"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /orgs/{orgId}/logo/request-url:
     post:
@@ -7608,3 +7654,114 @@ components:
       oneOf:
         - $ref: "#/components/schemas/Wrapup"
         - type: "null"
+
+    ContinuityPacketResource:
+      type: object
+      properties:
+        label:
+          type: string
+        isAvailable:
+          type: boolean
+      required: [label, isAvailable]
+
+    ContinuityPacketMember:
+      type: object
+      properties:
+        userId:
+          type: ["integer", "null"]
+        name:
+          type: string
+        role:
+          type: string
+        email:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+          description: Only populated when the member has enabled phone discoverability.
+        skills:
+          type: array
+          items:
+            type: string
+        resources:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContinuityPacketResource"
+      required: [userId, name, role, email, phone, skills, resources]
+
+    ContinuityPacketNote:
+      type: object
+      properties:
+        title:
+          type: ["string", "null"]
+        body:
+          type: string
+        authorName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [body, authorName, createdAt]
+
+    CircleContinuityPacket:
+      type: object
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        circle:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            logoUrl:
+              type: ["string", "null"]
+            accentColor:
+              type: ["string", "null"]
+          required: [id, name, logoUrl, accentColor]
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContinuityPacketMember"
+        meetingLocations:
+          type: array
+          items:
+            type: string
+        sharedNotes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContinuityPacketNote"
+      required: [generatedAt, circle, members, meetingLocations, sharedNotes]
+
+    OrgContinuityPacket:
+      type: object
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        org:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            logoUrl:
+              type: ["string", "null"]
+            accentColor:
+              type: ["string", "null"]
+          required: [id, name, logoUrl, accentColor]
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContinuityPacketMember"
+        meetingLocations:
+          type: array
+          items:
+            type: string
+        sharedNotes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContinuityPacketNote"
+      required: [generatedAt, org, members, meetingLocations, sharedNotes]

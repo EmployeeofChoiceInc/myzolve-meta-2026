@@ -28,6 +28,7 @@ import type {
   CircleBannerUploadUrlRequest,
   CircleBannerUploadUrlResponse,
   CircleConnection,
+  CircleContinuityPacket,
   CircleInvitation,
   CircleMember,
   CircleStats,
@@ -113,6 +114,7 @@ import type {
   Org,
   OrgAnnouncement,
   OrgCheckoutBody,
+  OrgContinuityPacket,
   OrgDashboard,
   OrgEvent,
   OrgHome,
@@ -2835,6 +2837,108 @@ export const useDeleteCircle = <
 > => {
   return useMutation(getDeleteCircleMutationOptions(options));
 };
+
+/**
+ * Returns roster, contact details, skills, resources, shared wall notes, and any saved meeting locations. Owner/admin only.
+ * @summary Get printable circle continuity packet data
+ */
+export const getGetCircleContinuityPacketUrl = (circleId: number) => {
+  return `/api/circles/${circleId}/continuity-packet`;
+};
+
+export const getCircleContinuityPacket = async (
+  circleId: number,
+  options?: RequestInit,
+): Promise<CircleContinuityPacket> => {
+  return customFetch<CircleContinuityPacket>(
+    getGetCircleContinuityPacketUrl(circleId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetCircleContinuityPacketQueryKey = (circleId: number) => {
+  return [`/api/circles/${circleId}/continuity-packet`] as const;
+};
+
+export const getGetCircleContinuityPacketQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCircleContinuityPacket>>,
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+>(
+  circleId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCircleContinuityPacket>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetCircleContinuityPacketQueryKey(circleId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCircleContinuityPacket>>
+  > = ({ signal }) =>
+    getCircleContinuityPacket(circleId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!circleId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCircleContinuityPacket>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCircleContinuityPacketQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCircleContinuityPacket>>
+>;
+export type GetCircleContinuityPacketQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Get printable circle continuity packet data
+ */
+
+export function useGetCircleContinuityPacket<
+  TData = Awaited<ReturnType<typeof getCircleContinuityPacket>>,
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+>(
+  circleId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCircleContinuityPacket>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCircleContinuityPacketQueryOptions(
+    circleId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Get circle overview statistics
@@ -13059,6 +13163,102 @@ export const useUpdateOrg = <
 > => {
   return useMutation(getUpdateOrgMutationOptions(options));
 };
+
+/**
+ * Returns the full active org roster and main-circle continuity information. Owner/admin only.
+ * @summary Get printable organization continuity packet data
+ */
+export const getGetOrgContinuityPacketUrl = (orgId: number) => {
+  return `/api/orgs/${orgId}/continuity-packet`;
+};
+
+export const getOrgContinuityPacket = async (
+  orgId: number,
+  options?: RequestInit,
+): Promise<OrgContinuityPacket> => {
+  return customFetch<OrgContinuityPacket>(getGetOrgContinuityPacketUrl(orgId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetOrgContinuityPacketQueryKey = (orgId: number) => {
+  return [`/api/orgs/${orgId}/continuity-packet`] as const;
+};
+
+export const getGetOrgContinuityPacketQueryOptions = <
+  TData = Awaited<ReturnType<typeof getOrgContinuityPacket>>,
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+>(
+  orgId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOrgContinuityPacket>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetOrgContinuityPacketQueryKey(orgId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getOrgContinuityPacket>>
+  > = ({ signal }) =>
+    getOrgContinuityPacket(orgId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!orgId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getOrgContinuityPacket>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetOrgContinuityPacketQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getOrgContinuityPacket>>
+>;
+export type GetOrgContinuityPacketQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Get printable organization continuity packet data
+ */
+
+export function useGetOrgContinuityPacket<
+  TData = Awaited<ReturnType<typeof getOrgContinuityPacket>>,
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+>(
+  orgId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOrgContinuityPacket>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetOrgContinuityPacketQueryOptions(orgId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Request a presigned upload URL for the org logo

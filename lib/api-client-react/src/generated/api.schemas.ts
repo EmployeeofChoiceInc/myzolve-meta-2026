@@ -2955,6 +2955,69 @@ export interface Wrapup {
 
 export type WrapupOrNull = Wrapup | null;
 
+export interface ContinuityPacketResource {
+  label: string;
+  isAvailable: boolean;
+}
+
+export interface ContinuityPacketMember {
+  /** @nullable */
+  userId: number | null;
+  name: string;
+  role: string;
+  /** @nullable */
+  email: string | null;
+  /**
+   * Only populated when the member has enabled phone discoverability.
+   * @nullable
+   */
+  phone: string | null;
+  skills: string[];
+  resources: ContinuityPacketResource[];
+}
+
+export interface ContinuityPacketNote {
+  /** @nullable */
+  title?: string | null;
+  body: string;
+  authorName: string;
+  createdAt: string;
+}
+
+export type CircleContinuityPacketCircle = {
+  id: number;
+  name: string;
+  /** @nullable */
+  logoUrl: string | null;
+  /** @nullable */
+  accentColor: string | null;
+};
+
+export interface CircleContinuityPacket {
+  generatedAt: string;
+  circle: CircleContinuityPacketCircle;
+  members: ContinuityPacketMember[];
+  meetingLocations: string[];
+  sharedNotes: ContinuityPacketNote[];
+}
+
+export type OrgContinuityPacketOrg = {
+  id: number;
+  name: string;
+  /** @nullable */
+  logoUrl: string | null;
+  /** @nullable */
+  accentColor: string | null;
+};
+
+export interface OrgContinuityPacket {
+  generatedAt: string;
+  org: OrgContinuityPacketOrg;
+  members: ContinuityPacketMember[];
+  meetingLocations: string[];
+  sharedNotes: ContinuityPacketNote[];
+}
+
 /**
  * Bad request
  */

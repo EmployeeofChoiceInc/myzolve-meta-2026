@@ -22,7 +22,10 @@ import {
   type OrgMainCirclePost,
   type OrgMainCircleCareDate,
 } from "@/hooks/use-api";
-import { customFetch } from "@workspace/api-client-react";
+import {
+  customFetch,
+  type OrgContinuityPacket,
+} from "@workspace/api-client-react";
 import { ReactionBar, CommentsSection } from "@/components/post-interactions";
 import { MediaAttachmentList } from "@/components/media-attachment-display";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,8 +54,10 @@ import {
   X,
   HelpCircle,
   ChevronDown,
+  FileDown,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { downloadContinuityPacketPdf } from "@/lib/continuity-packet-pdf";
 
 function initial(name: string | null | undefined): string {
   return (name ?? "?").charAt(0).toUpperCase();
@@ -174,6 +179,7 @@ export default function ReunionHomePage() {
 
   const coverInputRef = useRef<HTMLInputElement>(null);
   const [coverUploading, setCoverUploading] = useState(false);
+  const [packetLoading, setPacketLoading] = useState(false);
 
   // Compose / edit state (editingAnnId === null → creating)
   const [announceOpen, setAnnounceOpen] = useState(false);
@@ -302,6 +308,24 @@ export default function ReunionHomePage() {
       toast({ title: "Could not upload cover", variant: "destructive" });
     } finally {
       setCoverUploading(false);
+    }
+  }
+
+  async function downloadOrgPacket() {
+    setPacketLoading(true);
+    try {
+      const packet = await customFetch<OrgContinuityPacket>(
+        `/api/orgs/${orgId}/continuity-packet`,
+      );
+      await downloadContinuityPacketPdf(packet);
+      toast({ title: "Organization continuity packet downloaded" });
+    } catch {
+      toast({
+        title: "Could not download the organization packet",
+        variant: "destructive",
+      });
+    } finally {
+      setPacketLoading(false);
     }
   }
 
@@ -1273,6 +1297,29 @@ export default function ReunionHomePage() {
                   </button>
                 ))}
               </div>
+              {canManage && (
+                <div className="mt-6 flex flex-col gap-3 rounded-xl border border-dashed p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium">
+                      Keep an offline copy of this organization
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Print the full active-member roster, shared notes, and saved event locations.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 rounded-full"
+                    onClick={downloadOrgPacket}
+                    disabled={packetLoading}
+                    data-testid="download-org-continuity-packet"
+                  >
+                    <FileDown className="mr-2 h-4 w-4" />
+                    {packetLoading ? "Preparing PDF..." : "Download Continuity Packet"}
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

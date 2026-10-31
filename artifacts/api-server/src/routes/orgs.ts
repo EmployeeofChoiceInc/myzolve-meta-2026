@@ -38,6 +38,8 @@ import {
 import { bustIsPlusCache } from "../lib/revenuecat";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { registerPendingUpload, validateAndConsumePendingUpload } from "../lib/uploadTokens";
+import { withMemberCapacity } from "../lib/continuityPacket";
+import { GetOrgContinuityPacketResponse } from "@workspace/api-zod";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -802,6 +804,108 @@ router.get(
       logger.error({ err: error, orgId }, "Error serving org cover image");
       res.status(404).json({ error: "No cover image" });
     }
+  },
+);
+
+// GET /orgs/:orgId/continuity-packet — admin-only data for a printable
+// organization packet. The roster is sourced from org membership, not only
+// the built-in circle, so it includes the full active organization.
+router.get(
+  "/orgs/:orgId/continuity-packet",
+  requireAuth,
+  validateParams(orgIdParam),
+  async (req, res): Promise<void> => {
+    const orgId = Number(req.params.orgId);
+    const admin = await requireOrgAdmin(req, res, orgId);
+    if (!admin) return;
+
+    const [memberRows, locationRows, mainCircleRow] = await Promise.all([
+      db
+        .select({
+          userId: usersTable.id,
+          name: usersTable.displayName,
+          role: orgMembersTable.role,
+          email: usersTable.email,
+          phone: usersTable.phone,
+          phoneDiscoverable: usersTable.phoneDiscoverable,
+        })
+        .from(orgMembersTable)
+        .innerJoin(usersTable, eq(orgMembersTable.userId, usersTable.id))
+        .where(
+          and(
+            eq(orgMembersTable.orgId, orgId),
+            eq(orgMembersTable.status, "active"),
+          ),
+        )
+        .orderBy(usersTable.displayName),
+      db
+        .select({ location: orgEventsTable.location })
+        .from(orgEventsTable)
+        .where(eq(orgEventsTable.orgId, orgId)),
+      db
+        .select({ id: circlesTable.id })
+        .from(circlesTable)
+        .where(
+          and(
+            eq(circlesTable.orgId, orgId),
+            eq(circlesTable.isOrgMain, true),
+          ),
+        )
+        .limit(1)
+        .then((rows) => rows[0] ?? null),
+    ]);
+
+    const members = await withMemberCapacity(
+      memberRows.map((member) => ({
+        userId: member.userId,
+        name: member.name,
+        role: member.role,
+        email: member.email || null,
+        phone: member.phoneDiscoverable ? member.phone : null,
+      })),
+    );
+
+    const meetingLocations = [
+      ...new Set(
+        locationRows
+          .map((row) => row.location?.trim())
+          .filter((location): location is string => !!location),
+      ),
+    ];
+
+    const sharedNotes = mainCircleRow
+      ? await db
+          .select({
+            title: circlePostsTable.title,
+            body: circlePostsTable.body,
+            authorName: usersTable.displayName,
+            createdAt: circlePostsTable.createdAt,
+          })
+          .from(circlePostsTable)
+          .innerJoin(usersTable, eq(circlePostsTable.authorUserId, usersTable.id))
+          .where(
+            and(
+              eq(circlePostsTable.circleId, mainCircleRow.id),
+              eq(circlePostsTable.status, "active"),
+            ),
+          )
+          .orderBy(desc(circlePostsTable.createdAt))
+      : [];
+
+    const packet = {
+      generatedAt: new Date().toISOString(),
+      org: {
+        id: admin.org.id,
+        name: admin.org.name,
+        logoUrl: admin.org.logoObjectPath ? `/api/orgs/${orgId}/logo` : null,
+        accentColor: admin.org.accentColor ?? null,
+      },
+      members,
+      meetingLocations,
+      sharedNotes,
+    };
+
+    res.json(GetOrgContinuityPacketResponse.parse(packet));
   },
 );
 
