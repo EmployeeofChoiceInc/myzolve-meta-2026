@@ -80,6 +80,11 @@ import type {
   LedgerExport,
   LedgerProView,
   LedgerSummary,
+  LifeDemoFixtures,
+  LifePlan,
+  LifePlanInput,
+  LifeReplanInput,
+  LifeReplanResult,
   ListAuditLogParams,
   ListCommentsParams,
   ListDisputesParams,
@@ -135,6 +140,7 @@ import type {
   SupportRequest,
   SupportRequestDetail,
   ToggleReactionBody,
+  TooManyRequestsResponse,
   TransferOwnershipBody,
   UnauthorizedResponse,
   UnregisterDeviceToken200,
@@ -14045,4 +14051,266 @@ export const useAcceptOrgInvite = <
   TContext
 > => {
   return useMutation(getAcceptOrgInviteMutationOptions(options));
+};
+
+/**
+ * Returns fabricated households and scenarios only. No Connect member data is used.
+ * @summary Get synthetic LIFE demo households and scenarios
+ */
+export const getGetLifeDemoFixturesUrl = () => {
+  return `/api/life/demo-fixtures`;
+};
+
+export const getLifeDemoFixtures = async (
+  options?: RequestInit,
+): Promise<LifeDemoFixtures> => {
+  return customFetch<LifeDemoFixtures>(getGetLifeDemoFixturesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetLifeDemoFixturesQueryKey = () => {
+  return [`/api/life/demo-fixtures`] as const;
+};
+
+export const getGetLifeDemoFixturesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getLifeDemoFixtures>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getLifeDemoFixtures>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetLifeDemoFixturesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getLifeDemoFixtures>>
+  > = ({ signal }) => getLifeDemoFixtures({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getLifeDemoFixtures>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetLifeDemoFixturesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getLifeDemoFixtures>>
+>;
+export type GetLifeDemoFixturesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get synthetic LIFE demo households and scenarios
+ */
+
+export function useGetLifeDemoFixtures<
+  TData = Awaited<ReturnType<typeof getLifeDemoFixtures>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getLifeDemoFixtures>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetLifeDemoFixturesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Sends the synthetic household and scenario to Meta from the server. Plans are not persisted.
+ * @summary Generate a structured response plan for a synthetic household
+ */
+export const getGenerateLifePlanUrl = () => {
+  return `/api/life/plans`;
+};
+
+export const generateLifePlan = async (
+  lifePlanInput: LifePlanInput,
+  options?: RequestInit,
+): Promise<LifePlan> => {
+  return customFetch<LifePlan>(getGenerateLifePlanUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(lifePlanInput),
+  });
+};
+
+export const getGenerateLifePlanMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | TooManyRequestsResponse | ErrorResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateLifePlan>>,
+    TError,
+    { data: BodyType<LifePlanInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateLifePlan>>,
+  TError,
+  { data: BodyType<LifePlanInput> },
+  TContext
+> => {
+  const mutationKey = ["generateLifePlan"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateLifePlan>>,
+    { data: BodyType<LifePlanInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return generateLifePlan(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateLifePlanMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateLifePlan>>
+>;
+export type GenerateLifePlanMutationBody = BodyType<LifePlanInput>;
+export type GenerateLifePlanMutationError = ErrorType<
+  BadRequestResponse | TooManyRequestsResponse | ErrorResponse
+>;
+
+/**
+ * @summary Generate a structured response plan for a synthetic household
+ */
+export const useGenerateLifePlan = <
+  TError = ErrorType<
+    BadRequestResponse | TooManyRequestsResponse | ErrorResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateLifePlan>>,
+    TError,
+    { data: BodyType<LifePlanInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateLifePlan>>,
+  TError,
+  { data: BodyType<LifePlanInput> },
+  TContext
+> => {
+  return useMutation(getGenerateLifePlanMutationOptions(options));
+};
+
+/**
+ * Unselected tasks are preserved exactly. Approved and completed tasks cannot be replaced.
+ * @summary Refresh selected suggested tasks after circumstances change
+ */
+export const getReplanLifePlanUrl = () => {
+  return `/api/life/plans/replan`;
+};
+
+export const replanLifePlan = async (
+  lifeReplanInput: LifeReplanInput,
+  options?: RequestInit,
+): Promise<LifeReplanResult> => {
+  return customFetch<LifeReplanResult>(getReplanLifePlanUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(lifeReplanInput),
+  });
+};
+
+export const getReplanLifePlanMutationOptions = <
+  TError = ErrorType<
+    BadRequestResponse | TooManyRequestsResponse | ErrorResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof replanLifePlan>>,
+    TError,
+    { data: BodyType<LifeReplanInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof replanLifePlan>>,
+  TError,
+  { data: BodyType<LifeReplanInput> },
+  TContext
+> => {
+  const mutationKey = ["replanLifePlan"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof replanLifePlan>>,
+    { data: BodyType<LifeReplanInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return replanLifePlan(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReplanLifePlanMutationResult = NonNullable<
+  Awaited<ReturnType<typeof replanLifePlan>>
+>;
+export type ReplanLifePlanMutationBody = BodyType<LifeReplanInput>;
+export type ReplanLifePlanMutationError = ErrorType<
+  BadRequestResponse | TooManyRequestsResponse | ErrorResponse
+>;
+
+/**
+ * @summary Refresh selected suggested tasks after circumstances change
+ */
+export const useReplanLifePlan = <
+  TError = ErrorType<
+    BadRequestResponse | TooManyRequestsResponse | ErrorResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof replanLifePlan>>,
+    TError,
+    { data: BodyType<LifeReplanInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof replanLifePlan>>,
+  TError,
+  { data: BodyType<LifeReplanInput> },
+  TContext
+> => {
+  return useMutation(getReplanLifePlanMutationOptions(options));
 };

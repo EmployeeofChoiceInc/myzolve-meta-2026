@@ -20,4 +20,15 @@ This log records work completed during the Meta Global AI Developer Hackathon wi
 - Access setup: create a key in the [Meta Model API dashboard](https://developer.meta.ai/) under **API keys**, then store it as the Replit Secret `MODEL_API_KEY`. No Meta integration or product API client was added. No Connect source or production behavior changed.
 - References: [authentication](https://developer.meta.ai/docs/getting-started/authentication), [models](https://developer.meta.ai/docs/models), [structured output](https://developer.meta.ai/docs/features/structured-output), [pricing and rate limits](https://developer.meta.ai/docs/pricing-rate-limits), and [error handling](https://developer.meta.ai/docs/error-handling).
 
+## 2026-10-31 — Synthetic LIFE resilience demo
+
+- Added the separate `artifacts/myzolve-life` web artifact; existing Connect web, mobile, database schema, and production member data were not changed.
+- Added OpenAPI contracts and API routes for synthetic demo fixtures, plan generation, and selective re-planning. The server exposes only fictional household fixtures and does not query or persist Connect member data or LIFE plans.
+- Isolated Meta Muse Spark 1.3 calls in the API server. The API key is read from the `MODEL_API_KEY` Replit Secret and is never sent to the browser. Requests use strict JSON Schema output with a 3,000-token completion budget; incomplete output, invalid fields, and assignments to unknown household members are rejected. Provider errors return a safe message, and model requests have a per-IP limit.
+- Implemented re-planning as an explicit review step: the person selects which unapproved suggestions are affected. The server regenerates only those suggestions and preserves unselected tasks from the submitted plan. Approved and completed tasks cannot be selected for replacement.
+- Added responsive household/scenario selection, editable suggestions, explicit approval and separate completion states, assumptions and clarifying questions, selective re-planning, and visible synthetic-data/privacy disclaimers. Plan edits and decisions stay in browser memory and are not persisted.
+- Updated `BASELINE.md` with implementation status and isolation boundaries.
+- Verified the fixtures and invalid-household rejection through the API; live Meta-backed generation and re-planning both returned validated plans. Checked that unchanged, approved, and completed tasks remain identical, that approved tasks are rejected as regeneration targets, and that a full 20-task plan stays within its limit after re-planning. Frontend and API typechecks passed; desktop and mobile previews were inspected.
+- **Production behavior changed:** None.
+
 Append a dated entry for each subsequent hackathon change. Distinguish documentation, infrastructure, and demo functionality; link to the relevant commit or file when available. Do not backdate work or claim existing Connect behavior as a LIFE feature.

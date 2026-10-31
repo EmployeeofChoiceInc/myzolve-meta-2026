@@ -26,6 +26,7 @@ import ledgerProRouter from "./ledgerPro";
 import orgsRouter from "./orgs";
 import circleBuilderRouter from "./circleBuilder";
 import adminRouter from "./admin";
+import lifeRouter from "./life";
 
 const router: IRouter = Router();
 
@@ -56,5 +57,6 @@ router.use(ledgerProRouter);
 router.use(orgsRouter);
 router.use(circleBuilderRouter);
 router.use(adminRouter);
+router.use(lifeRouter);
 
 export default router;

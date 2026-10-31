@@ -34,6 +34,17 @@ The inspected application source contains no MyZolve LIFE scenario intake, AI-ge
 
 The LIFE demo should use synthetic households and scenarios. It must not use production member data without a separately approved, privacy-reviewed integration.
 
+## LIFE demo implementation status — 2026-10-31
+
+- Added a separate `myzolve-life` web artifact for the synthetic resilience demo; the MyZolve Connect web and mobile artifacts and production data model remain unchanged.
+- The API serves two fixed fictional households and three sample scenarios. The plan endpoints accept only those household IDs; there is no read or write path to Connect member records.
+- Meta Muse Spark 1.3 calls run only in the API server, use the `MODEL_API_KEY` secret, request strict structured output, and validate the result and every assigned member before returning it.
+- Re-planning is limited to selected suggested tasks. The API merges new suggestions into the current plan while retaining unselected tasks as supplied; approved and completed tasks cannot be selected for replacement.
+- Editing, approval, completion, and plan state are held in the browser session only. The demo does not persist plans or modify the Connect database.
+- The web interface labels the data synthetic, warns against entering real personal or medical details, and separates suggestions, approvals, and completed actions.
+
+See `HACKATHON_CHANGELOG.md` for the implementation record.
+
 ## Source history and production status
 
 - At the audit, `main` was clean and its application source was at `61a4335`, dated 2026-06-07. No application-source commits after the 2026-10-26 competition start were found in the inspected history.

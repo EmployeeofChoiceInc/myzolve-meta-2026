@@ -4710,3 +4710,267 @@ export const AcceptOrgInviteResponse = zod.object({
   orgId: zod.number(),
   orgName: zod.string(),
 });
+
+/**
+ * Returns fabricated households and scenarios only. No Connect member data is used.
+ * @summary Get synthetic LIFE demo households and scenarios
+ */
+
+export const GetLifeDemoFixturesResponse = zod.object({
+  households: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+      description: zod.string(),
+      members: zod
+        .array(
+          zod.object({
+            id: zod.string(),
+            name: zod.string(),
+            relationship: zod.string(),
+            availability: zod.string(),
+            strengths: zod.array(zod.string()),
+          }),
+        )
+        .min(1),
+    }),
+  ),
+  scenarios: zod.array(
+    zod.object({
+      id: zod.string(),
+      title: zod.string(),
+      description: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * Sends the synthetic household and scenario to Meta from the server. Plans are not persisted.
+ * @summary Generate a structured response plan for a synthetic household
+ */
+
+export const generateLifePlanBodyScenarioDescriptionMin = 10;
+export const generateLifePlanBodyScenarioDescriptionMax = 2000;
+
+export const GenerateLifePlanBody = zod.object({
+  householdId: zod.string().min(1),
+  scenarioDescription: zod
+    .string()
+    .min(generateLifePlanBodyScenarioDescriptionMin)
+    .max(generateLifePlanBodyScenarioDescriptionMax),
+});
+
+export const generateLifePlanResponseTitleMax = 120;
+
+export const generateLifePlanResponseSummaryMax = 600;
+
+export const generateLifePlanResponseAssumptionsItemMax = 300;
+
+export const generateLifePlanResponseClarificationQuestionsItemMax = 300;
+
+export const generateLifePlanResponseTasksItemTitleMax = 120;
+
+export const generateLifePlanResponseTasksItemDescriptionMax = 500;
+
+export const generateLifePlanResponseTasksItemTimingMax = 120;
+
+export const generateLifePlanResponseTasksItemRationaleMax = 300;
+
+export const generateLifePlanResponseTasksMax = 20;
+
+export const GenerateLifePlanResponse = zod.object({
+  id: zod.string(),
+  version: zod.number().min(1),
+  householdId: zod.string(),
+  scenarioDescription: zod.string(),
+  title: zod.string().min(1).max(generateLifePlanResponseTitleMax),
+  summary: zod.string().min(1).max(generateLifePlanResponseSummaryMax),
+  assumptions: zod.array(
+    zod.string().max(generateLifePlanResponseAssumptionsItemMax),
+  ),
+  clarificationQuestions: zod.array(
+    zod.string().max(generateLifePlanResponseClarificationQuestionsItemMax),
+  ),
+  tasks: zod
+    .array(
+      zod.object({
+        id: zod.string(),
+        title: zod
+          .string()
+          .min(1)
+          .max(generateLifePlanResponseTasksItemTitleMax),
+        description: zod
+          .string()
+          .min(1)
+          .max(generateLifePlanResponseTasksItemDescriptionMax),
+        assignedMemberId: zod.string().nullable(),
+        timing: zod
+          .string()
+          .min(1)
+          .max(generateLifePlanResponseTasksItemTimingMax),
+        rationale: zod
+          .string()
+          .min(1)
+          .max(generateLifePlanResponseTasksItemRationaleMax),
+        priority: zod.enum(["urgent", "soon", "flexible"]),
+        status: zod.enum(["suggested", "approved", "completed"]),
+        reviewRequired: zod.boolean(),
+      }),
+    )
+    .max(generateLifePlanResponseTasksMax),
+  generatedAt: zod.coerce.date(),
+});
+
+/**
+ * Unselected tasks are preserved exactly. Approved and completed tasks cannot be replaced.
+ * @summary Refresh selected suggested tasks after circumstances change
+ */
+
+export const replanLifePlanBodyScenarioDescriptionMin = 10;
+export const replanLifePlanBodyScenarioDescriptionMax = 2000;
+
+export const replanLifePlanBodyChangedCircumstancesMin = 10;
+export const replanLifePlanBodyChangedCircumstancesMax = 2000;
+
+export const replanLifePlanBodyPlanTitleMax = 120;
+
+export const replanLifePlanBodyPlanSummaryMax = 600;
+
+export const replanLifePlanBodyPlanAssumptionsItemMax = 300;
+
+export const replanLifePlanBodyPlanClarificationQuestionsItemMax = 300;
+
+export const replanLifePlanBodyPlanTasksItemTitleMax = 120;
+
+export const replanLifePlanBodyPlanTasksItemDescriptionMax = 500;
+
+export const replanLifePlanBodyPlanTasksItemTimingMax = 120;
+
+export const replanLifePlanBodyPlanTasksItemRationaleMax = 300;
+
+export const replanLifePlanBodyPlanTasksMax = 20;
+
+export const replanLifePlanBodyAffectedTaskIdsMax = 20;
+
+export const ReplanLifePlanBody = zod.object({
+  householdId: zod.string().min(1),
+  scenarioDescription: zod
+    .string()
+    .min(replanLifePlanBodyScenarioDescriptionMin)
+    .max(replanLifePlanBodyScenarioDescriptionMax),
+  changedCircumstances: zod
+    .string()
+    .min(replanLifePlanBodyChangedCircumstancesMin)
+    .max(replanLifePlanBodyChangedCircumstancesMax),
+  plan: zod.object({
+    id: zod.string(),
+    version: zod.number().min(1),
+    householdId: zod.string(),
+    scenarioDescription: zod.string(),
+    title: zod.string().min(1).max(replanLifePlanBodyPlanTitleMax),
+    summary: zod.string().min(1).max(replanLifePlanBodyPlanSummaryMax),
+    assumptions: zod.array(
+      zod.string().max(replanLifePlanBodyPlanAssumptionsItemMax),
+    ),
+    clarificationQuestions: zod.array(
+      zod.string().max(replanLifePlanBodyPlanClarificationQuestionsItemMax),
+    ),
+    tasks: zod
+      .array(
+        zod.object({
+          id: zod.string(),
+          title: zod
+            .string()
+            .min(1)
+            .max(replanLifePlanBodyPlanTasksItemTitleMax),
+          description: zod
+            .string()
+            .min(1)
+            .max(replanLifePlanBodyPlanTasksItemDescriptionMax),
+          assignedMemberId: zod.string().nullable(),
+          timing: zod
+            .string()
+            .min(1)
+            .max(replanLifePlanBodyPlanTasksItemTimingMax),
+          rationale: zod
+            .string()
+            .min(1)
+            .max(replanLifePlanBodyPlanTasksItemRationaleMax),
+          priority: zod.enum(["urgent", "soon", "flexible"]),
+          status: zod.enum(["suggested", "approved", "completed"]),
+          reviewRequired: zod.boolean(),
+        }),
+      )
+      .max(replanLifePlanBodyPlanTasksMax),
+    generatedAt: zod.coerce.date(),
+  }),
+  affectedTaskIds: zod
+    .array(zod.string())
+    .min(1)
+    .max(replanLifePlanBodyAffectedTaskIdsMax),
+});
+
+export const replanLifePlanResponsePlanTitleMax = 120;
+
+export const replanLifePlanResponsePlanSummaryMax = 600;
+
+export const replanLifePlanResponsePlanAssumptionsItemMax = 300;
+
+export const replanLifePlanResponsePlanClarificationQuestionsItemMax = 300;
+
+export const replanLifePlanResponsePlanTasksItemTitleMax = 120;
+
+export const replanLifePlanResponsePlanTasksItemDescriptionMax = 500;
+
+export const replanLifePlanResponsePlanTasksItemTimingMax = 120;
+
+export const replanLifePlanResponsePlanTasksItemRationaleMax = 300;
+
+export const replanLifePlanResponsePlanTasksMax = 20;
+
+export const ReplanLifePlanResponse = zod.object({
+  plan: zod.object({
+    id: zod.string(),
+    version: zod.number().min(1),
+    householdId: zod.string(),
+    scenarioDescription: zod.string(),
+    title: zod.string().min(1).max(replanLifePlanResponsePlanTitleMax),
+    summary: zod.string().min(1).max(replanLifePlanResponsePlanSummaryMax),
+    assumptions: zod.array(
+      zod.string().max(replanLifePlanResponsePlanAssumptionsItemMax),
+    ),
+    clarificationQuestions: zod.array(
+      zod.string().max(replanLifePlanResponsePlanClarificationQuestionsItemMax),
+    ),
+    tasks: zod
+      .array(
+        zod.object({
+          id: zod.string(),
+          title: zod
+            .string()
+            .min(1)
+            .max(replanLifePlanResponsePlanTasksItemTitleMax),
+          description: zod
+            .string()
+            .min(1)
+            .max(replanLifePlanResponsePlanTasksItemDescriptionMax),
+          assignedMemberId: zod.string().nullable(),
+          timing: zod
+            .string()
+            .min(1)
+            .max(replanLifePlanResponsePlanTasksItemTimingMax),
+          rationale: zod
+            .string()
+            .min(1)
+            .max(replanLifePlanResponsePlanTasksItemRationaleMax),
+          priority: zod.enum(["urgent", "soon", "flexible"]),
+          status: zod.enum(["suggested", "approved", "completed"]),
+          reviewRequired: zod.boolean(),
+        }),
+      )
+      .max(replanLifePlanResponsePlanTasksMax),
+    generatedAt: zod.coerce.date(),
+  }),
+  preservedTaskIds: zod.array(zod.string()),
+  refreshedTaskIds: zod.array(zod.string()),
+});

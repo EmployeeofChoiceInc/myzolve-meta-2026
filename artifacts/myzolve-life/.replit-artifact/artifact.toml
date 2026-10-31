@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/myzolve-life/"
+title = "MyZolve LIFE Resilience Demo"
+description = "A synthetic-data demonstration that turns family disruption scenarios into reviewable response plans with clear assignments, explanations, and safe re-planning."
+version = "1.0.0"
+id = "artifacts/myzolve-life"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/myzolve-life/" ]
+localPort = 24775
+
+[services.development]
+run = "pnpm --filter @workspace/myzolve-life run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/myzolve-life", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/myzolve-life/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24775"
+BASE_PATH = "/myzolve-life/"
