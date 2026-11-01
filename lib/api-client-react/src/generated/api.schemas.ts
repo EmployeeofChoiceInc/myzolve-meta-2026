@@ -2984,6 +2984,65 @@ export interface ContinuityPacketNote {
   createdAt: string;
 }
 
+export interface CircleContinuityLocation {
+  id: number;
+  location: string;
+  createdAt: string;
+}
+
+export interface CircleContinuityLocationInput {
+  /**
+   * @minLength 1
+   * @maxLength 500
+   */
+  location: string;
+}
+
+export interface CircleContinuityLocationUpdate {
+  /**
+   * @minLength 1
+   * @maxLength 500
+   */
+  location: string;
+}
+
+export interface CircleContinuityNote {
+  id: number;
+  /** @nullable */
+  title?: string | null;
+  body: string;
+  authorName: string;
+  createdAt: string;
+}
+
+export interface CircleContinuityNoteInput {
+  /** @maxLength 120 */
+  title?: string;
+  /**
+   * @minLength 1
+   * @maxLength 5000
+   */
+  body: string;
+}
+
+export interface CircleContinuityNoteUpdate {
+  /**
+   * @maxLength 120
+   * @nullable
+   */
+  title?: string | null;
+  /**
+   * @minLength 1
+   * @maxLength 5000
+   */
+  body?: string;
+}
+
+export interface CircleContinuityContent {
+  locations: CircleContinuityLocation[];
+  notes: CircleContinuityNote[];
+}
+
 export type CircleContinuityPacketCircle = {
   id: number;
   name: string;
@@ -2993,12 +3052,21 @@ export type CircleContinuityPacketCircle = {
   accentColor: string | null;
 };
 
+export interface CircleContinuityPacketNote {
+  /** @nullable */
+  title?: string | null;
+  body: string;
+  authorName: string;
+  createdAt: string;
+}
+
 export interface CircleContinuityPacket {
   generatedAt: string;
   circle: CircleContinuityPacketCircle;
   members: ContinuityPacketMember[];
   meetingLocations: string[];
   sharedNotes: ContinuityPacketNote[];
+  continuityNotes: CircleContinuityPacketNote[];
 }
 
 export type OrgContinuityPacketOrg = {

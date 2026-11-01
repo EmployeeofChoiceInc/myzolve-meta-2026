@@ -963,7 +963,7 @@ export const DeleteCircleParams = zod.object({
 });
 
 /**
- * Returns roster, contact details, skills, resources, shared wall notes, and any saved meeting locations. Owner/admin only.
+ * Returns roster, contact details, skills, resources, shared wall notes, saved meeting locations, and dedicated circle continuity notes. Owner/admin only.
  * @summary Get printable circle continuity packet data
  */
 export const GetCircleContinuityPacketParams = zod.object({
@@ -1008,6 +1008,140 @@ export const GetCircleContinuityPacketResponse = zod.object({
       createdAt: zod.coerce.date(),
     }),
   ),
+  continuityNotes: zod.array(
+    zod.object({
+      title: zod.string().nullish(),
+      body: zod.string(),
+      authorName: zod.string(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary List saved circle locations and continuity notes
+ */
+export const GetCircleContinuityContentParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const GetCircleContinuityContentResponse = zod.object({
+  locations: zod.array(
+    zod.object({
+      id: zod.number(),
+      location: zod.string(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  notes: zod.array(
+    zod.object({
+      id: zod.number(),
+      title: zod.string().nullish(),
+      body: zod.string(),
+      authorName: zod.string(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Save a reusable circle meeting location
+ */
+export const CreateCircleContinuityLocationParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const createCircleContinuityLocationBodyLocationMax = 500;
+
+export const CreateCircleContinuityLocationBody = zod.object({
+  location: zod
+    .string()
+    .min(1)
+    .max(createCircleContinuityLocationBodyLocationMax),
+});
+
+/**
+ * @summary Edit a saved circle meeting location
+ */
+export const UpdateCircleContinuityLocationParams = zod.object({
+  circleId: zod.coerce.number(),
+  continuityLocationId: zod.coerce.number(),
+});
+
+export const updateCircleContinuityLocationBodyLocationMax = 500;
+
+export const UpdateCircleContinuityLocationBody = zod.object({
+  location: zod
+    .string()
+    .min(1)
+    .max(updateCircleContinuityLocationBodyLocationMax),
+});
+
+export const UpdateCircleContinuityLocationResponse = zod.object({
+  id: zod.number(),
+  location: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Remove a saved circle meeting location
+ */
+export const DeleteCircleContinuityLocationParams = zod.object({
+  circleId: zod.coerce.number(),
+  continuityLocationId: zod.coerce.number(),
+});
+
+/**
+ * @summary Save a dedicated circle continuity note
+ */
+export const CreateCircleContinuityNoteParams = zod.object({
+  circleId: zod.coerce.number(),
+});
+
+export const createCircleContinuityNoteBodyTitleMax = 120;
+
+export const createCircleContinuityNoteBodyBodyMax = 5000;
+
+export const CreateCircleContinuityNoteBody = zod.object({
+  title: zod.string().max(createCircleContinuityNoteBodyTitleMax).optional(),
+  body: zod.string().min(1).max(createCircleContinuityNoteBodyBodyMax),
+});
+
+/**
+ * @summary Edit a saved circle continuity note
+ */
+export const UpdateCircleContinuityNoteParams = zod.object({
+  circleId: zod.coerce.number(),
+  continuityNoteId: zod.coerce.number(),
+});
+
+export const updateCircleContinuityNoteBodyTitleMax = 120;
+
+export const updateCircleContinuityNoteBodyBodyMax = 5000;
+
+export const UpdateCircleContinuityNoteBody = zod.object({
+  title: zod.string().max(updateCircleContinuityNoteBodyTitleMax).nullish(),
+  body: zod
+    .string()
+    .min(1)
+    .max(updateCircleContinuityNoteBodyBodyMax)
+    .optional(),
+});
+
+export const UpdateCircleContinuityNoteResponse = zod.object({
+  id: zod.number(),
+  title: zod.string().nullish(),
+  body: zod.string(),
+  authorName: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Remove a saved circle continuity note
+ */
+export const DeleteCircleContinuityNoteParams = zod.object({
+  circleId: zod.coerce.number(),
+  continuityNoteId: zod.coerce.number(),
 });
 
 /**

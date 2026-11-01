@@ -39,6 +39,7 @@ function circlePacket(
     members,
     meetingLocations: ["Community center"],
     sharedNotes,
+    continuityNotes: [],
   };
 }
 
@@ -102,6 +103,21 @@ async function assertValidPdf(blob: Blob): Promise<PDFDocument> {
 test("circle packet downloads as a valid PDF with a safe filename", async () => {
   const result = await download(circlePacket([member("Ari Rivera")], []));
   assert.equal(result.filename, "cafe-north-south-continuity-packet.pdf");
+  const pdf = await assertValidPdf(result.blob);
+  assert.equal(pdf.getPageCount(), 1);
+});
+
+test("circle packet includes dedicated continuity notes", async () => {
+  const packet = circlePacket([], []);
+  packet.continuityNotes = [
+    {
+      title: "Care plan",
+      body: "Keep the medication list and emergency contact plan current.",
+      authorName: "Ari Rivera",
+      createdAt: "2026-10-31T12:00:00.000Z",
+    },
+  ];
+  const result = await download(packet);
   const pdf = await assertValidPdf(result.blob);
   assert.equal(pdf.getPageCount(), 1);
 });

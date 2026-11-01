@@ -303,9 +303,10 @@ export async function downloadContinuityPacketPdf(packet: Packet): Promise<void>
     for (const location of packet.meetingLocations) {
       writeBlock(`Saved location: ${location}`, regular, 10);
     }
+  } else {
+    writeBlock("Location: __________________________________________________", regular, 10);
+    writeBlock("____________________________________________________________", regular, 10);
   }
-  writeBlock("Location: __________________________________________________", regular, 10);
-  writeBlock("____________________________________________________________", regular, 10);
 
   sectionHeading("Shared notes");
   if (packet.sharedNotes.length === 0) {
@@ -322,6 +323,26 @@ export async function downloadContinuityPacketPdf(packet: Packet): Promise<void>
         MUTED,
       );
       y -= 8;
+    }
+  }
+
+  if ("circle" in packet) {
+    sectionHeading("Continuity notes");
+    if (packet.continuityNotes.length === 0) {
+      writeBlock("No dedicated continuity notes saved.", regular, 10, 0, MUTED);
+    } else {
+      for (const note of packet.continuityNotes) {
+        writeBlock(note.title?.trim() || "Continuity note", bold, 10);
+        writeBlock(note.body, regular, 9, 8);
+        writeBlock(
+          `${note.authorName} · ${new Date(note.createdAt).toLocaleDateString()}`,
+          regular,
+          8,
+          8,
+          MUTED,
+        );
+        y -= 8;
+      }
     }
   }
 

@@ -28,6 +28,13 @@ import type {
   CircleBannerUploadUrlRequest,
   CircleBannerUploadUrlResponse,
   CircleConnection,
+  CircleContinuityContent,
+  CircleContinuityLocation,
+  CircleContinuityLocationInput,
+  CircleContinuityLocationUpdate,
+  CircleContinuityNote,
+  CircleContinuityNoteInput,
+  CircleContinuityNoteUpdate,
   CircleContinuityPacket,
   CircleInvitation,
   CircleMember,
@@ -2839,7 +2846,7 @@ export const useDeleteCircle = <
 };
 
 /**
- * Returns roster, contact details, skills, resources, shared wall notes, and any saved meeting locations. Owner/admin only.
+ * Returns roster, contact details, skills, resources, shared wall notes, saved meeting locations, and dedicated circle continuity notes. Owner/admin only.
  * @summary Get printable circle continuity packet data
  */
 export const getGetCircleContinuityPacketUrl = (circleId: number) => {
@@ -2939,6 +2946,755 @@ export function useGetCircleContinuityPacket<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List saved circle locations and continuity notes
+ */
+export const getGetCircleContinuityContentUrl = (circleId: number) => {
+  return `/api/circles/${circleId}/continuity-content`;
+};
+
+export const getCircleContinuityContent = async (
+  circleId: number,
+  options?: RequestInit,
+): Promise<CircleContinuityContent> => {
+  return customFetch<CircleContinuityContent>(
+    getGetCircleContinuityContentUrl(circleId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetCircleContinuityContentQueryKey = (circleId: number) => {
+  return [`/api/circles/${circleId}/continuity-content`] as const;
+};
+
+export const getGetCircleContinuityContentQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCircleContinuityContent>>,
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+>(
+  circleId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCircleContinuityContent>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetCircleContinuityContentQueryKey(circleId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCircleContinuityContent>>
+  > = ({ signal }) =>
+    getCircleContinuityContent(circleId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!circleId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCircleContinuityContent>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCircleContinuityContentQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCircleContinuityContent>>
+>;
+export type GetCircleContinuityContentQueryError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary List saved circle locations and continuity notes
+ */
+
+export function useGetCircleContinuityContent<
+  TData = Awaited<ReturnType<typeof getCircleContinuityContent>>,
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+>(
+  circleId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCircleContinuityContent>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCircleContinuityContentQueryOptions(
+    circleId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Save a reusable circle meeting location
+ */
+export const getCreateCircleContinuityLocationUrl = (circleId: number) => {
+  return `/api/circles/${circleId}/continuity-locations`;
+};
+
+export const createCircleContinuityLocation = async (
+  circleId: number,
+  circleContinuityLocationInput: CircleContinuityLocationInput,
+  options?: RequestInit,
+): Promise<CircleContinuityLocation> => {
+  return customFetch<CircleContinuityLocation>(
+    getCreateCircleContinuityLocationUrl(circleId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(circleContinuityLocationInput),
+    },
+  );
+};
+
+export const getCreateCircleContinuityLocationMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCircleContinuityLocation>>,
+    TError,
+    { circleId: number; data: BodyType<CircleContinuityLocationInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createCircleContinuityLocation>>,
+  TError,
+  { circleId: number; data: BodyType<CircleContinuityLocationInput> },
+  TContext
+> => {
+  const mutationKey = ["createCircleContinuityLocation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createCircleContinuityLocation>>,
+    { circleId: number; data: BodyType<CircleContinuityLocationInput> }
+  > = (props) => {
+    const { circleId, data } = props ?? {};
+
+    return createCircleContinuityLocation(circleId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateCircleContinuityLocationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createCircleContinuityLocation>>
+>;
+export type CreateCircleContinuityLocationMutationBody =
+  BodyType<CircleContinuityLocationInput>;
+export type CreateCircleContinuityLocationMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Save a reusable circle meeting location
+ */
+export const useCreateCircleContinuityLocation = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCircleContinuityLocation>>,
+    TError,
+    { circleId: number; data: BodyType<CircleContinuityLocationInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createCircleContinuityLocation>>,
+  TError,
+  { circleId: number; data: BodyType<CircleContinuityLocationInput> },
+  TContext
+> => {
+  return useMutation(getCreateCircleContinuityLocationMutationOptions(options));
+};
+
+/**
+ * @summary Edit a saved circle meeting location
+ */
+export const getUpdateCircleContinuityLocationUrl = (
+  circleId: number,
+  continuityLocationId: number,
+) => {
+  return `/api/circles/${circleId}/continuity-locations/${continuityLocationId}`;
+};
+
+export const updateCircleContinuityLocation = async (
+  circleId: number,
+  continuityLocationId: number,
+  circleContinuityLocationUpdate: CircleContinuityLocationUpdate,
+  options?: RequestInit,
+): Promise<CircleContinuityLocation> => {
+  return customFetch<CircleContinuityLocation>(
+    getUpdateCircleContinuityLocationUrl(circleId, continuityLocationId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(circleContinuityLocationUpdate),
+    },
+  );
+};
+
+export const getUpdateCircleContinuityLocationMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCircleContinuityLocation>>,
+    TError,
+    {
+      circleId: number;
+      continuityLocationId: number;
+      data: BodyType<CircleContinuityLocationUpdate>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateCircleContinuityLocation>>,
+  TError,
+  {
+    circleId: number;
+    continuityLocationId: number;
+    data: BodyType<CircleContinuityLocationUpdate>;
+  },
+  TContext
+> => {
+  const mutationKey = ["updateCircleContinuityLocation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateCircleContinuityLocation>>,
+    {
+      circleId: number;
+      continuityLocationId: number;
+      data: BodyType<CircleContinuityLocationUpdate>;
+    }
+  > = (props) => {
+    const { circleId, continuityLocationId, data } = props ?? {};
+
+    return updateCircleContinuityLocation(
+      circleId,
+      continuityLocationId,
+      data,
+      requestOptions,
+    );
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateCircleContinuityLocationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateCircleContinuityLocation>>
+>;
+export type UpdateCircleContinuityLocationMutationBody =
+  BodyType<CircleContinuityLocationUpdate>;
+export type UpdateCircleContinuityLocationMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Edit a saved circle meeting location
+ */
+export const useUpdateCircleContinuityLocation = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCircleContinuityLocation>>,
+    TError,
+    {
+      circleId: number;
+      continuityLocationId: number;
+      data: BodyType<CircleContinuityLocationUpdate>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateCircleContinuityLocation>>,
+  TError,
+  {
+    circleId: number;
+    continuityLocationId: number;
+    data: BodyType<CircleContinuityLocationUpdate>;
+  },
+  TContext
+> => {
+  return useMutation(getUpdateCircleContinuityLocationMutationOptions(options));
+};
+
+/**
+ * @summary Remove a saved circle meeting location
+ */
+export const getDeleteCircleContinuityLocationUrl = (
+  circleId: number,
+  continuityLocationId: number,
+) => {
+  return `/api/circles/${circleId}/continuity-locations/${continuityLocationId}`;
+};
+
+export const deleteCircleContinuityLocation = async (
+  circleId: number,
+  continuityLocationId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(
+    getDeleteCircleContinuityLocationUrl(circleId, continuityLocationId),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
+};
+
+export const getDeleteCircleContinuityLocationMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCircleContinuityLocation>>,
+    TError,
+    { circleId: number; continuityLocationId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteCircleContinuityLocation>>,
+  TError,
+  { circleId: number; continuityLocationId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteCircleContinuityLocation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteCircleContinuityLocation>>,
+    { circleId: number; continuityLocationId: number }
+  > = (props) => {
+    const { circleId, continuityLocationId } = props ?? {};
+
+    return deleteCircleContinuityLocation(
+      circleId,
+      continuityLocationId,
+      requestOptions,
+    );
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteCircleContinuityLocationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteCircleContinuityLocation>>
+>;
+
+export type DeleteCircleContinuityLocationMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Remove a saved circle meeting location
+ */
+export const useDeleteCircleContinuityLocation = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCircleContinuityLocation>>,
+    TError,
+    { circleId: number; continuityLocationId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteCircleContinuityLocation>>,
+  TError,
+  { circleId: number; continuityLocationId: number },
+  TContext
+> => {
+  return useMutation(getDeleteCircleContinuityLocationMutationOptions(options));
+};
+
+/**
+ * @summary Save a dedicated circle continuity note
+ */
+export const getCreateCircleContinuityNoteUrl = (circleId: number) => {
+  return `/api/circles/${circleId}/continuity-notes`;
+};
+
+export const createCircleContinuityNote = async (
+  circleId: number,
+  circleContinuityNoteInput: CircleContinuityNoteInput,
+  options?: RequestInit,
+): Promise<CircleContinuityNote> => {
+  return customFetch<CircleContinuityNote>(
+    getCreateCircleContinuityNoteUrl(circleId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(circleContinuityNoteInput),
+    },
+  );
+};
+
+export const getCreateCircleContinuityNoteMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCircleContinuityNote>>,
+    TError,
+    { circleId: number; data: BodyType<CircleContinuityNoteInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createCircleContinuityNote>>,
+  TError,
+  { circleId: number; data: BodyType<CircleContinuityNoteInput> },
+  TContext
+> => {
+  const mutationKey = ["createCircleContinuityNote"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createCircleContinuityNote>>,
+    { circleId: number; data: BodyType<CircleContinuityNoteInput> }
+  > = (props) => {
+    const { circleId, data } = props ?? {};
+
+    return createCircleContinuityNote(circleId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateCircleContinuityNoteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createCircleContinuityNote>>
+>;
+export type CreateCircleContinuityNoteMutationBody =
+  BodyType<CircleContinuityNoteInput>;
+export type CreateCircleContinuityNoteMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Save a dedicated circle continuity note
+ */
+export const useCreateCircleContinuityNote = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCircleContinuityNote>>,
+    TError,
+    { circleId: number; data: BodyType<CircleContinuityNoteInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createCircleContinuityNote>>,
+  TError,
+  { circleId: number; data: BodyType<CircleContinuityNoteInput> },
+  TContext
+> => {
+  return useMutation(getCreateCircleContinuityNoteMutationOptions(options));
+};
+
+/**
+ * @summary Edit a saved circle continuity note
+ */
+export const getUpdateCircleContinuityNoteUrl = (
+  circleId: number,
+  continuityNoteId: number,
+) => {
+  return `/api/circles/${circleId}/continuity-notes/${continuityNoteId}`;
+};
+
+export const updateCircleContinuityNote = async (
+  circleId: number,
+  continuityNoteId: number,
+  circleContinuityNoteUpdate: CircleContinuityNoteUpdate,
+  options?: RequestInit,
+): Promise<CircleContinuityNote> => {
+  return customFetch<CircleContinuityNote>(
+    getUpdateCircleContinuityNoteUrl(circleId, continuityNoteId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(circleContinuityNoteUpdate),
+    },
+  );
+};
+
+export const getUpdateCircleContinuityNoteMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCircleContinuityNote>>,
+    TError,
+    {
+      circleId: number;
+      continuityNoteId: number;
+      data: BodyType<CircleContinuityNoteUpdate>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateCircleContinuityNote>>,
+  TError,
+  {
+    circleId: number;
+    continuityNoteId: number;
+    data: BodyType<CircleContinuityNoteUpdate>;
+  },
+  TContext
+> => {
+  const mutationKey = ["updateCircleContinuityNote"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateCircleContinuityNote>>,
+    {
+      circleId: number;
+      continuityNoteId: number;
+      data: BodyType<CircleContinuityNoteUpdate>;
+    }
+  > = (props) => {
+    const { circleId, continuityNoteId, data } = props ?? {};
+
+    return updateCircleContinuityNote(
+      circleId,
+      continuityNoteId,
+      data,
+      requestOptions,
+    );
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateCircleContinuityNoteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateCircleContinuityNote>>
+>;
+export type UpdateCircleContinuityNoteMutationBody =
+  BodyType<CircleContinuityNoteUpdate>;
+export type UpdateCircleContinuityNoteMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Edit a saved circle continuity note
+ */
+export const useUpdateCircleContinuityNote = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCircleContinuityNote>>,
+    TError,
+    {
+      circleId: number;
+      continuityNoteId: number;
+      data: BodyType<CircleContinuityNoteUpdate>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateCircleContinuityNote>>,
+  TError,
+  {
+    circleId: number;
+    continuityNoteId: number;
+    data: BodyType<CircleContinuityNoteUpdate>;
+  },
+  TContext
+> => {
+  return useMutation(getUpdateCircleContinuityNoteMutationOptions(options));
+};
+
+/**
+ * @summary Remove a saved circle continuity note
+ */
+export const getDeleteCircleContinuityNoteUrl = (
+  circleId: number,
+  continuityNoteId: number,
+) => {
+  return `/api/circles/${circleId}/continuity-notes/${continuityNoteId}`;
+};
+
+export const deleteCircleContinuityNote = async (
+  circleId: number,
+  continuityNoteId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(
+    getDeleteCircleContinuityNoteUrl(circleId, continuityNoteId),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
+};
+
+export const getDeleteCircleContinuityNoteMutationOptions = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCircleContinuityNote>>,
+    TError,
+    { circleId: number; continuityNoteId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteCircleContinuityNote>>,
+  TError,
+  { circleId: number; continuityNoteId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteCircleContinuityNote"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteCircleContinuityNote>>,
+    { circleId: number; continuityNoteId: number }
+  > = (props) => {
+    const { circleId, continuityNoteId } = props ?? {};
+
+    return deleteCircleContinuityNote(
+      circleId,
+      continuityNoteId,
+      requestOptions,
+    );
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteCircleContinuityNoteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteCircleContinuityNote>>
+>;
+
+export type DeleteCircleContinuityNoteMutationError = ErrorType<
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+>;
+
+/**
+ * @summary Remove a saved circle continuity note
+ */
+export const useDeleteCircleContinuityNote = <
+  TError = ErrorType<
+    UnauthorizedResponse | ForbiddenResponse | NotFoundResponse
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCircleContinuityNote>>,
+    TError,
+    { circleId: number; continuityNoteId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteCircleContinuityNote>>,
+  TError,
+  { circleId: number; continuityNoteId: number },
+  TContext
+> => {
+  return useMutation(getDeleteCircleContinuityNoteMutationOptions(options));
+};
 
 /**
  * @summary Get circle overview statistics

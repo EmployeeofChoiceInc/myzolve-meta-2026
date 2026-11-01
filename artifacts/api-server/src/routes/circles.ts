@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Response } from "express";
 import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
 import { validateBody, validateParams, circleIdParam } from "../middlewares/validate";
@@ -11,7 +11,7 @@ import {
   usersTable,
   type Circle,
 } from "@workspace/db";
-import { eq, and, count, sql, isNull } from "drizzle-orm";
+import { eq, and, count, sql, isNull, asc } from "drizzle-orm";
 import { createAuditLog } from "../lib/helpers";
 import { isOwnerOrAdmin, canManageLedger } from "../lib/permissions";
 import { assertCanJoinAnotherCircle } from "../lib/circleLimits";
@@ -25,13 +25,26 @@ import {
   addUnlinkedCirclePlaceholders,
   canDownloadCircleContinuityPacket,
 } from "../lib/continuityPacketRules";
-import { GetCircleContinuityPacketResponse } from "@workspace/api-zod";
+import {
+  CreateCircleContinuityLocationBody,
+  CreateCircleContinuityNoteBody,
+  DeleteCircleContinuityLocationParams,
+  DeleteCircleContinuityNoteParams,
+  GetCircleContinuityContentResponse,
+  GetCircleContinuityPacketResponse,
+  UpdateCircleContinuityLocationBody,
+  UpdateCircleContinuityLocationParams,
+  UpdateCircleContinuityNoteBody,
+  UpdateCircleContinuityNoteParams,
+} from "@workspace/api-zod";
 import {
   supportRequestsTable,
   servicePostsTable,
   activityFeedItemsTable,
   supportContributionsTable,
   circlePostsTable,
+  circleContinuityLocationsTable,
+  circleContinuityNotesTable,
 } from "@workspace/db";
 import { createNotification } from "../lib/helpers";
 import { desc } from "drizzle-orm";
@@ -53,6 +66,42 @@ function isVerificationAdmin(email: string | null | undefined): boolean {
 }
 
 const router = Router();
+
+async function requireCircleContinuityAdmin(
+  circleId: number,
+  userId: number,
+  res: Response,
+): Promise<boolean> {
+  const circle = await db
+    .select({ id: circlesTable.id, ownerId: circlesTable.ownerId })
+    .from(circlesTable)
+    .where(eq(circlesTable.id, circleId))
+    .limit(1)
+    .then((rows) => rows[0]);
+  if (!circle) {
+    res.status(404).json({ error: "Circle not found" });
+    return false;
+  }
+  if (circle.ownerId === userId) return true;
+
+  const membership = await db
+    .select({ role: circleMembersTable.role })
+    .from(circleMembersTable)
+    .where(
+      and(
+        eq(circleMembersTable.circleId, circleId),
+        eq(circleMembersTable.userId, userId),
+        eq(circleMembersTable.status, "active"),
+      ),
+    )
+    .limit(1)
+    .then((rows) => rows[0]);
+  if (!membership || !isOwnerOrAdmin(membership.role)) {
+    res.status(403).json({ error: "Only circle owners and admins can manage continuity content" });
+    return false;
+  }
+  return true;
+}
 
 const createCircleSchema = z.object({
   name: z.string().min(1).max(100),
@@ -473,6 +522,248 @@ router.get("/circles/:circleId", requireAuth, validateParams(circleIdParam), asy
 });
 
 router.get(
+  "/circles/:circleId/continuity-content",
+  requireAuth,
+  validateParams(circleIdParam),
+  async (req, res): Promise<void> => {
+    const circleId = Number(req.params.circleId);
+    if (!(await requireCircleContinuityAdmin(circleId, req.dbUser!.id, res))) return;
+
+    const [locations, notes] = await Promise.all([
+      db
+        .select({
+          id: circleContinuityLocationsTable.id,
+          location: circleContinuityLocationsTable.location,
+          createdAt: circleContinuityLocationsTable.createdAt,
+        })
+        .from(circleContinuityLocationsTable)
+        .where(eq(circleContinuityLocationsTable.circleId, circleId))
+        .orderBy(asc(circleContinuityLocationsTable.createdAt)),
+      db
+        .select({
+          id: circleContinuityNotesTable.id,
+          title: circleContinuityNotesTable.title,
+          body: circleContinuityNotesTable.body,
+          authorName: usersTable.displayName,
+          createdAt: circleContinuityNotesTable.createdAt,
+        })
+        .from(circleContinuityNotesTable)
+        .innerJoin(
+          usersTable,
+          eq(circleContinuityNotesTable.authorUserId, usersTable.id),
+        )
+        .where(eq(circleContinuityNotesTable.circleId, circleId))
+        .orderBy(desc(circleContinuityNotesTable.createdAt)),
+    ]);
+
+    res.json(GetCircleContinuityContentResponse.parse({ locations, notes }));
+  },
+);
+
+router.post(
+  "/circles/:circleId/continuity-locations",
+  requireAuth,
+  validateParams(circleIdParam),
+  validateBody(CreateCircleContinuityLocationBody),
+  async (req, res): Promise<void> => {
+    const circleId = Number(req.params.circleId);
+    if (!(await requireCircleContinuityAdmin(circleId, req.dbUser!.id, res))) return;
+    const { location } = req.body as z.infer<typeof CreateCircleContinuityLocationBody>;
+    if (!location.trim()) {
+      res.status(422).json({ error: "Location cannot be blank" });
+      return;
+    }
+    const [saved] = await db
+      .insert(circleContinuityLocationsTable)
+      .values({ circleId, location: location.trim(), createdByUserId: req.dbUser!.id })
+      .returning({
+        id: circleContinuityLocationsTable.id,
+        location: circleContinuityLocationsTable.location,
+        createdAt: circleContinuityLocationsTable.createdAt,
+      });
+    res.status(201).json(
+      GetCircleContinuityContentResponse.shape.locations.element.parse(saved),
+    );
+  },
+);
+
+router.patch(
+  "/circles/:circleId/continuity-locations/:continuityLocationId",
+  requireAuth,
+  validateParams(UpdateCircleContinuityLocationParams),
+  validateBody(UpdateCircleContinuityLocationBody),
+  async (req, res): Promise<void> => {
+    const { circleId, continuityLocationId } = UpdateCircleContinuityLocationParams.parse(req.params);
+    if (!(await requireCircleContinuityAdmin(circleId, req.dbUser!.id, res))) return;
+    const { location } = req.body as z.infer<typeof UpdateCircleContinuityLocationBody>;
+    if (!location.trim()) {
+      res.status(422).json({ error: "Location cannot be blank" });
+      return;
+    }
+    const [updated] = await db
+      .update(circleContinuityLocationsTable)
+      .set({ location: location.trim(), updatedAt: new Date() })
+      .where(
+        and(
+          eq(circleContinuityLocationsTable.id, continuityLocationId),
+          eq(circleContinuityLocationsTable.circleId, circleId),
+        ),
+      )
+      .returning({
+        id: circleContinuityLocationsTable.id,
+        location: circleContinuityLocationsTable.location,
+        createdAt: circleContinuityLocationsTable.createdAt,
+      });
+    if (!updated) {
+      res.status(404).json({ error: "Saved location not found" });
+      return;
+    }
+    res.json(GetCircleContinuityContentResponse.shape.locations.element.parse(updated));
+  },
+);
+
+router.delete(
+  "/circles/:circleId/continuity-locations/:continuityLocationId",
+  requireAuth,
+  validateParams(DeleteCircleContinuityLocationParams),
+  async (req, res): Promise<void> => {
+    const { circleId, continuityLocationId } = DeleteCircleContinuityLocationParams.parse(req.params);
+    if (!(await requireCircleContinuityAdmin(circleId, req.dbUser!.id, res))) return;
+    const [deleted] = await db
+      .delete(circleContinuityLocationsTable)
+      .where(
+        and(
+          eq(circleContinuityLocationsTable.id, continuityLocationId),
+          eq(circleContinuityLocationsTable.circleId, circleId),
+        ),
+      )
+      .returning({ id: circleContinuityLocationsTable.id });
+    if (!deleted) {
+      res.status(404).json({ error: "Saved location not found" });
+      return;
+    }
+    res.status(204).end();
+  },
+);
+
+router.post(
+  "/circles/:circleId/continuity-notes",
+  requireAuth,
+  validateParams(circleIdParam),
+  validateBody(CreateCircleContinuityNoteBody),
+  async (req, res): Promise<void> => {
+    const circleId = Number(req.params.circleId);
+    if (!(await requireCircleContinuityAdmin(circleId, req.dbUser!.id, res))) return;
+    const { title, body } = req.body as z.infer<typeof CreateCircleContinuityNoteBody>;
+    if (!body.trim()) {
+      res.status(422).json({ error: "Continuity note cannot be blank" });
+      return;
+    }
+    const [created] = await db
+      .insert(circleContinuityNotesTable)
+      .values({
+        circleId,
+        title: title?.trim() || null,
+        body: body.trim(),
+        authorUserId: req.dbUser!.id,
+      })
+      .returning({ id: circleContinuityNotesTable.id });
+    const [note] = await db
+      .select({
+        id: circleContinuityNotesTable.id,
+        title: circleContinuityNotesTable.title,
+        body: circleContinuityNotesTable.body,
+        authorName: usersTable.displayName,
+        createdAt: circleContinuityNotesTable.createdAt,
+      })
+      .from(circleContinuityNotesTable)
+      .innerJoin(usersTable, eq(circleContinuityNotesTable.authorUserId, usersTable.id))
+      .where(eq(circleContinuityNotesTable.id, created.id))
+      .limit(1);
+    res.status(201).json(
+      GetCircleContinuityContentResponse.shape.notes.element.parse(note),
+    );
+  },
+);
+
+router.patch(
+  "/circles/:circleId/continuity-notes/:continuityNoteId",
+  requireAuth,
+  validateParams(UpdateCircleContinuityNoteParams),
+  validateBody(UpdateCircleContinuityNoteBody),
+  async (req, res): Promise<void> => {
+    const { circleId, continuityNoteId } = UpdateCircleContinuityNoteParams.parse(req.params);
+    if (!(await requireCircleContinuityAdmin(circleId, req.dbUser!.id, res))) return;
+    const changes = req.body as z.infer<typeof UpdateCircleContinuityNoteBody>;
+    if (changes.title === undefined && changes.body === undefined) {
+      res.status(422).json({ error: "At least one note field must be provided" });
+      return;
+    }
+    if (changes.body !== undefined && !changes.body.trim()) {
+      res.status(422).json({ error: "Continuity note cannot be blank" });
+      return;
+    }
+    const [updated] = await db
+      .update(circleContinuityNotesTable)
+      .set({
+        ...(changes.title !== undefined
+          ? { title: changes.title?.trim() || null }
+          : {}),
+        ...(changes.body !== undefined ? { body: changes.body.trim() } : {}),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(circleContinuityNotesTable.id, continuityNoteId),
+          eq(circleContinuityNotesTable.circleId, circleId),
+        ),
+      )
+      .returning({ id: circleContinuityNotesTable.id });
+    if (!updated) {
+      res.status(404).json({ error: "Continuity note not found" });
+      return;
+    }
+    const [note] = await db
+      .select({
+        id: circleContinuityNotesTable.id,
+        title: circleContinuityNotesTable.title,
+        body: circleContinuityNotesTable.body,
+        authorName: usersTable.displayName,
+        createdAt: circleContinuityNotesTable.createdAt,
+      })
+      .from(circleContinuityNotesTable)
+      .innerJoin(usersTable, eq(circleContinuityNotesTable.authorUserId, usersTable.id))
+      .where(eq(circleContinuityNotesTable.id, continuityNoteId))
+      .limit(1);
+    res.json(GetCircleContinuityContentResponse.shape.notes.element.parse(note));
+  },
+);
+
+router.delete(
+  "/circles/:circleId/continuity-notes/:continuityNoteId",
+  requireAuth,
+  validateParams(DeleteCircleContinuityNoteParams),
+  async (req, res): Promise<void> => {
+    const { circleId, continuityNoteId } = DeleteCircleContinuityNoteParams.parse(req.params);
+    if (!(await requireCircleContinuityAdmin(circleId, req.dbUser!.id, res))) return;
+    const [deleted] = await db
+      .delete(circleContinuityNotesTable)
+      .where(
+        and(
+          eq(circleContinuityNotesTable.id, continuityNoteId),
+          eq(circleContinuityNotesTable.circleId, circleId),
+        ),
+      )
+      .returning({ id: circleContinuityNotesTable.id });
+    if (!deleted) {
+      res.status(404).json({ error: "Continuity note not found" });
+      return;
+    }
+    res.status(204).end();
+  },
+);
+
+router.get(
   "/circles/:circleId/continuity-packet",
   requireAuth,
   validateParams(circleIdParam),
@@ -579,6 +870,27 @@ router.get(
       .orderBy(desc(circlePostsTable.createdAt));
 
     const activeSharedNotes = activeContinuityPacketNotes(sharedNotes);
+    const [meetingLocations, continuityNotes] = await Promise.all([
+      db
+        .select({ location: circleContinuityLocationsTable.location })
+        .from(circleContinuityLocationsTable)
+        .where(eq(circleContinuityLocationsTable.circleId, circleId))
+        .orderBy(asc(circleContinuityLocationsTable.createdAt)),
+      db
+        .select({
+          title: circleContinuityNotesTable.title,
+          body: circleContinuityNotesTable.body,
+          authorName: usersTable.displayName,
+          createdAt: circleContinuityNotesTable.createdAt,
+        })
+        .from(circleContinuityNotesTable)
+        .innerJoin(
+          usersTable,
+          eq(circleContinuityNotesTable.authorUserId, usersTable.id),
+        )
+        .where(eq(circleContinuityNotesTable.circleId, circleId))
+        .orderBy(desc(circleContinuityNotesTable.createdAt)),
+    ]);
     const orgBranding = await brandingForCircle(circle);
     const packet = {
       generatedAt: new Date().toISOString(),
@@ -593,8 +905,9 @@ router.get(
         accentColor: circle.accentColor ?? orgBranding?.accentColor ?? null,
       },
       members: packetMembers,
-      meetingLocations: [],
+      meetingLocations: meetingLocations.map((row) => row.location),
       sharedNotes: activeSharedNotes,
+      continuityNotes,
     };
 
     res.json(GetCircleContinuityPacketResponse.parse(packet));

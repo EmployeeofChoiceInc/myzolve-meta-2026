@@ -837,7 +837,7 @@ paths:
       operationId: getCircleContinuityPacket
       tags: [circles]
       summary: Get printable circle continuity packet data
-      description: Returns roster, contact details, skills, resources, shared wall notes, and any saved meeting locations. Owner/admin only.
+      description: Returns roster, contact details, skills, resources, shared wall notes, saved meeting locations, and dedicated circle continuity notes. Owner/admin only.
       security: [{ clerk: [] }]
       parameters:
         - $ref: "#/components/parameters/circleId"
@@ -848,6 +848,174 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CircleContinuityPacket"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /circles/{circleId}/continuity-content:
+    get:
+      operationId: getCircleContinuityContent
+      tags: [circles]
+      summary: List saved circle locations and continuity notes
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      responses:
+        "200":
+          description: Saved continuity content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CircleContinuityContent"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /circles/{circleId}/continuity-locations:
+    post:
+      operationId: createCircleContinuityLocation
+      tags: [circles]
+      summary: Save a reusable circle meeting location
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CircleContinuityLocationInput"
+      responses:
+        "201":
+          description: Saved location
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CircleContinuityLocation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /circles/{circleId}/continuity-locations/{continuityLocationId}:
+    patch:
+      operationId: updateCircleContinuityLocation
+      tags: [circles]
+      summary: Edit a saved circle meeting location
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - $ref: "#/components/parameters/continuityLocationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CircleContinuityLocationUpdate"
+      responses:
+        "200":
+          description: Updated location
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CircleContinuityLocation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteCircleContinuityLocation
+      tags: [circles]
+      summary: Remove a saved circle meeting location
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - $ref: "#/components/parameters/continuityLocationId"
+      responses:
+        "204":
+          description: Location removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /circles/{circleId}/continuity-notes:
+    post:
+      operationId: createCircleContinuityNote
+      tags: [circles]
+      summary: Save a dedicated circle continuity note
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CircleContinuityNoteInput"
+      responses:
+        "201":
+          description: Saved continuity note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CircleContinuityNote"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /circles/{circleId}/continuity-notes/{continuityNoteId}:
+    patch:
+      operationId: updateCircleContinuityNote
+      tags: [circles]
+      summary: Edit a saved circle continuity note
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - $ref: "#/components/parameters/continuityNoteId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CircleContinuityNoteUpdate"
+      responses:
+        "200":
+          description: Updated continuity note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CircleContinuityNote"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteCircleContinuityNote
+      tags: [circles]
+      summary: Remove a saved circle continuity note
+      security: [{ clerk: [] }]
+      parameters:
+        - $ref: "#/components/parameters/circleId"
+        - $ref: "#/components/parameters/continuityNoteId"
+      responses:
+        "204":
+          description: Continuity note removed
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -4242,6 +4410,20 @@ components:
   parameters:
     circleId:
       name: circleId
+      in: path
+      required: true
+      schema:
+        type: integer
+
+    continuityLocationId:
+      name: continuityLocationId
+      in: path
+      required: true
+      schema:
+        type: integer
+
+    continuityNoteId:
+      name: continuityNoteId
       in: path
       required: true
       schema:
@@ -7702,6 +7884,89 @@ components:
           format: date-time
       required: [body, authorName, createdAt]
 
+    CircleContinuityLocation:
+      type: object
+      properties:
+        id:
+          type: integer
+        location:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, location, createdAt]
+
+    CircleContinuityLocationInput:
+      type: object
+      properties:
+        location:
+          type: string
+          minLength: 1
+          maxLength: 500
+      required: [location]
+
+    CircleContinuityLocationUpdate:
+      type: object
+      properties:
+        location:
+          type: string
+          minLength: 1
+          maxLength: 500
+      required: [location]
+
+    CircleContinuityNote:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: ["string", "null"]
+        body:
+          type: string
+        authorName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, body, authorName, createdAt]
+
+    CircleContinuityNoteInput:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 120
+        body:
+          type: string
+          minLength: 1
+          maxLength: 5000
+      required: [body]
+
+    CircleContinuityNoteUpdate:
+      type: object
+      properties:
+        title:
+          type: ["string", "null"]
+          maxLength: 120
+        body:
+          type: string
+          minLength: 1
+          maxLength: 5000
+      minProperties: 1
+
+    CircleContinuityContent:
+      type: object
+      properties:
+        locations:
+          type: array
+          items:
+            $ref: "#/components/schemas/CircleContinuityLocation"
+        notes:
+          type: array
+          items:
+            $ref: "#/components/schemas/CircleContinuityNote"
+      required: [locations, notes]
+
     CircleContinuityPacket:
       type: object
       properties:
@@ -7732,7 +7997,25 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ContinuityPacketNote"
-      required: [generatedAt, circle, members, meetingLocations, sharedNotes]
+        continuityNotes:
+          type: array
+          items:
+            $ref: "#/components/schemas/CircleContinuityPacketNote"
+      required: [generatedAt, circle, members, meetingLocations, sharedNotes, continuityNotes]
+
+    CircleContinuityPacketNote:
+      type: object
+      properties:
+        title:
+          type: ["string", "null"]
+        body:
+          type: string
+        authorName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [body, authorName, createdAt]
 
     OrgContinuityPacket:
       type: object

@@ -24,3 +24,5 @@ export * from "./circleBuilder";
 export * from "./comps";
 export * from "./memberSkills";
 export * from "./memberResources";
+export * from "./circleContinuityLocations";
+export * from "./circleContinuityNotes";

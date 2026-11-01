@@ -11,13 +11,23 @@ import {
   useGetCircle,
   useCreateCircleInvitation,
   useSearchCircleSkills,
+  useGetCircleContinuityContent,
+  getGetCircleContinuityContentQueryKey,
+  useCreateCircleContinuityLocation,
+  useUpdateCircleContinuityLocation,
+  useDeleteCircleContinuityLocation,
+  useCreateCircleContinuityNote,
+  useUpdateCircleContinuityNote,
+  useDeleteCircleContinuityNote,
   customFetch,
+  type CircleContinuityLocation,
+  type CircleContinuityNote,
   type CircleContinuityPacket,
   type CircleInvitation,
   type CircleMember,
 } from "@workspace/api-client-react";
 import { useJoinRequests, useApproveJoinRequest, useDeclineJoinRequest, useMyPlusStatus } from "@/hooks/use-api";
-import { ArrowLeft, UserPlus, Mail, ShieldAlert, Link2, Copy, MoreHorizontal, UserMinus, Shield, UserCheck, FileDown } from "lucide-react";
+import { ArrowLeft, UserPlus, Mail, ShieldAlert, Link2, Copy, MoreHorizontal, UserMinus, Shield, UserCheck, FileDown, MapPin, NotebookPen, Pencil, Trash2, X } from "lucide-react";
 import { RolePickerDialog } from "@/components/role-picker-dialog";
 import { PlusBadge } from "@/components/plus-badge";
 import { rolePillClasses, ROLE_LABELS, isPlusGatedRole, type AssignableRole, type CircleRole } from "@/lib/circle-roles";
@@ -57,6 +67,11 @@ export default function MembersPage() {
   const [roleDialogMember, setRoleDialogMember] = useState<CircleMember | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [packetLoading, setPacketLoading] = useState(false);
+  const [locationDraft, setLocationDraft] = useState("");
+  const [editingLocationId, setEditingLocationId] = useState<number | null>(null);
+  const [noteTitleDraft, setNoteTitleDraft] = useState("");
+  const [noteBodyDraft, setNoteBodyDraft] = useState("");
+  const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
 
   const { data: circle } = useGetCircle(circleId, {
     query: { enabled: !!circleId, queryKey: ["circle", circleId] as const }
@@ -97,6 +112,23 @@ export default function MembersPage() {
 
   const myRole = circle?.myRole;
   const isAdminOrOwner = myRole === "owner" || myRole === "admin";
+
+  const {
+    data: continuityContent,
+    isLoading: continuityContentLoading,
+    isError: continuityContentError,
+  } = useGetCircleContinuityContent(circleId, {
+    query: {
+      enabled: circleId > 0 && isAdminOrOwner,
+      queryKey: getGetCircleContinuityContentQueryKey(circleId),
+    },
+  });
+  const createContinuityLocation = useCreateCircleContinuityLocation();
+  const updateContinuityLocation = useUpdateCircleContinuityLocation();
+  const deleteContinuityLocation = useDeleteCircleContinuityLocation();
+  const createContinuityNote = useCreateCircleContinuityNote();
+  const updateContinuityNote = useUpdateCircleContinuityNote();
+  const deleteContinuityNote = useDeleteCircleContinuityNote();
 
   const { data: joinRequests } = useJoinRequests(circleId, isAdminOrOwner);
   const { data: plusStatus } = useMyPlusStatus();
@@ -213,6 +245,111 @@ export default function MembersPage() {
     } finally {
       setPacketLoading(false);
     }
+  }
+
+  function refreshContinuityContent() {
+    void queryClient.invalidateQueries({
+      queryKey: getGetCircleContinuityContentQueryKey(circleId),
+    });
+  }
+
+  function saveLocation() {
+    const location = locationDraft.trim();
+    if (!location) return;
+    const onSuccess = () => {
+      refreshContinuityContent();
+      setLocationDraft("");
+      setEditingLocationId(null);
+      toast({ title: editingLocationId ? "Location updated" : "Location saved" });
+    };
+    const onError = () =>
+      toast({ title: "Could not save location", variant: "destructive" });
+
+    if (editingLocationId !== null) {
+      updateContinuityLocation.mutate(
+        { circleId, continuityLocationId: editingLocationId, data: { location } },
+        { onSuccess, onError },
+      );
+    } else {
+      createContinuityLocation.mutate(
+        { circleId, data: { location } },
+        { onSuccess, onError },
+      );
+    }
+  }
+
+  function editLocation(location: CircleContinuityLocation) {
+    setEditingLocationId(location.id);
+    setLocationDraft(location.location);
+  }
+
+  function removeLocation(locationId: number) {
+    deleteContinuityLocation.mutate(
+      { circleId, continuityLocationId: locationId },
+      {
+        onSuccess: () => {
+          refreshContinuityContent();
+          if (editingLocationId === locationId) {
+            setEditingLocationId(null);
+            setLocationDraft("");
+          }
+          toast({ title: "Location removed" });
+        },
+        onError: () => toast({ title: "Could not remove location", variant: "destructive" }),
+      },
+    );
+  }
+
+  function saveContinuityNote() {
+    const body = noteBodyDraft.trim();
+    if (!body) return;
+    const data = { title: noteTitleDraft.trim() || null, body };
+    const onSuccess = () => {
+      refreshContinuityContent();
+      setNoteTitleDraft("");
+      setNoteBodyDraft("");
+      setEditingNoteId(null);
+      toast({ title: editingNoteId ? "Continuity note updated" : "Continuity note saved" });
+    };
+    const onError = () =>
+      toast({ title: "Could not save continuity note", variant: "destructive" });
+
+    if (editingNoteId !== null) {
+      updateContinuityNote.mutate(
+        { circleId, continuityNoteId: editingNoteId, data },
+        { onSuccess, onError },
+      );
+    } else {
+      createContinuityNote.mutate(
+        { circleId, data: { title: data.title ?? undefined, body } },
+        { onSuccess, onError },
+      );
+    }
+  }
+
+  function editContinuityNote(note: CircleContinuityNote) {
+    setEditingNoteId(note.id);
+    setNoteTitleDraft(note.title ?? "");
+    setNoteBodyDraft(note.body);
+  }
+
+  function removeContinuityNote(noteId: number) {
+    deleteContinuityNote.mutate(
+      { circleId, continuityNoteId: noteId },
+      {
+        onSuccess: () => {
+          refreshContinuityContent();
+          if (editingNoteId === noteId) {
+            setEditingNoteId(null);
+            setNoteTitleDraft("");
+            setNoteBodyDraft("");
+          }
+          toast({ title: "Continuity note removed" });
+        },
+        onError: () =>
+          toast({ title: "Could not remove continuity note", variant: "destructive" }),
+      },
+    );
   }
 
   return (
@@ -464,6 +601,164 @@ export default function MembersPage() {
               )}
             </CardContent>
           </Card>
+
+          {isAdminOrOwner && (
+            <Card className="rounded-3xl border-border/50 shadow-none">
+              <CardHeader>
+                <CardTitle>Saved continuity details</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Reusable locations and notes appear in future circle packets.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-8">
+                {continuityContentLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading saved packet details...</p>
+                ) : continuityContentError ? (
+                  <p className="text-sm text-destructive">
+                    Could not load saved packet details. Refresh the page to try again.
+                  </p>
+                ) : (
+                  <>
+                    <section className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-primary" />
+                        <h3 className="font-semibold">Meeting locations</h3>
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <Input
+                          value={locationDraft}
+                          onChange={(event) => setLocationDraft(event.target.value)}
+                          placeholder="Address, venue, or meeting instructions"
+                          maxLength={500}
+                          aria-label="Saved meeting location"
+                          data-testid="input-continuity-location"
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={saveLocation}
+                            disabled={!locationDraft.trim() || createContinuityLocation.isPending || updateContinuityLocation.isPending}
+                          >
+                            {editingLocationId !== null ? "Save changes" : "Add location"}
+                          </Button>
+                          {editingLocationId !== null && (
+                            <Button
+                              variant="outline"
+                              onClick={() => { setEditingLocationId(null); setLocationDraft(""); }}
+                              aria-label="Cancel location edit"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      {continuityContent?.locations.length ? (
+                        <div className="divide-y rounded-xl border">
+                          {continuityContent.locations.map((location) => (
+                            <div key={location.id} className="flex items-center gap-3 p-3">
+                              <p className="min-w-0 flex-1 whitespace-pre-wrap text-sm">{location.location}</p>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => editLocation(location)}
+                                aria-label={`Edit location ${location.location}`}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive"
+                                onClick={() => removeLocation(location.id)}
+                                disabled={deleteContinuityLocation.isPending}
+                                aria-label={`Remove location ${location.location}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No saved locations yet.</p>
+                      )}
+                    </section>
+
+                    <section className="space-y-3 border-t pt-6">
+                      <div className="flex items-center gap-2">
+                        <NotebookPen className="h-4 w-4 text-primary" />
+                        <h3 className="font-semibold">Continuity notes</h3>
+                      </div>
+                      <Input
+                        value={noteTitleDraft}
+                        onChange={(event) => setNoteTitleDraft(event.target.value)}
+                        placeholder="Title (optional)"
+                        maxLength={120}
+                        aria-label="Continuity note title"
+                      />
+                      <Textarea
+                        value={noteBodyDraft}
+                        onChange={(event) => setNoteBodyDraft(event.target.value)}
+                        placeholder="Important context to carry forward for the circle..."
+                        maxLength={5000}
+                        rows={4}
+                        aria-label="Continuity note"
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={saveContinuityNote}
+                          disabled={!noteBodyDraft.trim() || createContinuityNote.isPending || updateContinuityNote.isPending}
+                        >
+                          {editingNoteId !== null ? "Save changes" : "Add note"}
+                        </Button>
+                        {editingNoteId !== null && (
+                          <Button
+                            variant="outline"
+                            onClick={() => { setEditingNoteId(null); setNoteTitleDraft(""); setNoteBodyDraft(""); }}
+                          >
+                            Cancel
+                          </Button>
+                        )}
+                      </div>
+                      {continuityContent?.notes.length ? (
+                        <div className="space-y-3">
+                          {continuityContent.notes.map((note) => (
+                            <div key={note.id} className="rounded-xl border p-3">
+                              <div className="flex items-start gap-2">
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-medium">{note.title || "Continuity note"}</p>
+                                  <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{note.body}</p>
+                                  <p className="mt-2 text-xs text-muted-foreground">Added by {note.authorName}</p>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => editContinuityNote(note)}
+                                  aria-label={`Edit note ${note.title || note.id}`}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-destructive"
+                                  onClick={() => removeContinuityNote(note.id)}
+                                  disabled={deleteContinuityNote.isPending}
+                                  aria-label={`Remove note ${note.title || note.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No continuity notes yet.</p>
+                      )}
+                    </section>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         <div className="space-y-6">
