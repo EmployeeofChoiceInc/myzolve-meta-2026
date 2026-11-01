@@ -38,4 +38,16 @@ This log records work completed during the Meta Global AI Developer Hackathon wi
 - Documented repeatable LIFE demo inputs and the local test commands in `artifacts/api-server/LIFE_TESTING.md`. The test suite uses fixed mocked responses and makes no live model calls.
 - **Production behavior changed:** None.
 
+## 2026-10-31 — Connect continuity packet export (separate from LIFE)
+
+- Added owner/admin-only circle and organization packet endpoints and printable PDF downloads in the existing MyZolve Connect web app.
+- The export includes roster and capacity details, shared circle posts, and meeting-location fields. Phone numbers are included only when a member has enabled phone discoverability.
+- This extends the pre-existing Connect product; it is not part of the LIFE AI innovation and does not connect LIFE to production member data.
+
+## 2026-11-01 — Connect packet details and competition judge summary
+
+- Added reusable circle meeting locations and continuity notes, plus regression coverage for packet access, contact privacy, and PDF generation. These remain separate Connect product work, not LIFE functionality.
+- Added `HACKATHON_JUDGE_SUMMARY.md` with an explicit before/after comparison, reproducible demo steps, safety boundaries, and the current verification status.
+- No LIFE model behavior, synthetic fixtures, or Connect-data isolation boundaries changed in this Connect work.
+
 Append a dated entry for each subsequent hackathon change. Distinguish documentation, infrastructure, and demo functionality; link to the relevant commit or file when available. Do not backdate work or claim existing Connect behavior as a LIFE feature.
