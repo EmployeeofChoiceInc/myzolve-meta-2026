@@ -39,6 +39,11 @@ import { bustIsPlusCache } from "../lib/revenuecat";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { registerPendingUpload, validateAndConsumePendingUpload } from "../lib/uploadTokens";
 import { withMemberCapacity } from "../lib/continuityPacket";
+import {
+  activeContinuityPacketNotes,
+  isOrgContinuityPacketAdmin,
+  uniqueMeetingLocations,
+} from "../lib/continuityPacketRules";
 import { GetOrgContinuityPacketResponse } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -216,10 +221,11 @@ async function requireOrgAdmin(
     return null;
   }
   const membership = await getMembership(orgId, userId);
-  const isAdmin =
-    org.ownerId === userId ||
-    (membership?.status === "active" &&
-      (membership.role === "owner" || membership.role === "admin"));
+  const isAdmin = isOrgContinuityPacketAdmin({
+    ownerId: org.ownerId,
+    userId,
+    membership,
+  });
   if (!isAdmin) {
     res.status(403).json({ error: "You must be an org admin to do this" });
     return null;
@@ -828,6 +834,7 @@ router.get(
           email: usersTable.email,
           phone: usersTable.phone,
           phoneDiscoverable: usersTable.phoneDiscoverable,
+          status: orgMembersTable.status,
         })
         .from(orgMembersTable)
         .innerJoin(usersTable, eq(orgMembersTable.userId, usersTable.id))
@@ -855,23 +862,11 @@ router.get(
         .then((rows) => rows[0] ?? null),
     ]);
 
-    const members = await withMemberCapacity(
-      memberRows.map((member) => ({
-        userId: member.userId,
-        name: member.name,
-        role: member.role,
-        email: member.email || null,
-        phone: member.phoneDiscoverable ? member.phone : null,
-      })),
-    );
+    const members = await withMemberCapacity(memberRows);
 
-    const meetingLocations = [
-      ...new Set(
-        locationRows
-          .map((row) => row.location?.trim())
-          .filter((location): location is string => !!location),
-      ),
-    ];
+    const meetingLocations = uniqueMeetingLocations(
+      locationRows.map((row) => row.location),
+    );
 
     const sharedNotes = mainCircleRow
       ? await db
@@ -880,6 +875,7 @@ router.get(
             body: circlePostsTable.body,
             authorName: usersTable.displayName,
             createdAt: circlePostsTable.createdAt,
+            status: circlePostsTable.status,
           })
           .from(circlePostsTable)
           .innerJoin(usersTable, eq(circlePostsTable.authorUserId, usersTable.id))
@@ -891,6 +887,7 @@ router.get(
           )
           .orderBy(desc(circlePostsTable.createdAt))
       : [];
+    const packetSharedNotes = activeContinuityPacketNotes(sharedNotes);
 
     const packet = {
       generatedAt: new Date().toISOString(),
@@ -902,7 +899,7 @@ router.get(
       },
       members,
       meetingLocations,
-      sharedNotes,
+      sharedNotes: packetSharedNotes,
     };
 
     res.json(GetOrgContinuityPacketResponse.parse(packet));

@@ -20,6 +20,11 @@ import { isAllowedAccentColor, MAX_WELCOME_MESSAGE_LEN } from "../lib/circleLook
 import { getOrgBrandingMap } from "../lib/orgEntitlement";
 import { validateAndConsumePendingUpload } from "../lib/uploadTokens";
 import { withMemberCapacity } from "../lib/continuityPacket";
+import {
+  activeContinuityPacketNotes,
+  addUnlinkedCirclePlaceholders,
+  canDownloadCircleContinuityPacket,
+} from "../lib/continuityPacketRules";
 import { GetCircleContinuityPacketResponse } from "@workspace/api-zod";
 import {
   supportRequestsTable,
@@ -487,7 +492,10 @@ router.get(
     }
 
     const membership = await db
-      .select({ role: circleMembersTable.role })
+      .select({
+        role: circleMembersTable.role,
+        status: circleMembersTable.status,
+      })
       .from(circleMembersTable)
       .where(
         and(
@@ -499,9 +507,17 @@ router.get(
       .limit(1)
       .then((rows) => rows[0] ?? null);
 
-    if (circle.ownerId !== userId && !isOwnerOrAdmin(membership?.role)) {
-      res.status(membership ? 403 : 404).json({
-        error: membership ? "Only circle owners and admins can download this packet" : "Circle not found",
+    const access = canDownloadCircleContinuityPacket({
+      ownerId: circle.ownerId,
+      userId,
+      membership,
+    });
+    if (access !== "owner" && access !== "admin") {
+      res.status(access === "forbidden-member" ? 403 : 404).json({
+        error:
+          access === "forbidden-member"
+            ? "Only circle owners and admins can download this packet"
+            : "Circle not found",
       });
       return;
     }
@@ -514,6 +530,7 @@ router.get(
         email: usersTable.email,
         phone: usersTable.phone,
         phoneDiscoverable: usersTable.phoneDiscoverable,
+        status: circleMembersTable.status,
       })
       .from(circleMembersTable)
       .innerJoin(usersTable, eq(circleMembersTable.userId, usersTable.id))
@@ -525,20 +542,13 @@ router.get(
       )
       .orderBy(usersTable.displayName);
 
-    const members = await withMemberCapacity(
-      memberRows.map((member) => ({
-        userId: member.userId,
-        name: member.name,
-        role: member.role,
-        email: member.email || null,
-        phone: member.phoneDiscoverable ? member.phone : null,
-      })),
-    );
+    const members = await withMemberCapacity(memberRows);
     const placeholders = await db
       .select({
         name: placeholderMembersTable.displayName,
         relationship: placeholderMembersTable.relationship,
         email: placeholderMembersTable.email,
+        status: placeholderMembersTable.status,
       })
       .from(placeholderMembersTable)
       .where(
@@ -548,20 +558,7 @@ router.get(
         ),
       )
       .orderBy(placeholderMembersTable.displayName);
-    const packetMembers = [
-      ...members,
-      ...placeholders.map((placeholder) => ({
-        userId: null,
-        name: placeholder.name,
-        role: placeholder.relationship
-          ? `placeholder (${placeholder.relationship})`
-          : "placeholder",
-        email: placeholder.email,
-        phone: null,
-        skills: [],
-        resources: [],
-      })),
-    ].sort((a, b) => a.name.localeCompare(b.name));
+    const packetMembers = addUnlinkedCirclePlaceholders(members, placeholders);
 
     const sharedNotes = await db
       .select({
@@ -569,6 +566,7 @@ router.get(
         body: circlePostsTable.body,
         authorName: usersTable.displayName,
         createdAt: circlePostsTable.createdAt,
+        status: circlePostsTable.status,
       })
       .from(circlePostsTable)
       .innerJoin(usersTable, eq(circlePostsTable.authorUserId, usersTable.id))
@@ -580,6 +578,7 @@ router.get(
       )
       .orderBy(desc(circlePostsTable.createdAt));
 
+    const activeSharedNotes = activeContinuityPacketNotes(sharedNotes);
     const orgBranding = await brandingForCircle(circle);
     const packet = {
       generatedAt: new Date().toISOString(),
@@ -595,7 +594,7 @@ router.get(
       },
       members: packetMembers,
       meetingLocations: [],
-      sharedNotes,
+      sharedNotes: activeSharedNotes,
     };
 
     res.json(GetCircleContinuityPacketResponse.parse(packet));

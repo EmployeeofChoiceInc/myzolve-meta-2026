@@ -8,6 +8,7 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "test:life": "node ./scripts/test-life.mjs",
+    "test:continuity-packet": "node ./scripts/test-continuity-packet.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

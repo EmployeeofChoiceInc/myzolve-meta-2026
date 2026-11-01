@@ -1,17 +1,17 @@
 import { inArray } from "drizzle-orm";
 import { db, memberResourcesTable, memberSkillsTable } from "@workspace/db";
+import {
+  mapContinuityPacketMembers,
+  type PacketMemberRow,
+} from "./continuityPacketRules";
 
-export type ContinuityPacketResource = {
-  label: string;
-  isAvailable: boolean;
-};
-
-export async function withMemberCapacity<T extends { userId: number }>(
+export async function withMemberCapacity<T extends PacketMemberRow>(
   members: T[],
-): Promise<Array<T & { skills: string[]; resources: ContinuityPacketResource[] }>> {
-  const userIds = [...new Set(members.map((member) => member.userId))];
+): Promise<Awaited<ReturnType<typeof mapContinuityPacketMembers<T>>>> {
+  const activeMembers = members.filter((member) => member.status === "active");
+  const userIds = [...new Set(activeMembers.map((member) => member.userId))];
   if (userIds.length === 0) {
-    return members.map((member) => ({ ...member, skills: [], resources: [] }));
+    return mapContinuityPacketMembers(members, [], []);
   }
 
   const [skills, resources] = await Promise.all([
@@ -32,26 +32,5 @@ export async function withMemberCapacity<T extends { userId: number }>(
       .where(inArray(memberResourcesTable.userId, userIds)),
   ]);
 
-  const skillsByUser = new Map<number, string[]>();
-  for (const skill of skills) {
-    const current = skillsByUser.get(skill.userId) ?? [];
-    current.push(skill.label);
-    skillsByUser.set(skill.userId, current);
-  }
-
-  const resourcesByUser = new Map<number, ContinuityPacketResource[]>();
-  for (const resource of resources) {
-    const current = resourcesByUser.get(resource.userId) ?? [];
-    current.push({
-      label: resource.label,
-      isAvailable: resource.isAvailable,
-    });
-    resourcesByUser.set(resource.userId, current);
-  }
-
-  return members.map((member) => ({
-    ...member,
-    skills: skillsByUser.get(member.userId) ?? [],
-    resources: resourcesByUser.get(member.userId) ?? [],
-  }));
+  return mapContinuityPacketMembers(members, skills, resources);
 }
