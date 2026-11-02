@@ -4,6 +4,7 @@ import { createServer, request as httpRequest, type Server } from "node:http";
 import test from "node:test";
 import express from "express";
 import lifeRouter from "../routes/life";
+import { generateLifePlanDraft } from "./metaLifePlanner";
 import {
   getSyntheticHousehold,
   lifeDemoFixtures,
@@ -144,6 +145,9 @@ test("ordinary synthetic scenario returns suggestions without implying approval 
   await withApi(
     async (_url, init) => {
       const requestBody = JSON.parse(String(init?.body));
+      assert.equal(requestBody.max_completion_tokens, 8000);
+      assert.ok(init?.signal, "Model calls must remain bounded by a timeout.");
+      assert.match(requestBody.messages[0].content, /4–6 concise/);
       capturedPrompt = requestBody.messages[1].content;
       return modelResponse(ordinaryDraft);
     },
@@ -294,6 +298,7 @@ test("an unconfigured model returns unavailable instead of a fabricated plan", a
 test("invalid, incomplete, and out-of-household model output never becomes a plan", async (t) => {
   const invalidResponses: Array<[string, () => Response]> = [
     ["truncated output", () => modelResponse(ordinaryDraft, { finishReason: "length" })],
+    ["missing choices", () => Response.json({ choices: [] })],
     ["invalid JSON", () => modelResponse("{not-json}")],
     [
       "invalid fields",
@@ -326,6 +331,30 @@ test("invalid, incomplete, and out-of-household model output never becomes a pla
         },
       );
     });
+  }
+});
+
+test("provider diagnostics distinguish token exhaustion from missing choices without logging content", async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => modelResponse(ordinaryDraft, { finishReason: "length" });
+    await assert.rejects(
+      generateLifePlanDraft({
+        household,
+        scenarioDescription: "A storm may disrupt the household for two days.",
+      }),
+      { message: "The Meta model response exhausted its completion budget (8000 tokens)." },
+    );
+    globalThis.fetch = async () => Response.json({ choices: [] });
+    await assert.rejects(
+      generateLifePlanDraft({
+        household,
+        scenarioDescription: "A storm may disrupt the household for two days.",
+      }),
+      { message: "The Meta model response contained no choices." },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
   }
 });
 

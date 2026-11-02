@@ -50,4 +50,12 @@ This log records work completed during the Meta Global AI Developer Hackathon wi
 - Added `HACKATHON_JUDGE_SUMMARY.md` with an explicit before/after comparison, reproducible demo steps, safety boundaries, and the current verification status.
 - No LIFE model behavior, synthetic fixtures, or Connect-data isolation boundaries changed in this Connect work.
 
+## 2026-11-01 — LIFE incomplete-response reliability correction
+
+- Investigated repeated production 502 responses: runtime logs reported incomplete Meta responses, but the old diagnostic could not distinguish token exhaustion from a missing response choice.
+- Increased the completion allowance from 3,000 to 8,000 tokens to leave room for Muse Spark's internal reasoning, kept concise plan instructions, and bounded each request to 75 seconds. No automatic retries were added, avoiding hidden repeat model charges.
+- Separated token-limit and missing-choice diagnostics without logging scenario text, model content, or credentials. Invalid and incomplete output remains rejected.
+- Added regression checks for the larger request allowance and distinct failure diagnostics. This correction requires republishing before the public demo uses it.
+- Verification: all 17 LIFE tests and the API typecheck passed. Real Meta-backed requests against the corrected development API returned HTTP 200 for all three supplied scenarios (storm, school closure, caregiver unavailable), each with five suggested tasks. These checks do not establish that the unchanged public deployment is corrected.
+
 Append a dated entry for each subsequent hackathon change. Distinguish documentation, infrastructure, and demo functionality; link to the relevant commit or file when available. Do not backdate work or claim existing Connect behavior as a LIFE feature.

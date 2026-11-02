@@ -40,6 +40,6 @@ The public fixtures endpoint currently returns two fictional households and thre
 
 ## Verification and final pre-demo check
 
-- Last checked November 1, 2026: the LIFE API suite passed **15/15** tests; the API and Connect web typechecks passed.
-- Automated model tests use fixed mock responses. The published environment has the `MODEL_API_KEY` secret configured, but run one fresh, synthetic plan-generation request on the public demo before presenting; the automated suite does not prove that live production call.
+- Last checked November 1, 2026: the LIFE API suite passed **17/17** tests and the API typecheck passed. The Connect web typecheck passed during the earlier readiness check.
+- Automated model tests use fixed mock responses. Following repeated incomplete model responses in production, the corrected development API was checked with real Meta requests for all three supplied scenarios; all returned HTTP 200. Republish the correction and verify the public demo before presenting; development checks do not prove the published build is corrected.
 - The public LIFE page and its fixture endpoint were reachable during the final check.
